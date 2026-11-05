@@ -161,7 +161,6 @@ function Dashboard() {
     setImporting(true);
     setImportError("");
     try {
-      if (file.size > 2_000_000) throw new Error("Choose a CSV under 2 MB.");
       const scenario = await api<Scenario>("/import-setup", { csv: await file.text() });
       setCfg(scenario);
       setRun(undefined);

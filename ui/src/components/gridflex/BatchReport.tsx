@@ -23,7 +23,6 @@ export function usePortfolio(onStart: () => void) {
     setReport(undefined);
     setError("");
     try {
-      if (file.size > 2_000_000) throw new Error("Choose a CSV under 2 MB.");
       const pdf = await simulatePortfolio(await file.text(), (event) => {
         if (event.type === "start") setTotal(event.total);
         else setSites((current) => [...current, event.result]);

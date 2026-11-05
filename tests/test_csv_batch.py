@@ -70,3 +70,11 @@ def test_portfolio_progress_reports_failed_sites_and_delivers_pdf(monkeypatch):
     assert last["result"]["postcode"] == "1315RA"
     assert report["type"] == "pdf"
     assert base64.b64decode(report["content"]).startswith(b"%PDF-")
+
+
+def test_setup_accepts_csv_larger_than_two_megabytes():
+    source = (PUBLIC / "gridflex-setup-example.csv").read_text(encoding="utf-8-sig")
+    large_source = source.rstrip() + "\n" * 2_000_001
+    response = TestClient(app).post("/import-setup", json={"csv": large_source})
+    assert response.status_code == 200
+    assert response.json()["vans"] == 3
