@@ -15,32 +15,9 @@ npm ci
 npm run dev
 ```
 
-Open the URL printed by Vite and choose **Development scenario**, then **Optimize**. Increase the fleet from 10 to 12 and rerun to see the previous result in the explanation. The default API URL is http://127.0.0.1:8000. Set VITE_GRIDFLEX_API_URL for a different local API address.
+Wait until the API prints "Application startup complete" (about 20 seconds). Open the URL printed by Vite, go to **Setup** and press **Optimize**: the default inputs are the development scenario (category 009, January 2023, level 1, 10 vans, 100 kW). Increase the fleet from 10 to 12 and rerun to see the previous result in the explanation. The default API URL is http://127.0.0.1:8000. Set VITE_GRIDFLEX_API_URL for a different local API address.
 
-The explanation uses deterministic templates until the team selects a provider. Replay metrics describe held-out synthetic load windows. The local Approve and Reject controls record the decision for the current session.
-
-# Welcome to your Lovable project
-
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+Explanations come from Groq or a local Qwen model, grounded in computed facts, with deterministic templates as the fallback (see below). Replay metrics describe held-out synthetic load windows. The local Approve and Reject controls record the decision for the current session.
 
 ## Built with
 
@@ -53,7 +30,7 @@ npm run dev
 
 The API reads `GROQ_API_KEY` from its environment or the Git-ignored root `.env` file. Set it locally and restart the API after changing the key. Never commit the key. The default model is `openai/gpt-oss-120b`; `GROQ_MODEL` may override it server-side. Groq receives the user's question, recent conversation, curated project knowledge, and computed synthetic evidence. It writes a grounded response with evidence placeholders; the server validates references and inserts the computed statements. Numerical checking reduces hallucination but does not prove semantic correctness. Chat can request the three fixed what-if comparisons or earlier departures in 15-minute steps for explicitly named vans; other arbitrary edits are not supported through chat. If Groq is unavailable or returns invalid output, the deterministic template is used.
 
-After a run, use the demand-chart slider to inspect a planning interval and the Explain this decision section to run one-change comparisons. Comparisons use synthetic windows and may vary across equally optimal schedules. Battery replay clips negative net demand without recomputing battery state per window.
+After a run, use the demand-chart slider to inspect a planning interval and the What-if scenarios panel in Analysis to run one-change comparisons. Comparisons use the same synthetic windows; the solver is deterministic, so rerunning the same inputs gives the same plan. Battery replay clips negative net demand without recomputing battery state per window.
 
 ## Local Qwen option
 

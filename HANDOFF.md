@@ -1,6 +1,6 @@
 # GridFlex handoff notes for Smriti and Sunil
 
-Joshua's data and checking work is merged into `main`. Sunil's optimization engine and sweeps are available on `sunil-optimization-core` in draft [PR #11](https://github.com/josh1221wa/ey_hackathon/pull/11); they are not on `main` until merged. This file describes how to integrate the two parts and what to watch out for. The plan stays in [idea.md](idea.md) (section numbers refer to it) and the task lists in [TODO.md](TODO.md). Facts below were measured on the real data on 5 November 2026.
+Everything described here is on `main`: Joshua's data and checking work, Sunil's optimizer, sweeps and grounded assistant, and Smriti's API and dashboard (including CSV import and multi-depot runs). Joshua QC'd `main` on 6 November 2026: all Python and UI tests pass, every API endpoint works, and Optimize runs end to end in the browser. This file describes how the parts fit together and what to watch out for. The plan stays in [idea.md](idea.md) (section numbers refer to it) and the task lists in [TODO.md](TODO.md). Facts below were measured on the real data on 5 November 2026.
 
 ## Both: set up in two minutes
 
@@ -12,7 +12,7 @@ uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 .venv\Scripts\python.exe -m pytest
 ```
 
-On the optimization branch, the current suite reports **83 passed**; the count on `main` may differ until PR #11 is merged. Branch names are `<name>-<change>`; every change goes through a PR (AGENTS.md). Use the venv's Python (`.venv\Scripts\python.exe`), not a bare `python`.
+On `main`, the suite reports **130 passed** (re-run the `uv pip install` line after every pull: `requirements.txt` grows, for example `ortools`, `groq`, `chromadb`, `reportlab`). For the dashboard, `cd ui`, `npm ci`, then `npm run dev`; `npx vitest run` runs the UI tests. Branch names are `<name>-<change>`; every change goes through a PR (AGENTS.md). Use the venv's Python (`.venv\Scripts\python.exe`), not a bare `python`.
 
 Conventions that everything shares (AGENTS.md and idea.md §7.3):
 
@@ -72,11 +72,11 @@ report = replay(test, result, limit, [v.name for v in vans],
 
 Also: `limit` must have shape `(96,)` (a clear `ValueError` otherwise), and `van_names` must be in the same order as the rows of `power`. `tolerance` is a **fraction** (0.05 = 5%), while `days_over_pct` and `baseline_alone_over_pct` in the report are **percentages** (0–100). The verdict is `does_not_fit` if any van has `unmet_kwh > 0`, otherwise `fits_with_risk` if the share of days over the limit is above the tolerance, otherwise `fits`. A slot exactly at the limit does not count as over it. `report.vans_short` has one `(name, kWh short)` entry per van, including 0.0 for full vans.
 
-**The real integration checkpoint now passes:** `replay()` has been tested with the implemented `ScheduleResult` and the 945 held-out development windows. Joshua review of the shared replay and sweep logic remains pending.
+**The real integration checkpoint now passes:** `replay()` has been tested with the implemented `ScheduleResult` and the 945 held-out development windows. Joshua reviewed the shared replay and sweep logic (5 November 2026).
 
 ### 3. The completed checkpoint
 
-A real development replay is available at `examples/replay_report_dev.json` on the optimization branch. You can regenerate the report with:
+A real development replay is available at `examples/replay_report_dev.json`. You can regenerate the report with:
 
 ```python
 import dataclasses, json
@@ -96,7 +96,7 @@ The development scenario uses 10 vans with the §4.4 defaults, 100 kW and level 
 
 ### 5. Sweeps (`charger_sweep`, `battery_sweep` in `replay.py`)
 
-These are on your list "with Joshua". Rules for them: compute `planning`, `test`, `B` and `limit` **once** and reuse them for every point of the sweep (so points are comparable), take the first N vans of the seeded fleet, and cache results per input set. Joshua reviews the replay side.
+Rules for them: compute `planning`, `test`, `B` and `limit` **once** and reuse them for every point of the sweep (so points are comparable), take the first N vans of the seeded fleet, and cache results per input set. Joshua reviewed the replay side: the implementation follows these rules.
 
 ### 6. Reminders
 
@@ -110,21 +110,24 @@ These are on your list "with Joshua". Rules for them: compute `planning`, `test`
 
 ### 1. What you can call today
 
-Joshua’s data and replay code is on `main`. The scheduler and sweeps below are implemented and tested on `sunil-optimization-core` / PR #11, pending merge. Import the library from the API; do not copy it. No API endpoints are implemented by this PR.
+All endpoints below are implemented in `api/main.py` on `main` and call the library; they do not copy it.
 
 | Endpoint (idea.md §8.1) | Call | Returns |
 |---|---|---|
 | `GET /conditions` | `available_conditions()` | `list[Condition]`: `category`, `month`, `level`, `level_value_kwh` |
-| `GET /area/{postcode}` | `lookup(postcode)` | `AreaInfo` or `None` (answer 404 or "no match" for `None`) |
+| `GET /area/{postcode}` | `lookup(postcode)` | `AreaInfo`, or 404 for an unknown or malformed postcode |
 | `GET /reality` | `compare_all(category, month, level)` → list of `RealityCheck`; `summary(check)` for the sentence | see §4 below |
-| `POST /optimize` | `build_windows` / `split_by_sample` / `cautious_baseline`, then Sunil's `optimize()`, then `replay()` | `ScheduleResult` + `ReplayReport` (scheduler available on PR #11) |
-| `POST /sweep` | `charger_sweep()` or `battery_sweep()` | implemented on PR #11; see integration example below |
-| `POST /explain` | `explain_with_source()` | Groq selects validated fact IDs; template fallback; available on `sunil-explainable-ai` |
-| `POST /what-if` | one-change optimization + replay | exploratory comparison, available on `sunil-explainable-ai` |
+| `POST /optimize` | `build_windows` / `split_by_sample` / `cautious_baseline`, then `optimize()`, then `replay()` | schedule, report, baseline, limit, immediate power, p10–p90 band, vans |
+| `POST /sweep` | `charger_sweep()` or `battery_sweep()` | sweep tables; see integration example below |
+| `POST /explain` | `answer_question()` in `gridflex/assistant.py` | grounded answer from Groq or local Qwen (`provider`), with cited evidence; template fallback |
+| `POST /what-if` | one-change optimization + replay | exploratory comparison of current vs. changed scenario |
+| `POST /import-setup` | `read_scenarios()` in `api/csv_setup.py` | one `Scenario` from a single-site CSV |
+| `POST /batch-report`, `/batch-report/progress` | one `/optimize` per CSV site, `render_portfolio()` | portfolio PDF; the progress variant streams NDJSON per site and saves the run locally |
+| `POST /portfolio/ask` | `ask_portfolio()` in `gridflex/portfolio_assistant.py` | grounded answer about a saved portfolio run |
 
 Imports: `gridflex.profiles`, `gridflex.grid_area` (`lookup`, `map_date`), `gridflex.reality`, `gridflex.replay`.
 
-### Optimizer integration example (PR #11)
+### Optimizer integration example
 
 Run from the repository root with the project virtual environment. This uses the development scenario; replace the values with validated API inputs. Use `planning` to build the baseline and `test` for replay, never mix customer samples. The optional sweep lines are examples; a production endpoint can return each table with `.to_dicts()`.
 
@@ -185,9 +188,9 @@ Create a battery with `Battery(capacity_kwh=20, power_kw=10, efficiency=0.90, st
 
 **Rounding:** charging uses integer kW per 15-minute slot; energy demand rounds up to 0.25 kWh. The optimizer rounds the baseline up and the connection limit down to integer kW. Battery state is represented to 0.0001 kWh. Show these assumptions in the UI.
 
-**Battery replay limitation:** replay currently clips negative net demand to zero when a fixed battery-discharge plan is applied to a lower-load test window. It does not resimulate the battery state after clipping. Joshua review is pending; do not claim that every battery replay is a physically validated control trajectory.
+**Battery replay limitation:** replay currently clips negative net demand to zero when a fixed battery-discharge plan is applied to a lower-load test window. It does not resimulate the battery state after clipping. Clipping can only raise grid use, so it never hides an overshoot (Joshua's review); still, do not claim that every battery replay is a physically validated control trajectory.
 
-**Development run:** the example has 10 vans, 945 held-out synthetic windows, no unmet energy, 1.16% of windows over the limit for one optimal plan, and 100% for immediate charging. Baseline alone exceeds the limit on 0.74% of windows. The 1.16% can differ across equally optimal schedules; use actual results and report worst overshoot too. These are synthetic scenario outcomes, not real-site probabilities.
+**Development run:** the example has 10 vans, 945 held-out synthetic windows, no unmet energy, 1.16% of windows over the limit, and 100% for immediate charging. Baseline alone exceeds the limit on 0.74% of windows. The solver runs with one worker (`num_workers = 1`), so the same inputs give the same plan on every run and laptop; before that fix, parallel workers gave 1.06% or 1.16% for the same inputs. Use actual results and report worst overshoot too. At the heaviest settings (a 40-van sweep with a battery and a 1 s limit per stage) a few points return `FEASIBLE` instead of `OPTIMAL`; show the status as it comes. These are synthetic scenario outcomes, not real-site probabilities.
 
 ### 2. Field lists for `api/schemas.py` and `ui/src/types.ts` (mirror them in the same PR)
 
@@ -249,8 +252,10 @@ Demo postcodes (idea.md §9): `1181KJ` Amstelveen (red, 29 requests, 5.8 MW, fix
 ### 9. Housekeeping
 
 - The wireframe landed in `wireframe/`, while AGENTS.md and idea.md say the app lives in `ui/`. Not Joshua's call: please settle it (and update AGENTS.md) so nobody scaffolds a second app.
-- `requirements.txt` on PR #11 also pins `ortools`; install the branch requirements before importing the scheduler.
-- The explanation agent describes only computed facts. Groq selects validated fact IDs in `call_llm()`; templates render all numbers and act as the fallback. The provider key is stored in the ignored local `.env`, and must not be committed.
+- After pulling, re-install `requirements.txt` (see the set-up section); a missing package such as `ortools` makes the API fail on import.
+- The assistant describes only computed facts. Groq or local Qwen (Ollama, `qwen3.5:9b`) writes answers that must cite fact IDs; the server checks every number against the cited facts, and templates are the fallback. Provider code lives in `call_llm()` in `gridflex/explain.py`. The Groq key is stored in the ignored local `.env` and must not be committed. Without a key or Ollama, the single-run assistant falls back to templates; the portfolio chat currently only says the model is unavailable (open in TODO.md).
+- With Groq selected, the portfolio chat sends uploaded site names, postcodes and grid-area details to Groq, not only synthetic facts. Local Qwen keeps them on the machine.
+- The API takes about 20 seconds to start (library imports); wait for "Application startup complete" before loading the dashboard.
 - Attributions to show in the app: GLASS (CDLA-Permissive-2.0), "Netbeheer Nederland, capaciteitskaart" with the map date, "Liander (2023)". Footer: "Synthetic data and simulation. Not a grid-operator approval."
 
 ---
