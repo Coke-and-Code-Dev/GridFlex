@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
 });
 
 const TABS = [
-  ["welcome", "Welcome"], ["configure", "Setup"], ["immediate", "Immediate charging"],
+  ["welcome", "Welcome"], ["configure", "Setup"],
   ["compare", "Charging plan"], ["schedule", "Van schedule"], ["explanation", "Explanation"], ["analysis", "Analysis"],
 ] as const;
 type DashboardTab = (typeof TABS)[number][0];
@@ -382,17 +382,8 @@ function Dashboard() {
         </Section></TabsContent>
 
         {r && s && report && run ? <>
-          <TabsContent value="immediate">
-          <Section id="immediate" n={3} title="Immediate charging">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Stat label="Windows over limit" value={report.immediate ? `${report.immediate.days_over_pct.toFixed(2)}%` : "Unavailable"} />
-              <Stat label="Worst overshoot" value={report.immediate ? `${report.immediate.worst_overshoot_kw.toFixed(2)} kW` : "Unavailable"} />
-              <Stat label="Held-out windows" value={report.n_windows} />
-            </div>
-          </Section>
-          </TabsContent>
           <TabsContent value="compare">
-          <Section id="compare" n={4} title="Compare charging plans">
+          <Section id="compare" n={3} title="Compare charging plans">
             <p className="mb-4" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans · {run.cfg.month} <Hint label="Verdict and solver" /></p>
             <div className="grid gap-4 sm:grid-cols-4">
               <Stat label="Windows over limit" value={`${report.days_over_pct.toFixed(2)}%`} tone={report.days_over_pct ? "bad" : "good"} />
@@ -400,6 +391,17 @@ function Dashboard() {
               <Stat label="Vans fully charged" value={`${report.vans_short.filter(([, short]) => short === 0).length}/${run.cfg.vans}`} />
               <Stat label="kWh short" value={sum(s.unmet_kwh).toFixed(2)} tone={sum(s.unmet_kwh) ? "bad" : "good"} />
             </div>
+            <section aria-label="Immediate charging comparison" className="panel mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 text-sm">
+              <div>
+                <h3 className="font-semibold">Immediate charging</h3>
+                <p className="text-xs text-muted-foreground">Each van starts charging as soon as it arrives.</p>
+              </div>
+              {report.immediate ? <>
+                <span><strong>{report.immediate.days_over_pct.toFixed(2)}%</strong> windows over limit <Hint label="Windows over limit" /></span>
+                <span><strong>{report.immediate.worst_overshoot_kw.toFixed(2)} kW</strong> worst overshoot <Hint label="Worst overshoot" /></span>
+              </> : <span className="text-muted-foreground">Comparison unavailable</span>}
+              <span><strong>{report.n_windows}</strong> held-out windows <Hint label="Held-out windows" /></span>
+            </section>
             <div className="panel mt-4 p-4">
               <h3 className="font-semibold">Demand chart <Hint label="Demand chart" /></h3>
               <LoadChart title="Planning demand, noon to noon (kW)" limit={r.limit_kw} band={r.normal_band_kw} selectedSlot={selectedSlot} onSelectSlot={setSelectedSlot}
@@ -435,7 +437,7 @@ function Dashboard() {
           </Section>
           </TabsContent>
           <TabsContent value="schedule">
-            <Section id="schedule" n={5} title="Per-van charging schedule">
+            <Section id="schedule" n={4} title="Per-van charging schedule">
               <div className="panel mt-4 p-4">
               <h3 className="font-semibold">Van schedule <Hint label="Van schedule" /></h3>
               <Heatmap schedule={s.power} needs={r.vans.map((van) => Math.ceil(van.energy_kwh * 4) / 4)} chargerKw={run.cfg.charger_kw} />
@@ -446,7 +448,7 @@ function Dashboard() {
             </Section>
           </TabsContent>
           <TabsContent value="explanation">
-          <Section id="explanation" n={6} title="Explanation">
+          <Section id="explanation" n={5} title="Explanation">
             <article className="panel space-y-4 p-6">
               <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq explanation based on computed evidence" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
               <p aria-live="polite">{explanation || "Preparing explanation…"}</p>
@@ -464,7 +466,7 @@ function Dashboard() {
           </Section>
           </TabsContent>
           <TabsContent value="analysis">
-            <Section id="analysis" n={7} title="Analysis">
+            <Section id="analysis" n={6} title="Analysis">
               <div className="grid items-start gap-4 lg:grid-cols-2">
                 <section className="panel min-w-0 space-y-4 p-5" aria-labelledby="decision-evidence">
                   <h3 id="decision-evidence" className="text-xl font-semibold">What-if scenarios</h3>
