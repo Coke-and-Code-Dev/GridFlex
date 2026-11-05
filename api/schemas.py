@@ -36,10 +36,16 @@ class SweepRequest(BaseModel):
     kind: Literal["chargers", "battery"]
 
 
+class ConversationTurn(BaseModel):
+    question: str = Field(max_length=500)
+    text: str = Field(max_length=3000)
+
+
 class ExplanationRequest(BaseModel):
     scenario: Scenario
     previous: Scenario | None = None
     question: str | None = Field(default=None, max_length=500)
+    history: list[ConversationTurn] = Field(default_factory=list, max_length=6)
 
 
 class WhatIfRequest(BaseModel):
@@ -47,9 +53,15 @@ class WhatIfRequest(BaseModel):
     action: Literal["extra_capacity", "later_departure", "battery"]
 
 
+class Evidence(BaseModel):
+    id: str
+    text: str
+
+
 class ExplanationResponse(BaseModel):
     text: str
     source: Literal["groq", "template"]
+    evidence: list[Evidence] = Field(default_factory=list)
 
 
 class ComparisonMetrics(BaseModel):

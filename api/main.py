@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from api.schemas import (ComparisonMetrics, ExplanationRequest, ExplanationResponse, Scenario,
                          SweepRequest, WhatIfRequest, WhatIfResponse)
-from gridflex.explain import explain_with_source
+from gridflex.assistant import answer_question
 from gridflex.fleet import generate_fleet
 from gridflex.grid_area import lookup
 from gridflex.naive import naive_schedule
@@ -132,14 +132,42 @@ def sweep(request: SweepRequest):
 
 @app.post("/explain", response_model=ExplanationResponse)
 def explain_route(request: ExplanationRequest):
-    plan, report, *_ = run(request.scenario.model_dump_json())
+    plan, report, baseline, limit, _, vans, _ = run(request.scenario.model_dump_json())
     previous = run(request.previous.model_dump_json())[1] if request.previous else None
-    try:
-        area_info = lookup(request.scenario.postcode)
-    except FileNotFoundError:
-        area_info = None
-    text, source = explain_with_source(request.scenario.model_dump(), plan, report, area_info, previous, request.question)
-    return {"text": text, "source": source}
+
+    def compare(action, van_numbers=None, minutes=0):
+        if action == 'custom_earlier':
+            scenario = request.scenario
+            values = scenario.model_dump()
+            changed_vans = set(van_numbers or [])
+            if not changed_vans or any(i < 1 or i > len(vans) for i in changed_vans):
+                raise ValueError('A requested van does not exist in this fleet.')
+            shift = minutes // 15
+            if any(v.departure_slot - shift <= v.arrival_slot for i, v in enumerate(vans, 1) if i in changed_vans):
+                raise ValueError('An earlier departure would not be after its arrival.')
+            values['overrides'] = {i: {'arrival_slot': v.arrival_slot,
+                                        'departure_slot': v.departure_slot - (shift if i + 1 in changed_vans else 0),
+                                        'energy_kwh': v.energy_kwh, 'charger_kw': v.charger_kw}
+                                   for i, v in enumerate(vans)}
+            altered = Scenario.model_validate(values)
+            result = WhatIfResponse(description=f"Move {', '.join(f'Van {i}' for i in sorted(changed_vans))} departure {minutes} minutes earlier, preserving other requests.",
+                                    current=comparison_metrics(scenario), changed=comparison_metrics(altered), scenario=altered)
+        else:
+            try:
+                result = what_if(WhatIfRequest(scenario=request.scenario, action=action))
+            except HTTPException as exc:
+                raise ValueError(str(exc.detail)) from None
+        a, b = result.current, result.changed
+        return (f"Exploratory comparison: {result.description} Current versus changed: "
+                f"{a.vans_full}/{a.vans_total} versus {b.vans_full}/{b.vans_total} vans fully served; "
+                f"{a.unmet_kwh:.2f} versus {b.unmet_kwh:.2f} kWh unmet; "
+                f"{a.days_over_pct:.2f}% versus {b.days_over_pct:.2f}% of held-out synthetic windows over limit; "
+                f"worst overshoot {a.worst_overshoot_kw:.2f} versus {b.worst_overshoot_kw:.2f} kW; "
+                f"solver status {a.status} versus {b.status}. Equally optimal plans can differ; "
+                "the comparison is not independent validation. Battery replay clips negative net demand without updating battery state per window.")
+
+    return answer_question(request.scenario, plan, report, baseline, limit, vans,
+                           request.question, [item.model_dump() for item in request.history], previous, compare)
 
 
 def comparison_metrics(scenario: Scenario) -> ComparisonMetrics:
