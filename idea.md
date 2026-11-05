@@ -193,6 +193,14 @@ All values are sliders or editable in the van table, and the app labels them as 
 - **Monthly totals** may differ from `level_value`. If we display totals, compute them from the 15-minute values.
 - **Liander profile availability** for SBI 49, 52 and 46 (does a file exist; warning column). If not, switch the reality check to the logistics K&O profile.
 
+**Scan of every 2023 condition for `009` and `008` (96 conditions, `consumption_only`, run on 5 November 2026):**
+
+- Every month and level exists. Each has **145–150 samples** (two conditions have 149); none is below the 100 the dataset card promises.
+- **No sample has a missing day**: every sample covers the whole month (28–31 days). Missing days therefore only occur in our synthetic tests, where `build_windows` drops the windows that would span the gap.
+- No condition has near-identical samples. February is the shortest (28 days, about 19 working-day windows per sample).
+- **Level 1 fits a 100 kW limit in every month** (mean daily peak 21–26 kW, p90 34–44 kW), and level 2 does too (p90 52–62 kW). **Level 3's p90 daily peak is 100–112 kW in every month**, so the building alone reaches the limit: it needs a higher limit, as found for January.
+- Postcodes: an unknown or malformed postcode gives `None` from `lookup()`; a known postcode with no capacity data gives status plus `None` fields (`status == "unknown"` when the map has no colour).
+
 **Checked for the development scenario (category `009`, January 2023, run on 5 November 2026):**
 
 - Each condition has **150 samples × 31 days**, not ~100. A working-day window count is 21 per sample (3,150 windows); the 70/30 split gives 105 planning and 45 test samples (945 test windows).

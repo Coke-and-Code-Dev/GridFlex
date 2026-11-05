@@ -41,7 +41,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [x] Write the one-line result for the demo, using the real number (§5.10: correlation 0.97 against SBI 52)
 
 **Hour 13–18**
-- [ ] Data edge cases: missing days in a month, conditions with fewer windows, postcodes with no information
+- [x] Data edge cases: missing days in a month, conditions with fewer windows, postcodes with no information (scan of all 96 conditions for 009 and 008 in §4.5: the real data has no gaps and at least 145 samples; tiny-condition and no-information cases are covered by tests)
 - [ ] Prepare and rehearse demo part 1 (problem, postcode card, GLASS band, reality check)
 
 ---
