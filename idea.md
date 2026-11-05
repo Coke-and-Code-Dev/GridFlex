@@ -1,104 +1,94 @@
-# GridFlex AI: three-person hackathon architecture and build plan
+# GridFlex AI: Predict. Optimize. Explain.
 
-> **Proposal and companion to [README.md](README.md).** The README is the repository's source of truth for scope and module interfaces. This document captures the broader idea from the earlier planning conversation; forecasting, renewable generation, battery scheduling, Gemini and Streamlit are proposed extensions, not claims about existing implementation or agreed changes to the current MVP. Agree changes with the team and update the README before implementation. All scenarios and results are simulations.
+> A short, easy-to-follow plan for a team of three. This is a proposal alongside [README.md](README.md), the source of truth for the current project. Agree changes with the team before changing that plan.
 
-## 1. The idea
+## The idea
 
-**Can a business add EV chargers under its existing grid connection?** GridFlex uses Dutch GLASS synthetic electricity profiles and simulated fleet requests to propose a charging schedule, then replays that fixed schedule across many alternative demand windows. It shows grid-limit violations and unmet charging needs, compares immediate charging with optimization, and helps a human understand the trade-offs. The app recommends; it does not control equipment or grant grid-operator approval.
+A warehouse has a limited electricity supply. If every electric van charges at once, the warehouse may need more power than its connection allows. **GridFlex helps answer: can we charge the vans on time without exceeding that limit?**
 
-The broader vision is **predict, optimize, explain**: use forecasting to anticipate demand, constrained optimization to schedule charging and optional storage, and grounded language-model explanations to communicate computed results. Deliver a credible replay-based MVP before extending it.
+It uses synthetic Dutch energy data to make a plan, tests that plan on many possible days, and explains the result. A person makes the final decision. This is a simulation, not a system that controls equipment or approves a grid connection.
 
-## 2. Architecture and flow
+## How it works
 
 ```text
-GLASS Parquet -> filtered monthly samples -> 96-slot noon-to-noon windows
-                         |                          |
-                         v                          v
-                cautious baseline          held-out replay windows
-                         |                          ^
-EV requests + limits ---> OR-Tools scheduler -> fixed schedule
-                                                    |
-                                       independent validation + replay
-                                                    |
-                                    metrics + baseline comparison
-                                                    |
-                          Streamlit / Plotly dashboard (proposed)
-                                                    |
-                                Gemini explanation or local fallback
+GLASS data + van requests
+          ↓
+LightGBM predicts demand (when ready)
+          ↓
+OR-Tools plans charging and optional battery use
+          ↓
+A separate checker tests the plan and replays it on other days
+          ↓
+Streamlit shows the results; Gemini explains checked numbers
 ```
 
-The current README specifies the existing intended architecture, including a per-slot cautious percentile baseline, charger sweep and replay, and leaves the UI framework open. Streamlit is a recommendation for team agreement, not a settled repository decision. Keep the core library independent of the UI. Assign a run ID and invalidate old results when inputs change. No LLM can override constraints or declare a schedule feasible.
+Think of the connection limit as the size of a pipe. The building and vans share that pipe. GridFlex tries to move charging to times when more space is available.
 
-### Shared contracts
+## What each tool does
 
-Agree interfaces before splitting work; preserve the signatures in README §5.2. Profiles and schedules use NumPy arrays of shape `(n, 96)`, power in kW, energy in kWh, 15-minute slots and a noon-to-noon default window. A scenario identifies the GLASS condition, start hour, connection limit, EV arrival/departure slots, required kWh and charger power. Optional inputs include a tariff, solar/wind profiles and battery settings. Validate dimensions, nonnegative values, windows, units and battery initial state. A result must identify its scenario and solver status, schedule, grid profile, unmet energy, runtime, independent validation, replay metrics and warnings; if storage is enabled include its charge, discharge and 97 state-of-charge values. Distinguish illustrative input values from measured results.
-
-## 3. Data and forecasting
-
-GLASS v1.1 contains synthetic 15-minute daily profiles derived from a generative model trained on Liander data. See [data/README.md](data/README.md) for schema, license and attribution. Use Polars lazy scanning and filters; never load or commit the full raw Parquet file. Start with `consumption_only`, category `009` (transportation and storage), a selected month and level. Inspect profile distribution, variation and connection-limit fit before choosing a demo condition. Calculate monthly energy from readings, not the target `level_value`.
-
-Rows form a continuous sequence only when scenario, category, year-month, level ID and sample ID match. Create noon-to-noon windows from adjacent days within that same monthly sample; never stitch across months or samples. Split training, validation and replay samples before deriving aggregate baselines to avoid leakage. Clearly label the number of samples and windows and do not interpret correlated windows as independent sites or real-world probabilities.
-
-For optional renewable scenarios, `generation_zon` and `generation_wopl` are negative generation readings: convert them to positive available-generation magnitudes. Wind is available only October–February, with category `WIND`. Do not add separate solar to `hybrid_net_consumption`, which already includes it. Independently sampled demand and generation do not represent a known shared facility; label their combination simulated. EV arrivals, energy requirements, battery and connection capacity are configurable assumptions, not GLASS measurements.
-
-### Forecasting extension: LightGBM
-
-The replay-based MVP can work without a trained forecast. Once it works, train LightGBM on continuous historical sequences with lag features (15 minutes, 1 hour, 24 hours and, when available, 7 days), calendar features and past-only rolling statistics. Predict 96 slots ahead using recursive one-step predictions or direct horizon models. For recursive forecasts, feed back predictions rather than future actual readings. Split chronologically and by held-out sample as appropriate; never randomly split adjacent rows. Compare MAE, RMSE and peak error against same-time-yesterday persistence on the identical held-out windows. Use persistence for solar/wind initially. If data, compute or time are insufficient, retain the cautious percentile baseline and report that forecasting was not evaluated.
-
-Optionally use validation residual quantiles to form a conservative demand band; this is not a guarantee of grid safety. PatchTST is a stretch only after the baseline, evaluation and end-to-end demo work; keep it only if held-out results justify complexity.
-
-## 4. Scheduling and validation
-
-Use OR-Tools CP-SAT with scaled integer units and explicit rounding checks. For each EV and interval, define charging power bounded by charger capacity and availability. Require delivered energy plus nonnegative unmet energy to equal requested energy; expose shortfalls. Model grid import as baseline plus EV charging plus battery charging minus generation used and battery discharge. Enforce the configured grid limit, and define export and renewable curtailment explicitly if included. Treat hard physical limits as hard constraints; if unavoidable baseline demand exceeds capacity and available storage cannot cover it, report infeasibility rather than claiming success.
-
-If battery storage is added, enforce power and capacity bounds, initial state and the transition `SOC[t+1] = SOC[t] + 0.25 * (eta_charge * charge[t] - discharge[t] / eta_discharge)`. A binary mode prevents simultaneous charge and discharge. Check integer scaling and independently recompute energy balances and SOC.
-
-Use sequential objectives: first minimize unmet EV energy, then fix the optimum and minimize peak import, then minimize tariff cost and optionally cycling. Under a time limit, only fix an objective as proven optimal when the solver actually proves it; otherwise disclose the incumbent and incomplete priority guarantees. Report `OPTIMAL`, `FEASIBLE`, `INFEASIBLE` or `UNKNOWN` faithfully and use a short interactive time limit. Immediate charging is the comparison baseline; apply identical fleet and site assumptions.
-
-Replay the **same** planned schedule over held-out GLASS windows and calculate violation frequency, worst overshoot and timing. Forecast feasibility and replay feasibility are separate. State how any shortfall is calculated during replay, including whether charging is curtailed to respect the limit; do not claim both an unmodified schedule and curtailment without modeling the difference.
-
-## 5. Explainability and dashboard
-
-A proposed Streamlit/Plotly interface offers business/month/level selection, connection limit and fleet controls, immediate-versus-optimized curves, EV charging heatmap, solver/validation status, unmet kWh, and the charger-count versus replay-violation chart. Add optional renewable and storage controls only after the core workflow works. Label data, scenarios and all approvals as simulated; recompute metrics from the active run.
-
-Gemini Flash, if an account and key are available, receives only validated scenario details, solver status, computed metrics and warnings. It explains observed outcomes without inventing measurements, solver reasoning, savings or certainty. For a what-if question, validate structured parameter changes and rerun the deterministic engine before explaining results. Provide a deterministic text fallback when the API is unavailable; store keys in an ignored `.env`, never in the repository. Natural-language scenario parsing is a stretch goal.
-
-## 6. Three-person ownership
-
-| Owner | Responsibility | Integration deliverable |
+| Tool | Job | When |
 |---|---|---|
-| Member 1: data and forecasting | GLASS extraction, sample/window construction, data checks, cautious baseline; optional LightGBM and evaluation | Validated 96-slot profiles and held-out replay windows; documented data provenance |
-| Member 2: optimization and validation | Fleet requests, immediate charging, CP-SAT, independent checks and replay metrics | Schedule and result matching the agreed README interfaces; tests and honest solver statuses |
-| Member 3: dashboard and explanations | Agree UI choice with team; build controls, comparison and risk charts, explanation fallback, optional Gemini, demo | Runnable interface consuming real results and clear simulated labels |
+| **GLASS** | Supplies synthetic 15-minute electricity profiles | Start here |
+| **OR-Tools CP-SAT** | Finds a charging schedule that follows the rules | Core |
+| **Streamlit + Plotly** | Shows controls, charts and results | Core; team must agree on UI choice |
+| **LightGBM** | Predicts future demand using past patterns | Add after the core works |
+| **Gemini Flash** | Explains results already calculated and checked | Add after the core works; include a non-AI fallback |
+| **PatchTST / Isolation Forest** | Optional forecasting experiment / unusual-pattern detection | Only if time remains |
 
-All three agree contracts and a seeded demo scenario first, integrate early, review each other's outputs, and use separate `name-change` branches and pull requests as required by [AGENTS.md](AGENTS.md).
+Use Python, Polars and NumPy for data, Pydantic or dataclasses for shared inputs, and pytest for checks. Add transformer packages only if testing PatchTST. Keep API keys in an ignored `.env` file.
 
-## 7. Four-hour execution plan
+## Data: start small
 
-| Time | Milestone | Acceptance criterion |
+1. Use `consumption_only`, category `009` (transport and storage), from [GLASS](data/README.md). Read a small filtered extract with Polars; do not load or commit the full dataset.
+2. Each day has **96 readings**, one every 15 minutes. Power is in **kW**; energy is in **kWh**. The current project uses a noon-to-noon window, joining adjacent days only within the same scenario, category, month, level and sample.
+3. Split samples before building the cautious baseline or testing. Use held-out windows to see how the same charging plan performs on different synthetic days. These are not real facility measurements or a guarantee of real-world safety.
+4. Later, add `generation_zon` for solar and `generation_wopl` for wind (October–February). Convert negative generation readings to positive generation amounts. Separately sampled profiles do not necessarily describe the same site; label the combined scenario simulated. Do not add solar twice to `hybrid_net_consumption`.
+
+## Divide the work
+
+| Person | Owns | Delivers |
 |---|---|---|
-| 0:00–0:20 | Inspect repository/data, agree contracts, units, sample split and seeded scenario | Everyone can load the same small extract and understands inputs/outputs |
-| 0:20–1:00 | Parallel: extract windows; build naive charging and scheduler skeleton; build UI shell | One 96-slot scenario passes between modules |
-| 1:00–2:00 | Finish basic EV constraints and independent validation; compute cautious baseline and replay | Real solver output, shortfall and replay metrics appear end to end |
-| 2:00–3:00 | Integrate UI, charger sweep and comparison; test infeasible and constrained cases | Changing a scenario recomputes a visible, validated result |
-| 3:00–3:40 | Add highest-value extension only: forecasting, Gemini or renewables if core is stable | Extension has an evaluated or deterministic fallback; no fabricated numbers |
-| 3:40–4:00 | Freeze, test, rehearse and prepare offline fallback | One reliable demo runs from documented setup and shows an honest limitation |
+| **1: Data + forecasts** | Extract GLASS, prepare windows, check data and train/evaluate LightGBM if time permits | Clean profiles and, later, a 96-slot forecast |
+| **2: Optimization + checking** | Create van requests, build the scheduler, compare immediate charging and check results | A schedule, unmet energy and validation results |
+| **3: Dashboard + explanations** | Build the agreed UI, charts, scenario controls and Gemini/fallback explanation | A working interactive demo |
 
-If behind, cut optional models, battery, wind and conversational controls first. A working core replay and honest metrics outrank model count.
+First agree on shared inputs and outputs using the interfaces in the README: 96 time slots, site limit, van arrival/departure, charging rate and energy needed. Results should include the schedule, solver status, unmet energy, checks and warnings. Use the repository's named-branch and pull-request workflow.
 
-## 8. Validation and evidence
+## Build it step by step
 
-- Check data signs, 96 slots, units, month/sample continuity and variation; keep held-out samples out of model and cautious-baseline construction.
-- Test no charging outside EV windows, charger power, energy delivered and unmet energy, grid balances and limit, battery SOC and no simultaneous charge/discharge when applicable. Independently recompute every slot rather than trusting solver metrics.
-- Exercise impossible baseline, insufficient charging capacity, zero generation, empty/full battery, solver timeout and missing Gemini key. Show actual status and warnings.
-- Compare naive and optimized schedules using the same scenario: peak kW, overload intervals and worst overload, EV completion and unmet kWh, and optionally tariff cost and renewable curtailment. Compare held-out forecast errors to persistence separately.
-- Report replay window counts, sample counts and observed proportion with violations. These are synthetic scenario results, not a guarantee of real-world reliability or a prediction of actual connection approval.
+| Time | Goal | Done when… |
+|---|---|---|
+| **0–30 min** | Set up, agree interfaces and choose one fixed demo scenario | Everyone can use the same inputs |
+| **30–60 min** | Extract data, create immediate-charging baseline and dashboard shell | One 96-slot scenario flows between modules |
+| **1–2 hours** | Build EV scheduling and the independent checker | The app produces a real schedule and reports any shortfall |
+| **2–3 hours** | Connect charts and replay the same schedule on held-out windows | A change in van count reruns and updates the results |
+| **3–4 hours** | Test, polish and rehearse; add one extension if stable | The demo works, including an honest difficult case |
 
-## 9. Demo and handoff
+If time is tight, finish **GLASS → scheduler → checker → dashboard** first. Add Gemini, LightGBM, solar, battery and natural-language controls after that. The longer forecasting and AI integration work in the original plan can continue beyond the first four hours.
 
-1. Member 1 introduces the congestion and fleet question, GLASS synthetic data and the selected month and site assumptions.
-2. Member 2 shows immediate charging versus the optimized schedule, EV deadlines and independent constraint checks. Explain any unmet energy or infeasibility.
-3. Member 3 changes fleet size or the connection limit, reruns, and shows replay violations and the charger sweep. If enabled, ask Gemini to explain only the verified result.
-4. Show a difficult scenario, such as more vans or reduced solar, and explain the residual risk. Finish with the human decision: this is a simulation, not equipment control.
+## Forecasting: teach it from the past
 
-Prepare a seeded scenario and precomputed screenshots or a recorded fallback if data extraction, solver, internet or API access fails; label saved results and do not present them as live. Document setup, dataset provenance, assumptions, validation and known limits in the README as the team implements the agreed plan.
+Train LightGBM on complete, continuous historical sequences. Give it past demand, time of day, weekday and recent averages; predict the next 96 intervals. Test on later, held-out data, not randomly mixed neighboring readings. When predicting step by step, use earlier predictions—not future answers—as inputs.
+
+Compare its average error (MAE), larger-error-sensitive score (RMSE) and peak error against a simple **same time yesterday** forecast. A higher-demand estimate can provide a cautious mode, but cannot promise the limit will never be exceeded. If there is not enough time or data, use the README's cautious per-slot baseline and say no forecast model was evaluated.
+
+## Scheduling: follow the rules
+
+OR-Tools chooses when each van charges. It must respect arrival and departure times, charger power and the site limit. Show any energy a van still needs. First minimize unmet charging, then peak power, then cost if tariffs are available. Report whether the solver found an optimal, feasible, infeasible or unknown result; a time limit does not prove an answer is optimal.
+
+If adding a battery, track its stored energy, capacity, charge/discharge limits and efficiency; never charge and discharge at the same time. Include solar and wind only as available generation. If the building alone exceeds its limit and the battery cannot cover it, say the scenario is infeasible. CP-SAT uses scaled integers, so check rounding and energy balance.
+
+## Explain and test
+
+Gemini can answer “Why was this van scheduled later?” or summarize what changed after a solar drop. Give it the actual scenario, checked schedule and computed metrics; do not let it invent numbers or make decisions for the solver. For a what-if request, validate the proposed changes and rerun the calculation first. If Gemini is unavailable, show a clear text summary generated from the results.
+
+Check that vans charge only while present, deadlines and charger limits are respected, grid power balances, and battery levels stay valid. Test an impossible scenario and a solver timeout. Compare **immediate charging** with the optimized plan using peak power, overloads, vans ready on time and unmet kWh; show costs only if a tariff is supplied. Separately replay the fixed plan on held-out synthetic days and show how often and by how much it exceeds the limit. A forecast that looks safe and a replay that stays safe are different results.
+
+## Four-minute demo
+
+1. **0:00–1:00 — Person 1:** Explain the warehouse problem, GLASS and the forecast or cautious baseline.
+2. **1:00–2:00 — Person 2:** Compare immediate and optimized charging; show the rules and any unmet energy.
+3. **2:00–3:20 — Person 3:** Increase the fleet from 10 to 15 vans, rerun, and explain the result using Gemini or the fallback.
+4. **3:20–4:00 — Team:** Show replay risk, limitations and the human decision.
+
+Also prepare a busy charging period and a solar-drop scenario. Use a fixed demo seed and a clearly labeled saved fallback in case the live demo or API fails. Never promise an improvement before the calculation shows it.
