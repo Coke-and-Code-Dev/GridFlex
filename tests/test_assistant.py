@@ -108,3 +108,26 @@ def test_chat_tool_preserves_other_van_requests(monkeypatch):
     assert data['source'] == 'groq'
     assert 'Van 1, Van 2 departure 30 minutes earlier' in data['text']
     assert 'same' not in data['text'].lower() or 'synthetic' in data['text'].lower()
+
+
+def test_preset_questions_answer_from_evidence_when_provider_fails(monkeypatch, current):
+    def fail(*args, **kwargs):
+        raise ConnectionError('offline')
+    monkeypatch.setattr('gridflex.assistant.call_llm', fail)
+    risk = answer_question(*current, question='When is risk highest?', compare=lambda *_: pytest.fail('unexpected comparison'))
+    assert risk['source'] == 'template'
+    assert risk['evidence'] and 'unavailable' not in risk['text']
+    battery = answer_question(*current, question='How did the battery help?', compare=lambda *_: pytest.fail('unexpected comparison'))
+    assert battery['source'] == 'template'
+    assert 'no battery configured' in battery['text'].lower()
+
+
+def test_preset_avoids_unnecessary_planning_call_and_repeated_shortfall(monkeypatch, current):
+    calls = []
+    def model(system, user, schema):
+        calls.append(schema)
+        return json.dumps({'answer': 'No vans are short.', 'fact_ids': ['short_vans']})
+    monkeypatch.setattr('gridflex.assistant.call_llm', model)
+    result = answer_question(*current, question='Which vans are short?', compare=lambda *_: pytest.fail('unexpected comparison'))
+    assert len(calls) == 1
+    assert result['text'] == result['evidence'][0]['text']

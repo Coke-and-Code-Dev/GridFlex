@@ -97,6 +97,8 @@ def render_answer(answer, ids, facts):
     # Answers without evidence are only safe as a neutral clarification/refusal.
     if not ids and answer.strip() != 'I cannot answer that from the available evidence. Please clarify your question or try a supported scenario.':
         raise ValueError('unsubstantiated answer')
+    if ids == ['short_vans'] and not placeholders:
+        return facts['short_vans'], ['short_vans']
     text = PLACEHOLDER.sub(lambda match: facts[match.group(1)], answer)
     for identifier in dict.fromkeys(ids):
         if identifier not in placeholders:
@@ -120,7 +122,12 @@ def answer_question(scenario, plan, report, baseline, limit, vans, question=None
     request = {'question': question or 'Summarize this run', 'recent_conversation': history}
     try:
         action = 'none'
-        if question and compare:
+        # The preset questions inspect this run and never request a new simulation.
+        # Avoid a separate model call and reserve quota for the answer.
+        preset = query.strip().rstrip('?!.') in {
+            'when is risk highest', 'which vans are short', 'how did the battery help'
+        }
+        if question and compare and not preset:
             selection = json.loads(call_llm(
                 'Choose a simulation tool only if the current question explicitly asks to test a specific available change. '
                 'The available changes are adding 10 kW of connection capacity, moving every departure one hour later, '
@@ -175,6 +182,19 @@ def answer_question(scenario, plan, report, baseline, limit, vans, question=None
             key = 'short_vans'
             text = facts[key]
             evidence = [{'id': key, 'text': facts[key]}]
+        elif query.strip().rstrip('?!.') == 'when is risk highest':
+            keys = ['frequent', 'worst'] if 'frequent' in facts else ['worst']
+            text = ' '.join(facts[key] for key in keys)
+            if 'frequent' not in facts:
+                text = 'There were no modeled limit breaches in the held-out windows. ' + text
+            evidence = [{'id': key, 'text': facts[key]} for key in keys]
+        elif query.strip().rstrip('?!.') == 'how did the battery help':
+            keys = ['battery_config']
+            text = facts['battery_config']
+            if scenario.battery_kwh:
+                text += ' This shows planned battery activity; its effect on risk requires a comparison with a no-battery scenario. ' + facts['battery_caveat']
+                keys.append('battery_caveat')
+            evidence = [{'id': key, 'text': facts[key]} for key in keys]
         elif question:
             text = 'The AI explanation is unavailable or could not be verified. Please retry, or use the calculated dashboard results and what-if controls.'
             evidence = []
