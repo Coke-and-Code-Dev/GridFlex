@@ -44,6 +44,17 @@ Use Python, Polars and NumPy for data, Pydantic or dataclasses for shared inputs
 3. Split samples before building the cautious baseline or testing. Use held-out windows to see how the same charging plan performs on different synthetic days. These are not real facility measurements or a guarantee of real-world safety.
 4. Later, add `generation_zon` for solar and `generation_wopl` for wind (October–February). Convert negative generation readings to positive generation amounts. Separately sampled profiles do not necessarily describe the same site; label the combined scenario simulated. Do not add solar twice to `hybrid_net_consumption`.
 
+## AI models: exactly what we will use
+
+**1. LightGBM — the prediction model.** Train one model to predict the warehouse's electricity demand for the next 24 hours. It learns from GLASS history: recent demand, demand at the same time yesterday, time of day and weekday. Its output is **96 predicted demand values in kW**, one for each 15-minute slot. Start with a simple same-time-yesterday forecast so there is a fallback and a fair comparison. Solar and wind can initially use a simple recent-profile forecast; train separate LightGBM models only if time and data allow.
+
+**2. OR-Tools CP-SAT — the planning engine.** This is mathematical optimization, not a trained model. It takes the demand forecast (or cautious baseline), grid limit and van requests, then calculates when each van should charge. Its output is a **charging schedule**, solver status and any unmet energy. Add battery decisions after the basic scheduler works.
+
+**3. Gemini Flash — the language model.** Send it the checked schedule, scenario and calculated results. It turns those facts into a plain-English explanation, such as why charging was moved to a quieter period. For “what if we add five vans?”, the application must validate the new inputs and rerun the scheduler before Gemini explains the answer. If the API is unavailable, use a normal text summary of the calculated results.
+
+**Optional models:** PatchTST is a time-series Transformer to compare with LightGBM only if there is enough training data and time. Isolation Forest can flag unusual demand patterns; it does not predict demand or schedule charging. Neither is needed for the first demo.
+
+**Build order:** get data → OR-Tools → dashboard working first. Then add LightGBM and Gemini. This order protects the demo if training or API access takes longer than expected.
 ## Divide the work
 
 | Person | Owns | Delivers |
