@@ -35,10 +35,10 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [x] Find 2–3 good demo postcodes: one red area in Liander's region with a waiting list and a fix year, one green area for contrast (§9: `1181KJ` red; green contrast is `2291AA` in Westland, because every green postcode in Liander's area still has a waiting list)
 
 **Hour 10–13: reality check**
-- [ ] Check Liander's overview for SBI 49, 52 and 46: does a file exist, recommended profile, warning column. If not, use the logistics K&O profile (§4.3)
-- [ ] `scripts/prepare_liander_sbi.py`: per-SBI (or K&O), per-month extracts of `median`, `p10`, `p90`, `mean`
-- [ ] `reality.py`: `compare()`, rescaling both to the same monthly mean; correlation and mean absolute difference
-- [ ] Write the one-line result for the demo, using the real number
+- [x] Check Liander's overview for SBI 49, 52 and 46: does a file exist, recommended profile, warning column. If not, use the logistics K&O profile (§4.3) (49 and 52 have files and no warning; 46 has none and a warning, so logistics K&O)
+- [x] `scripts/prepare_liander_sbi.py`: per-SBI (or K&O), per-month extracts of `median`, `p10`, `p90`, `mean`
+- [x] `reality.py`: `compare()`, rescaling both to the same monthly mean; correlation and mean absolute difference
+- [x] Write the one-line result for the demo, using the real number (§5.10: correlation 0.97 against SBI 52)
 
 **Hour 13–18**
 - [ ] Data edge cases: missing days in a month, conditions with fewer windows, postcodes with no information
