@@ -135,7 +135,7 @@ What `scripts/prepare_grid_map.py` found and decided (export of 5 November 2026)
 
 - 36 rows have no postcode (supply-area rows only): dropped. 462,687 postcodes remain; **56.0% are red nationally, 78.7% in Liander's area**.
 - **217 postcodes appear twice** because they straddle two supply areas, usually of two operators, and 116 of those disagree on the colour. We keep the **most severe** row (the cautious choice) and set `ambiguous` so the card can say the postcode spans more than one area.
-- One area (HMZ) gives 2099 as the year its shortage is resolved. That is a placeholder, so it is treated as "no date" (`jaartal_opgelost_afname` above 2050 is ignored). The other fix years run 2026–2038, and 320 of 602 areas have none.
+- One area (HMZ) gives 2099 as the year its shortage is resolved. That is a placeholder, so it is treated as "no date" (`jaartal_opgelost_afname` above 2050 is ignored). The other fix years run 2026–2038, and 321 of 602 areas have none (320 empty plus the placeholder).
 - Missing or negative values (`-1`) in the area table become `None`. A transparent (green) postcode can still sit in an area with a waiting list: the colour is per postcode and the queue is per supply area, so the card shows both. 159 of 933 projects belong to TenneT congestion areas that are not in `voedingsgebieden.csv` and never match.
 - Only offtake (`afname`) is kept, not feed-in.
 

@@ -150,6 +150,8 @@ def main() -> None:
     p.add_argument("--out", type=Path, default=DEFAULT_OUT)
     p.add_argument("--allow-warning", action="store_true", help="Use SBI codes the overview warns about")
     args = p.parse_args()
+    if hasattr(sys.stdout, "reconfigure"):  # Liander's Dutch descriptions: never crash on a print
+        sys.stdout.reconfigure(errors="replace")
 
     for name in (SBI_ZIP, KO_ZIP, OVERVIEW):
         if not (args.raw / name).exists():

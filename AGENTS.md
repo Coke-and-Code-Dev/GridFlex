@@ -39,6 +39,7 @@ The GLASS dataset is described in [data/README.md](data/README.md); the other da
 ```
 idea.md              idea + implementation plan (source of truth)
 TODO.md              tasks per person
+HANDOFF.md           handoff notes between teammates (what exists, how to call it, gotchas)
 AGENTS.md            this file
 data/README.md       GLASS dataset card
 data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, never commit

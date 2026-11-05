@@ -10,6 +10,8 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 ## Joshua: Data + checking
 
+*Everything below is done. What is left for Joshua is at the end of this file, under "Joshua: remaining todo".*
+
 **Hour 0–1: skeleton + downloads**
 - [x] First PR: empty package layout (`gridflex/`, `api/`, `scripts/`, `tests/`) and an empty `requirements.txt`, so nobody else creates them
 - [x] Put `GLASS_v1.1.parquet` in `data/raw/` and verify the SHA-256 (matches the value in `data/README.md`)
@@ -26,7 +28,6 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 **Hour 4–6: replay**
 - [x] `replay.py`: `replay()` with every flag from §5.8 and the verdict rule
 - [x] `tests/test_replay.py`: hand-built windows with a known overshoot give the right numbers
-- [ ] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**)
 
 **Hour 6–10: capacity map**
 - [x] `scripts/prepare_grid_map.py`: CSVs (semicolon, comma decimals) → `grid_pc6.parquet`, `grid_areas.parquet`, `grid_projects.parquet`, `grid_map_meta.json`
@@ -42,11 +43,27 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 **Hour 13–18**
 - [x] Data edge cases: missing days in a month, conditions with fewer windows, postcodes with no information (scan of all 96 conditions for 009 and 008 in §4.5: the real data has no gaps and at least 145 samples; tiny-condition and no-information cases are covered by tests)
-- [ ] Prepare and rehearse demo part 1 (problem, postcode card, GLASS band, reality check)
+
+### What Joshua's part does, explained simply (ELI10)
+
+**The problem in one picture.** A business building is like a house with one fuse. Electric vans plug in every evening, and if too many charge at once the fuse "blows" (the site goes over its power limit). We want a charging timetable that stays under the fuse, and we want to know how often it could still go wrong. My job was the data: *what does the building normally use?* and *what is the local grid like?*
+
+1. **Pretend days (GLASS).** We downloaded a huge file (13 GB) of computer-made electricity use: 150 pretend versions of each kind of business, for every day of the month. Nobody needs all of it at once, so `extract_glass.py` cuts out the small piece we use: transport and storage firms, January 2023, four size levels (about 1.5 MB each). It also checks the file's fingerprint (SHA-256), so we know the download isn't damaged.
+2. **Evening-to-morning slices.** Vans charge overnight, so `profiles.py` cuts every month into slices that run noon to noon. A slice never mixes two customers or two months. That gives 3,150 slices per size level.
+3. **Study set and exam set.** Like a teacher who keeps some exam questions secret, we plan with 70% of the pretend customers (105) and keep 30% (45 customers, 945 days) hidden for testing. We split by customer, not by day, because days of the same customer look too alike.
+4. **The busy-day curve.** For every quarter of an hour we take the level that 9 out of 10 study days stay under. The charging plan must fit under that curve, so it leaves room for most busy days. (At size level 1 the building is quiet, at most 26 kW, so there is a lot of room under a 100 kW limit.)
+5. **The fire drill.** `replay.py` takes a finished charging timetable and runs it on the hidden days. It counts how many days go over the limit, by how much and when, and which vans end up short of charge. Then it gives a verdict: fits, fits with risk, or doesn't fit. It can also show what happens if every van just plugs in at once; in my quick check, 10 vans did that and went over the limit on every hidden day.
+6. **The grid card.** Type a postcode and `grid_area.py` looks it up in the grid operators' official map: red, orange, yellow or green, how many companies are waiting for more power, and when the operator expects a fix. 56% of Dutch postcodes are red. Careful details: postcodes on the border of two areas are flagged, and a made-up "fixed in 2099" date is ignored. Demo postcodes: `1181KJ` (Amstelveen: red, 29 waiting, fix 2032) and, for contrast, `2291AA` (Westland: green, nobody waiting).
+7. **Is the pretend data believable?** We compare the pretend January working day with real measurements of Liander's real customers. The two curves rise and fall together: a similarity of 0.97 out of 1.00 against warehouses (SBI 52). Honest footnote: the pretend data was learned from Liander's data, so this shows the copy is good, not that it is an independent test.
+8. **Safety net.** 65 automatic tests pass, and re-running my three data scripts gives identical files, so anyone can rebuild them.
+
+**Not finished yet:** `replay()` has only run with a stand-in timetable, because Sunil's scheduler is not in `main` yet, and only January 2023 is extracted. Both are in the remaining todo below.
 
 ---
 
 ## Sunil: Optimisation
+
+> Handoff from Joshua: read [HANDOFF.md](HANDOFF.md#for-sunil-optimisation) first.
 
 **Hour 1–4: vans**
 - [ ] `fleet.py`: `Van` dataclass and `generate_fleet` (seeded; the first N vans are always the same)
@@ -79,6 +96,8 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 ---
 
 ## Smriti: Dashboard + explanation
+
+> Handoff from Joshua: read [HANDOFF.md](HANDOFF.md#for-smriti-dashboard-and-explanation) first.
 
 **Hour 0–1**
 - [ ] Scaffold the React + TypeScript app in `ui/` and the API skeleton in `api/` (§8.1); both run locally
@@ -124,3 +143,16 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [ ] Attributions visible in the app (GLASS, Netbeheer Nederland, Liander)
 - [ ] Full 4-minute run-through twice in a row without problems
 - [ ] Fallback video ready on a laptop that isn't running the demo
+
+---
+
+## Joshua: remaining todo
+
+Moved here from Joshua's section above. Nothing else of Joshua's is open.
+
+- [ ] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**). Blocked until Sunil's `scheduler.py`, `fleet.py` and `naive.py` are in `main`. Then: run `replay(test, result, limit, van_names, immediate_power=naive_schedule(vans))` (snippet in [HANDOFF.md](HANDOFF.md)), save the report as JSON, and give it to Smriti. Sunil can also run it himself.
+- [ ] Prepare and rehearse demo part 1 (problem, postcode card, GLASS band, reality check). Real numbers to use: 56% of postcodes red (78.7% in Liander's area); postcode `1181KJ` (29 requests, 5.8 MW, fix year 2032); reality check correlation 0.97 against SBI 52, with the "not independent" footnote.
+- [ ] With Sunil: `charger_sweep()` and `battery_sweep()` in `replay.py` are listed as Sunil's items "with Joshua". Joshua's part is the replay side (same planning/test split and baseline for every point of the sweep) and reviewing the PR.
+- [ ] Smriti, on request: helpers to serialise `ReplayReport` and `RealityCheck` for the API (NumPy to lists, NaN to null) and a p10–p90 band function for the demand chart. Not needed unless she asks.
+- [ ] After the demo scenario is picked (see "Before the demo"): extract that condition and a few contrast conditions from GLASS in one separate PR. Only January 2023 is extracted now; the demo sector, month and level must come from what the sweeps show.
+- [ ] The shared "Before the demo" items above are everyone's, including Joshua's: the demo postcode list is done (idea.md §9), the rest waits for the working app.

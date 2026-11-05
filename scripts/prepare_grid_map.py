@@ -157,6 +157,8 @@ def main() -> None:
     p.add_argument("--out", type=Path, default=DEFAULT_OUT)
     p.add_argument("--download-date", help="YYYY-MM-DD; default: modification date of the downloaded files")
     args = p.parse_args()
+    if hasattr(sys.stdout, "reconfigure"):  # a Windows console may not be UTF-8; never crash on a print
+        sys.stdout.reconfigure(errors="replace")
 
     missing = [f for f in FILES[:3] if not (args.raw / f).exists()]
     if missing:
@@ -194,9 +196,9 @@ def main() -> None:
     (args.out / "grid_map_meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     print(json.dumps(meta, indent=2, ensure_ascii=False))
-    print("\nOfftake colour (0 transparent, 1 yellow, 2 orange, 3 red):")
-    print(pc6["offtake_code"].value_counts().sort("offtake_code"))
-    print("\nOperators:", dict(pc6["operator"].value_counts().iter_rows()))
+    counts = dict(pc6["offtake_code"].value_counts().sort("offtake_code").iter_rows())
+    print("\nPostcodes per offtake colour (0 transparent, 1 yellow, 2 orange, 3 red):", counts)
+    print("Operators:", dict(pc6["operator"].value_counts().iter_rows()))
     print("\nArea columns with missing values:", {c: areas[c].null_count() for c in areas.columns if areas[c].null_count()})
     fix = areas["expected_fix_year"].drop_nulls()
     print(f"Fix years: {fix.min()}-{fix.max()} ({fix.len()} of {areas.height} areas have one)")
