@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type WhatIfAction, type WhatIfResponse } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
 import { Help, helpText } from "@/components/gridflex/Help";
@@ -116,6 +117,7 @@ function Dashboard() {
   const [sweeps, setSweeps] = useState<{ label: string; rows: Sweep[] }[]>([]);
   const [sweeping, setSweeping] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [vanDriving, setVanDriving] = useState(false);
   const [error, setError] = useState("");
   const [explanation, setExplanation] = useState("");
   const [explanationSource, setExplanationSource] = useState<"groq" | "template">("template");
@@ -151,9 +153,17 @@ function Dashboard() {
     const snapshot = cfg;
     const previous = run?.cfg;
     setBusy(true);
+    setVanDriving(true);
     setError("");
+    const travelTime = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : VAN_DRIVE_MS + 100;
+    const startedAt = performance.now();
     try {
       const result = await api<OptimizeResult>("/optimize", snapshot);
+      const remainingTravel = travelTime - (performance.now() - startedAt);
+      if (remainingTravel > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remainingTravel));
+      }
+      setVanDriving(false);
       setRun({ cfg: snapshot, previous, result });
       setActiveTab((current) => current === "configure" ? "compare" : current);
       setExplanation("");
@@ -174,6 +184,7 @@ function Dashboard() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Optimization failed.");
     } finally {
+      setVanDriving(false);
       setBusy(false);
     }
   }
@@ -528,6 +539,7 @@ function Dashboard() {
             </div>
           </TabsContent>
         ))}
+        <DepotVan busy={vanDriving} hasResults={Boolean(run)} onViewResults={() => setActiveTab("compare")} />
         <footer className="border-t border-border py-10 text-center font-mono text-xs text-muted-foreground">GLASS (CDLA-Permissive-2.0) · Synthetic data and simulation. Not a grid-operator approval.</footer>
       </main>
     </Tabs>
