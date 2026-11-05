@@ -49,7 +49,20 @@ def build_facts(scenario, plan, report, baseline, limit, vans, previous=None, qu
                             f'requests {van.energy_kwh:.2f} kWh, {complete_text}; {state}.')
         if end is not None:
             completion.append(end)
-    facts['completion'] = (f'The last scheduled charging ends at {slot_time(max(completion))}. This is the end of planned charging, not proof that a van with unmet energy is fully charged.' if completion else 'No van charging is scheduled in this plan.')
+    if completion:
+        end = max(completion)
+        clock = f"{slot_time(end)}{' the next day' if end >= 48 else ' on the starting day'}"
+        facts['completion'] = (
+            f'All {len(vans)} vans are scheduled to finish charging by {clock}.'
+            if not shorts else
+            f'The last scheduled charging ends at {clock}. The plan leaves {len(shorts)} of {len(vans)} vans short of their requested energy.'
+        )
+    else:
+        facts['completion'] = (
+            'No charging is scheduled because the fleet requires no energy.'
+            if not shorts else
+            'No van charging is scheduled. The fleet does not meet its charging requirements in this plan.'
+        )
     requested_times = set(re.findall(r'(?<!\d)([0-2]?\d:[0-5]\d)(?!\d)', question or ''))
     if report.worst_overshoot_time:
         requested_times.add(report.worst_overshoot_time)
@@ -94,6 +107,15 @@ def render_answer(answer, ids, facts):
 def answer_question(scenario, plan, report, baseline, limit, vans, question=None, history=None,
                     previous=None, compare: Callable | None = None):
     facts = build_facts(scenario, plan, report, baseline, limit, vans, previous, question or "")
+    query = (question or "").casefold()
+    asks_when = re.search(r"\b(?:when|what time|by what time)\b", query)
+    asks_completion = re.search(r"\b(?:finish\w*|complet\w*|fully charged|done)\b", query)
+    asks_fleet = re.search(r"\b(?:charging|vans|fleet)\b", query)
+    hypothetical = re.search(r"\b(?:if|would|could|earlier|later|instead)\b", query)
+    specific_van = re.search(r"\bvan\s*#?\s*\d+\b", query)
+    if asks_when and asks_completion and asks_fleet and not hypothetical and not specific_van:
+        text = facts["completion"]
+        return {"text": text, "source": "template", "evidence": [{"id": "completion", "text": text}]}
     history = (history or [])[-6:]
     request = {'question': question or 'Summarize this run', 'recent_conversation': history}
     try:
