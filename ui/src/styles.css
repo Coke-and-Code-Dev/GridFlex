@@ -210,6 +210,8 @@
   position: sticky;
   bottom: 0;
   z-index: 10;
+  width: min(100%, 32rem);
+  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -255,7 +257,7 @@
 }
 
 .depot-strip[data-state="driving"] .depot-truck {
-  animation: depot-drive 1.8s ease-in-out infinite alternate;
+  animation: depot-drive ease-out both;
 }
 
 .depot-message {

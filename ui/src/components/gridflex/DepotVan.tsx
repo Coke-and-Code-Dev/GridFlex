@@ -1,10 +1,12 @@
-export function DepotVan({ busy, hasResults }: { busy: boolean; hasResults: boolean }) {
+export const VAN_DRIVE_MS = 750;
+
+export function DepotVan({ busy, hasResults, onViewResults }: { busy: boolean; hasResults: boolean; onViewResults: () => void }) {
   const state = busy ? "driving" : hasResults ? "parked" : "waiting";
 
   return (
     <aside className="depot-strip" data-state={state} aria-label="Depot activity">
       <div className="depot-road" aria-hidden="true">
-        <svg className="depot-truck" viewBox="0 0 64 34" width="60" height="32">
+        <svg className="depot-truck" style={{ animationDuration: `${VAN_DRIVE_MS}ms` }} viewBox="0 0 64 34" width="60" height="32">
           <path d="M4 6h33v5h12l10 10v6H4z" fill="currentColor" />
           <path d="M41 14h7l6 7H41z" fill="var(--primary-foreground)" />
           <path d="m24 9-8 10h6l-2 6 9-10h-6z" fill="var(--primary-foreground)" />
@@ -17,8 +19,8 @@ export function DepotVan({ busy, hasResults }: { busy: boolean; hasResults: bool
         </svg>
       </div>
       <div className="depot-message">
-        <span role="status">{busy ? "Van on the move" : hasResults ? "Van parked · Results available" : "Van ready for its first run"}</span>
-        {!busy && hasResults && <a className="text-primary underline underline-offset-4" href="#compare">View results ↑</a>}
+        <span role="status">{busy ? "Preparing your charging plan…" : hasResults ? "Van parked · Results available" : "Van ready for its first run"}</span>
+        {!busy && hasResults && <button type="button" className="text-primary underline underline-offset-4" onClick={onViewResults}>View results ↑</button>}
       </div>
     </aside>
   );

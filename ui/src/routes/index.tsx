@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type WhatIfAction, type WhatIfResponse } from "@/types";
-import { DepotVan } from "@/components/gridflex/DepotVan";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
 import { Help, helpText } from "@/components/gridflex/Help";
@@ -24,7 +25,13 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const STEPS = ["Welcome", "Configure", "Immediate", "Compare", "Explanation", "Edge case"];
+const TABS = [
+  ["welcome", "Welcome"], ["configure", "Setup"], ["immediate", "Immediate charging"],
+  ["compare", "Charging plan"], ["schedule", "Van schedule"], ["explanation", "Explanation"], ["what-if", "What-if"],
+  ["risk", "Risk & sweeps"], ["reality", "Reality check"],
+] as const;
+type DashboardTab = (typeof TABS)[number][0];
+const RESULT_TABS = TABS.slice(2);
 
 function useParallax() {
   const [y, setY] = useState(0);
@@ -96,6 +103,11 @@ const sum = (values: number[]) => values.reduce((total, value) => total + value,
 
 function Dashboard() {
   const py = useParallax();
+  const [activeTab, setActiveTab] = useState<DashboardTab>("welcome");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
   const [cfg, setCfg] = useState(initial);
   const [conditions, setConditions] = useState<Condition[]>([]);
   const [run, setRun] = useState<{ cfg: Scenario; previous: Scenario | undefined; result: OptimizeResult }>();
@@ -105,6 +117,7 @@ function Dashboard() {
   const [sweeps, setSweeps] = useState<{ label: string; rows: Sweep[] }[]>([]);
   const [sweeping, setSweeping] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [vanDriving, setVanDriving] = useState(false);
   const [error, setError] = useState("");
   const [explanation, setExplanation] = useState("");
   const [explanationSource, setExplanationSource] = useState<"groq" | "template">("template");
@@ -140,10 +153,19 @@ function Dashboard() {
     const snapshot = cfg;
     const previous = run?.cfg;
     setBusy(true);
+    setVanDriving(true);
     setError("");
+    const travelTime = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : VAN_DRIVE_MS + 100;
+    const startedAt = performance.now();
     try {
       const result = await api<OptimizeResult>("/optimize", snapshot);
+      const remainingTravel = travelTime - (performance.now() - startedAt);
+      if (remainingTravel > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remainingTravel));
+      }
+      setVanDriving(false);
       setRun({ cfg: snapshot, previous, result });
+      setActiveTab((current) => current === "configure" ? "compare" : current);
       setExplanation("");
       setWhatIf(undefined);
       setWhatIfError("");
@@ -162,6 +184,7 @@ function Dashboard() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Optimization failed.");
     } finally {
+      setVanDriving(false);
       setBusy(false);
     }
   }
@@ -239,24 +262,31 @@ function Dashboard() {
   ] as const;
 
   return (
-    <div className="relative min-h-screen overflow-x-clip">
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DashboardTab)} className="relative min-h-screen overflow-x-clip">
       <div aria-hidden className="grid-bg pointer-events-none fixed inset-0 opacity-60" style={{ transform: `translateY(${py * -0.15}px)` }} />
       <div aria-hidden className="pointer-events-none fixed -right-40 top-20 h-[32rem] w-[32rem] rounded-full bg-primary/10 blur-3xl" style={{ transform: `translateY(${py * -0.35}px)` }} />
 
-      <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
-        <nav aria-label="Flow" className="mx-auto flex max-w-6xl items-center gap-6 overflow-x-auto px-6 py-3 text-sm">
-          <span className="font-bold whitespace-nowrap"><span className="text-primary">▮</span> GridFlex AI</span>
-          {STEPS.map((s, i) => (
-            <a key={s} href={`#${s.toLowerCase().replace(" ", "-")}`} className="whitespace-nowrap text-muted-foreground hover:text-primary">
-              <span className="font-mono text-xs">0{i + 1}</span> {s}
-            </a>
-          ))}
-        </nav>
+      <header className="top-0 z-20 border-b border-border bg-background/95 backdrop-blur md:sticky">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <button type="button" onClick={() => setActiveTab("welcome")} aria-label="GridFlex.ai home"
+            className="my-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-bold tracking-tight hover:bg-accent">
+            <img src="/gridflex-mark.png" alt="" width={40} height={27} className="h-auto w-10 rounded object-contain" />
+            <span>GridFlex<span className="text-primary">.ai</span></span>
+          </button>
+          <TabsList aria-label="Dashboard sections" className="flex h-auto w-full flex-wrap justify-start gap-1 border-t border-border bg-transparent px-0 py-2">
+            {TABS.map(([id, label]) => (
+              <TabsTrigger key={id} value={id} className="min-h-9 px-2.5 sm:px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
       </header>
 
       <main className="relative mx-auto max-w-6xl px-6">
         {/* 01 Welcome */}
-        <section id="welcome" className="flex min-h-[80vh] flex-col justify-center py-20" style={{ transform: `translateY(${py * 0.12}px)` }}>
+        <TabsContent value="welcome"><section id="welcome" className="grid min-h-[72vh] items-center gap-8 py-12 lg:grid-cols-2">
+          <div>
           <Synthetic />
           <h1 className="mt-6 max-w-4xl text-5xl font-bold leading-[1.02] tracking-tight md:text-7xl">
             Plan fleet charging. <span className="text-primary">See the risk.</span>
@@ -265,14 +295,17 @@ function Dashboard() {
             A demo planner for overnight depot charging. Set your site, run the scheduler and replay on held-out synthetic profiles, and see how a planned schedule compares with plugging everything in at once.
           </p>
           <div className="mt-8 flex gap-3">
-            <a href="#configure" className={btnPrimary}>Start planning</a>
-            <a href="#edge-case" className={btnGhost}>See the edge case</a>
+            <button type="button" onClick={() => setActiveTab("configure")} className={btnPrimary}>Start planning</button>
+            <button type="button" onClick={() => setActiveTab("what-if")} className={btnGhost}>Explore what-if scenarios</button>
           </div>
           <p className="mt-10 font-mono text-xs text-muted-foreground">Synthetic load profiles · Held-out replay · Human decision</p>
-        </section>
+          </div>
+          <img src="/gridflex-brand.png" alt="GridFlex.ai logo with a yellow lightning bolt above an electric fleet depot"
+            width={1536} height={1024} className="h-auto w-full rounded-2xl border border-border" />
+        </section></TabsContent>
 
         {/* 02 Configure */}
-        <Section id="configure" n={2} title="Configure your depot">
+        <TabsContent value="configure"><Section id="configure" n={2} title="Configure your depot">
           <div className="panel grid gap-5 p-6 sm:grid-cols-2">
             <div><label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label><Hint label="Postcode" /></div>
             <div><label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
@@ -345,9 +378,10 @@ function Dashboard() {
             </> : <p>{areaStatus || "Enter a postcode to check the capacity map."}</p>}
             <p className="text-sm text-muted-foreground">Netbeheer Nederland, capaciteitskaart. Indicative; check with your grid operator.</p>
           </article>
-        </Section>
+        </Section></TabsContent>
 
         {r && s && report && run ? <>
+          <TabsContent value="immediate">
           <Section id="immediate" n={3} title="Immediate charging">
             <div className="grid gap-4 sm:grid-cols-3">
               <Stat label="Windows over limit" value={report.immediate ? `${report.immediate.days_over_pct.toFixed(2)}%` : "Unavailable"} />
@@ -355,6 +389,8 @@ function Dashboard() {
               <Stat label="Held-out windows" value={report.n_windows} />
             </div>
           </Section>
+          </TabsContent>
+          <TabsContent value="compare">
           <Section id="compare" n={4} title="Compare charging plans">
             <p className="mb-4" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans · {run.cfg.month} <Hint label="Verdict and solver" /></p>
             <div className="grid gap-4 sm:grid-cols-4">
@@ -390,18 +426,26 @@ function Dashboard() {
               </div>
               <p className="mt-2 text-xs text-muted-foreground">This is the planning profile, not a replayed or measured day. Headroom can be negative when the baseline already exceeds the limit; a tight slot alone does not prove why the solver chose it.</p>
             </div>
-            <div className="panel mt-4 p-4">
-              <h3 className="font-semibold">Van schedule <Hint label="Van schedule" /></h3>
-              <Heatmap schedule={s.power} needs={r.vans.map((van) => Math.ceil(van.energy_kwh * 4) / 4)} chargerKw={run.cfg.charger_kw} />
-            </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button className={btnPrimary} aria-pressed={decision === "approved"} onClick={() => setDecision("approved")}>Approve plan</button>
               <button className={btnGhost} aria-pressed={decision === "rejected"} onClick={() => setDecision("rejected")}>Reject plan</button><Hint label="Approve / Reject" />
-              <button className={btnGhost} onClick={exportCsv}>Download schedule (CSV)</button><Hint label="Download schedule (CSV)" />
             </div>
             {decision && <p role="status">Plan {decision} for this demo run.</p>}
           </Section>
-          <Section id="explanation" n={5} title="Explanation">
+          </TabsContent>
+          <TabsContent value="schedule">
+            <Section id="schedule" n={5} title="Per-van charging schedule">
+              <div className="panel mt-4 p-4">
+              <h3 className="font-semibold">Van schedule <Hint label="Van schedule" /></h3>
+              <Heatmap schedule={s.power} needs={r.vans.map((van) => Math.ceil(van.energy_kwh * 4) / 4)} chargerKw={run.cfg.charger_kw} />
+            </div>
+              <div className="mt-4 flex items-center gap-2">
+              <button className={btnGhost} onClick={exportCsv}>Download schedule (CSV)</button><Hint label="Download schedule (CSV)" />
+              </div>
+            </Section>
+          </TabsContent>
+          <TabsContent value="explanation">
+          <Section id="explanation" n={6} title="Explanation">
             <article className="panel space-y-4 p-6">
               <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq explanation based on computed evidence" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
               <p aria-live="polite">{explanation || "Preparing explanation…"}</p>
@@ -417,16 +461,13 @@ function Dashboard() {
               </form>
             </article>
           </Section>
+          </TabsContent>
+          <TabsContent value="what-if"><Section id="what-if" n={7} title="What-if scenarios">
           <section className="panel space-y-4 p-6" aria-labelledby="decision-evidence">
             <h2 id="decision-evidence" className="text-xl font-semibold">Explain this decision</h2>
             <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
             <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
             <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
-            <div className="flex flex-wrap gap-2">
-              <button className={btnGhost} onClick={() => { const slot = report.over_by_slot.indexOf(Math.max(...report.over_by_slot)); setSelectedSlot(Math.max(0, slot)); document.getElementById("compare")?.scrollIntoView({ behavior: "smooth" }); }} disabled={!report.over_by_slot.some((n) => n > 0)}>Inspect most frequent breach time</button>
-              <button className={btnGhost} disabled={!report.worst_overshoot_time} onClick={() => { const [hours, minutes] = report.worst_overshoot_time.split(":").map(Number); setSelectedSlot((((hours ?? 0) * 60 + (minutes ?? 0) - 720 + 1440) % 1440) / 15); document.getElementById("compare")?.scrollIntoView({ behavior: "smooth" }); }}>Inspect worst overshoot time</button>
-              <span className="text-xs text-muted-foreground self-center">The most frequent breach slot may differ from the time of the single worst overshoot. The chart shows the planning profile at that clock time, not the replayed worst-case day.</span>
-            </div>
             <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
             <p className="text-sm text-muted-foreground">Each option reruns the optimizer and replay on the same synthetic windows. Comparisons are exploratory; equally optimal schedules can differ.</p>
             <div className="flex flex-wrap gap-2">
@@ -446,8 +487,8 @@ function Dashboard() {
               </tbody></table>
               {(whatIf.scenario.battery_kwh > 0 || run.cfg.battery_kwh > 0) && <p className="mt-2 text-xs text-muted-foreground">Battery replay clips negative net demand without recalculating battery state per window; this comparison is exploratory.</p>}
             </div>}
-          </section>
-          <Section id="edge-case" n={6} title="Risk and sensitivity">
+          </section></Section></TabsContent>
+          <TabsContent value="risk"><Section id="edge-case" n={8} title="Risk and sensitivity">
             <div className="panel space-y-2 p-5">
               <Row k="Worst overshoot time" v={report.worst_overshoot_time || "No breaches"} />
               <Row k="Baseline alone over limit" v={`${report.baseline_alone_over_pct.toFixed(2)}%`} />
@@ -474,7 +515,9 @@ function Dashboard() {
                   </tr>)}</tbody></table>
               </div>)}
             </div>
-            <div className="panel mt-4 space-y-4 p-5">
+          </Section></TabsContent>
+          <TabsContent value="reality"><Section id="reality" n={9} title="Reality check">
+            <div className="panel space-y-4 p-5">
               <h3 className="font-semibold">Reality check · GLASS and Liander (2023) <Hint label="Reality check" /></h3>
               {!checks.length && <p>No comparison available for this run.</p>}
               {checks.map((check) => <div key={check.sbi_code}><p>{check.summary}</p>
@@ -483,12 +526,20 @@ function Dashboard() {
               </div>)}
               <p className="text-sm text-muted-foreground">GLASS was trained on Liander data, so this comparison is not an independent test.</p>
             </div>
-          </Section>
-        </> : <p className="panel p-8 text-center text-muted-foreground">Choose a scenario and press Optimize to run the planner.</p>}
-        <DepotVan busy={busy} hasResults={Boolean(run)} />
+          </Section></TabsContent>
+        </> : RESULT_TABS.map(([id, label]) => (
+          <TabsContent key={id} value={id} className="py-12">
+            <div className="panel space-y-4 p-8 text-center">
+              <h2 className="text-xl font-semibold">{label}</h2>
+              <p className="text-muted-foreground">{busy ? "Optimize is running." : "Run Optimize in Setup to see results here."}</p>
+              <button type="button" className={btnPrimary} onClick={() => setActiveTab("configure")}>Go to Setup</button>
+            </div>
+          </TabsContent>
+        ))}
+        <DepotVan busy={vanDriving} hasResults={Boolean(run)} onViewResults={() => setActiveTab("compare")} />
         <footer className="border-t border-border py-10 text-center font-mono text-xs text-muted-foreground">GLASS (CDLA-Permissive-2.0) · Synthetic data and simulation. Not a grid-operator approval.</footer>
       </main>
-    </div>
+    </Tabs>
   );
 }
 
