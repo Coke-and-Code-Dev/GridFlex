@@ -57,13 +57,15 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 7. **Is the pretend data believable?** We compare the pretend January working day with real measurements of Liander's real customers. The two curves rise and fall together: a similarity of 0.97 out of 1.00 against warehouses (SBI 52). Honest footnote: the pretend data was learned from Liander's data, so this shows the copy is good, not that it is an independent test.
 8. **Safety net.** 65 automatic tests pass, and re-running my three data scripts gives identical files, so anyone can rebuild them.
 
-**Not finished yet:** `replay()` has only run with a stand-in timetable, because Sunil's scheduler is not in `main` yet, and only January 2023 is extracted. Both are in the remaining todo below.
+**Not finished yet:** only January 2023 is extracted (in the remaining todo below). `replay()` now runs on Sunil's real schedules in the app.
 
 ---
 
 ## Sunil: Optimisation
 
 > Handoff from Joshua: read [HANDOFF.md](HANDOFF.md#for-sunil-optimisation) first.
+
+*Everything below is done and reviewed by Joshua (QC on 5 and 6 November 2026). What is left for Sunil is at the end of this file, under "Sunil: remaining todo".*
 
 **Hour 1–4: vans**
 - [x] `fleet.py`: `Van` dataclass and `generate_fleet` (seeded; the first N vans are always the same)
@@ -73,7 +75,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 **Hour 4–6: tests + charger sweep**
 - [x] `tests/test_scheduler.py`: easy, impossible, partial, presence, charger max, energy accounting, immediate charging breaks the limit
-- [ ] `replay.py`: `charger_sweep()` (implemented; Joshua review pending)
+- [x] `replay.py`: `charger_sweep()` (reviewed by Joshua: same planning/test split and baseline for every point, first N seeded vans, cached)
 - [x] Run the development scenario end to end with Joshua's baseline (**checkpoint**)
 
 **Hour 6–10: battery + limit over the day**
@@ -81,17 +83,20 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [x] Add the battery-throughput stage to the objective
 - [x] Extra off-peak capacity through `limit_profile()`; check it's only used inside its window
 - [x] Battery tests: never both at once, limits and balance, no export, battery never makes things worse
-- [ ] Make sure replay uses the battery schedule and `C[t]` (implemented and tested; Joshua review pending)
+- [x] Make sure replay uses the battery schedule and `C[t]` (reviewed by Joshua; clipping negative net load to 0 can only raise grid use, so it never hides an overshoot)
 
 **Hour 10–13: battery sweep + speed**
 - [x] `replay.py`: `battery_sweep()` returning the smallest battery that brings risk under the tolerance
 - [x] Time a full solve, replay and sweep; cache results per input set; aim for under 1 s per solve
 - [x] Solver timeout: very short time limit → status `UNKNOWN`/`FEASIBLE`, reported honestly
+- [x] Same inputs give the same plan on every run and laptop (fixed by Joshua in the QC: one solver worker, test `test_same_inputs_give_the_same_plan`; parallel workers gave 1.06% or 1.16% over for the same development scenario)
 
 **Hour 13–18**
-- [ ] Edge cases: zero vans, a van that arrives after it leaves, a battery larger than needed, limit below baseline all day
-- [ ] Pick the final demo numbers: the van count where it breaks, and the battery size that fixes it
-- [ ] Prepare and rehearse demo part 2 (immediate vs. optimised, more vans, battery and off-peak capacity, sweep)
+- [x] Edge cases: zero vans, a van that arrives after it leaves, a battery larger than needed, limit below baseline all day (all covered in `tests/test_scheduler.py`; the API turns a van that arrives after it leaves into a clear 422 message)
+
+**Extra, beyond the plan**
+- [x] Grounded explanation assistant (`gridflex/assistant.py`, `explain.py`): Groq or local Qwen, cited facts, numbers checked against the facts, template fallback
+- [x] Portfolio assistant with local retrieval (`gridflex/portfolio_assistant.py`, `knowledge_retrieval.py`)
 
 ---
 
@@ -99,14 +104,16 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 > Handoff from Joshua: read [HANDOFF.md](HANDOFF.md#for-smriti-dashboard-and-explanation) first.
 
+*Everything below is done (QC by Joshua on 6 November 2026). What is left for Smriti is at the end of this file, under "Smriti: remaining todo".*
+
 **Hour 0–1**
 - [x] Scaffold the React + TypeScript app in `ui/` and the API skeleton in `api/` (§8.1); both run locally
 - [x] Pick the charting library (needs bands, stacked areas, heatmap, a limit line that changes over the day)
 
 **Hour 1–4: shell**
-- [ ] Dashboard shell with all inputs from §8 and a dummy demand chart
+- [x] Dashboard shell with all inputs from §8 and a dummy demand chart (now a real demand chart)
 - [x] Implement the §8.1 API endpoints using the project library and type their frontend payloads.
-- [ ] Debounced requests from sliders, loading state while the solver runs
+- [x] Debounced requests from sliders, loading state while the solver runs (sliders only change inputs and Optimize is a button, so they send no requests; the postcode lookup is debounced; Optimize shows a loading state)
 - [x] Shared colours and labels: limit line, status colours, "synthetic data and simulation" footer
 
 **Hour 4–6: first real results**
@@ -120,9 +127,9 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [x] "Your area" card from `AreaInfo`: colour, waiting list, fix year, projects, operator link, map date
 
 **Hour 10–13: explanation + decision**
-- [ ] Propose the LLM provider against the criteria in §5.11; agree it with the team; API key into `.env`
+- [x] Propose the LLM provider against the criteria in §5.11; agree it with the team; API key into `.env` (Groq `openai/gpt-oss-120b` and local Qwen `qwen3.5:9b` via Ollama, merged through PRs and documented in idea.md §5.11; each laptop needs its own `.env`)
 - [x] Grounded template summaries and follow-up answers from real replay results.
-- [ ] `explain.py`: explanation agent with scenario, plan, flags and area as input; provider code only in `call_llm()`; `template_summary()` fallback on any error
+- [x] `explain.py`: explanation agent with scenario, plan, flags and area as input; provider code only in `call_llm()`; `template_summary()` fallback on any error (built by Sunil, with the assistant in `gridflex/assistant.py`)
 - [x] "What changed" explanation after each rerun (pass the previous `ReplayReport`)
 - [x] Follow-up question box about the current result
 - [x] Charger and battery sweep charts; "when it breaks" chart
@@ -131,13 +138,12 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 **Hour 13–18**
 - [x] Reality-check chart (GLASS vs. Liander band) with its one-line result
 - [x] Loading states and error messages (no postcode match, solver timeout, API down)
-- [ ] Record a fallback video of the full demo
-- [ ] Prepare and rehearse demo part 3 (agent explanation, change two vans and explain what changed, follow-up question, risk timing)
 
----
-
+**Extra, beyond the plan**
 - [x] Import a depot and its exact van requests from CSV for review before optimization.
 - [x] Run multiple CSV sites independently and export a portfolio PDF with per-site charts.
+
+---
 
 ## Before the demo (everyone, hour 13–18)
 
@@ -154,9 +160,36 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 Moved here from Joshua's section above. Nothing else of Joshua's is open.
 
-- [ ] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**). Blocked until Sunil's `scheduler.py`, `fleet.py` and `naive.py` are in `main`. Then: run `replay(test, result, limit, van_names, immediate_power=naive_schedule(vans))` (snippet in [HANDOFF.md](HANDOFF.md)), save the report as JSON, and give it to Smriti. Sunil can also run it himself.
+- [x] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**). Done by Sunil in PR #11: [examples/replay_report_dev.json](examples/replay_report_dev.json) (regenerated in the QC fixes after the solver was made deterministic).
 - [ ] Prepare and rehearse demo part 1 (problem, postcode card, GLASS band, reality check). Real numbers to use: 56% of postcodes red (78.7% in Liander's area); postcode `1181KJ` (29 requests, 5.8 MW, fix year 2032); reality check correlation 0.97 against SBI 52, with the "not independent" footnote.
-- [ ] With Sunil: `charger_sweep()` and `battery_sweep()` in `replay.py` are listed as Sunil's items "with Joshua". Joshua's part is the replay side (same planning/test split and baseline for every point of the sweep) and reviewing the PR.
+- [x] With Sunil: review the replay side of `charger_sweep()` and `battery_sweep()` (done in the QC of 5 November 2026).
+- [x] QC of everything on `main` (6 November 2026): 130 Python and 10 UI tests pass, the UI builds, every API endpoint works, Optimize runs end to end in the browser. Fixed here: solver determinism, outdated HANDOFF.md, ui/README.md and TODO.md. Open findings are listed per person below.
+- [ ] Grid map placeholder postcodes: 2,142 rows in `grid_pc6.parquet` have no municipality, including placeholders such as `9999ZZ` (Liander, "OS EDAM"), which the card shows as a confident red area. Decide in `scripts/prepare_grid_map.py` whether to drop them or mark them with a note, and add a test.
 - [ ] Smriti, on request: helpers to serialise `ReplayReport` and `RealityCheck` for the API (NumPy to lists, NaN to null) and a p10–p90 band function for the demand chart. Not needed unless she asks.
 - [ ] After the demo scenario is picked (see "Before the demo"): extract that condition and a few contrast conditions from GLASS in one separate PR. Only January 2023 is extracted now; the demo sector, month and level must come from what the sweeps show.
 - [ ] The shared "Before the demo" items above are everyone's, including Joshua's: the demo postcode list is done (idea.md §9), the rest waits for the working app.
+
+---
+
+## Sunil: remaining todo
+
+Moved here from Sunil's section above, plus what Joshua's QC (5 and 6 November 2026) found. Nothing else of Sunil's is open.
+
+- [ ] Pick the final demo numbers: the van count where it breaks, and the battery size that fixes it. QC measurements at level 1 and 60 kW: no van is short up to 16 vans, but days over the limit climb from 2.3% (1 van) to 54.5% (16 vans), because the plan fills the headroom above the p90 baseline. A battery helps (16 vans: 54.6% → 27.3% with 80 kWh / 20 kW) but no size up to 80 kWh reaches the 5% tolerance, so the sweep needs a different limit, level, q or tolerance to show "the battery size that fixes it". Re-check these after the determinism fix.
+- [ ] Prepare and rehearse demo part 2 (immediate vs. optimised, more vans, battery and off-peak capacity, sweep)
+- [ ] Portfolio chat needs a non-LLM fallback (AGENTS.md honesty rules): without Groq or Ollama, `ask_portfolio()` only says "The selected model is unavailable", although it has already computed the full risk ranking (`facts['portfolio']`). Return that computed ranking, labelled as a template answer.
+- [ ] Portfolio chat privacy: with Groq selected, uploaded site names, postcodes and grid-area details go to Groq. Either keep those on the machine (send only site labels) or state it in idea.md §5.11, which today says Groq receives synthetic facts.
+- [ ] Small: an unknown portfolio `run_id` returns its message wrapped in extra quotes (`str(KeyError)`), see `portfolio_ask` in `api/main.py`.
+
+---
+
+## Smriti: remaining todo
+
+Moved here from Smriti's section above, plus what Joshua's QC (6 November 2026) found. Nothing else of Smriti's is open.
+
+- [ ] Record a fallback video of the full demo
+- [ ] Prepare and rehearse demo part 3 (agent explanation, change two vans and explain what changed, follow-up question, risk timing)
+- [ ] Delete `ui/src/lib/sim.ts` and `ui/src/test/sim.test.ts`: the old Lovable fake simulator (made-up loads and presets). The app no longer uses it, so nobody should demo its numbers.
+- [ ] Settle `wireframe/` (80 tracked files, a second app next to `ui/`): delete it or say in AGENTS.md what it is for.
+- [ ] `npx eslint .` in `ui/` reports 649 Prettier formatting errors (all fixable with `npx eslint . --fix`) and 8 warnings; run the fix in its own PR so the diff is formatting only.
+- [ ] Small: the "Windows over limit" tile turns red for any value above 0%, even when the verdict is "fits" (for example 1.16% under a 5% tolerance); colour it by the verdict instead.

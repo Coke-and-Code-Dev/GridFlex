@@ -70,7 +70,7 @@
     0,
     0,
     1,
-    1,
+    0,
     2,
     5,
     2,
@@ -100,7 +100,7 @@
     0,
     0
   ],
-  "mean_overshoot_kwh": 21.690387205644086,
+  "mean_overshoot_kwh": 22.25194150751287,
   "baseline_alone_over_pct": 0.7407407407407408,
   "vans_short": [
     [
