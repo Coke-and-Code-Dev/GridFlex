@@ -11,17 +11,17 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 ## Joshua: Data + checking
 
 **Hour 0–1: skeleton + downloads**
-- [ ] First PR: empty package layout (`gridflex/`, `api/`, `scripts/`, `tests/`) and an empty `requirements.txt`, so nobody else creates them
-- [ ] Put `GLASS_v1.1.parquet` in `data/raw/` and verify the SHA-256
-- [ ] Download the four capacity-map files into `data/raw/capaciteitskaart/` with `curl -L` (§13); note the date
-- [ ] Download Liander's SBI overview (xlsx), "Geaggregeerde SBI-profielen" (zip) and "K&O profielen" (zip) into `data/raw/liander_sbi/`
+- [x] First PR: empty package layout (`gridflex/`, `api/`, `scripts/`, `tests/`) and an empty `requirements.txt`, so nobody else creates them
+- [x] Put `GLASS_v1.1.parquet` in `data/raw/` and verify the SHA-256 (matches the value in `data/README.md`)
+- [x] Download the four capacity-map files into `data/raw/capaciteitskaart/` with `curl -L` (§13); note the date (downloaded 2026-11-05)
+- [x] Download Liander's SBI overview (xlsx), "Geaggregeerde SBI-profielen" (zip) and "K&O profielen" (zip) into `data/raw/liander_sbi/` (downloaded 2026-11-05, not yet extracted)
 
 **Hour 1–4: GLASS profiles**
-- [ ] `scripts/extract_glass.py`: lazy filtered read, one parquet per condition, summary printout (§7.3)
-- [ ] Extract the development conditions; check spread across samples and the kW range (§4.5); adjust the development level if needed
-- [ ] `profiles.py`: `load_condition`, `build_windows` (noon to noon, within one sample, working days only)
-- [ ] `profiles.py`: `split_by_sample` (70/30 by `sample_id`, fixed seed) and `cautious_baseline`
-- [ ] `tests/test_profiles.py`: windows never cross a month or sample; window count; no `sample_id` in both groups
+- [x] `scripts/extract_glass.py`: lazy filtered read, one parquet per condition, summary printout (§7.3)
+- [x] Extract the development conditions; check spread across samples and the kW range (§4.5); adjust the development level if needed (level 1 kept: see §4.5)
+- [x] `profiles.py`: `load_condition`, `build_windows` (noon to noon, within one sample, working days only)
+- [x] `profiles.py`: `split_by_sample` (70/30 by `sample_id`, fixed seed) and `cautious_baseline`
+- [x] `tests/test_profiles.py`: windows never cross a month or sample; window count; no `sample_id` in both groups
 
 **Hour 4–6: replay**
 - [ ] `replay.py`: `replay()` with every flag from §5.8 and the verdict rule
