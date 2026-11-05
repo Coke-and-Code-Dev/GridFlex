@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type WhatIfAction, type WhatIfResponse } from "@/types";
+import { DepotVan } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
 import { Help, helpText } from "@/components/gridflex/Help";
@@ -238,7 +239,7 @@ function Dashboard() {
   ] as const;
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
+    <div className="relative min-h-screen overflow-x-clip">
       <div aria-hidden className="grid-bg pointer-events-none fixed inset-0 opacity-60" style={{ transform: `translateY(${py * -0.15}px)` }} />
       <div aria-hidden className="pointer-events-none fixed -right-40 top-20 h-[32rem] w-[32rem] rounded-full bg-primary/10 blur-3xl" style={{ transform: `translateY(${py * -0.35}px)` }} />
 
@@ -484,6 +485,7 @@ function Dashboard() {
             </div>
           </Section>
         </> : <p className="panel p-8 text-center text-muted-foreground">Choose a scenario and press Optimize to run the planner.</p>}
+        <DepotVan busy={busy} hasResults={Boolean(run)} />
         <footer className="border-t border-border py-10 text-center font-mono text-xs text-muted-foreground">GLASS (CDLA-Permissive-2.0) · Synthetic data and simulation. Not a grid-operator approval.</footer>
       </main>
     </div>

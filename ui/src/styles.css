@@ -205,3 +205,76 @@
     scroll-behavior: auto !important;
   }
 }
+
+.depot-strip {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem 1rem;
+  padding: .35rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: .75rem .75rem 0 0;
+  background: var(--card);
+}
+
+.depot-road {
+  position: relative;
+  flex: 1 1 9rem;
+  height: 2.25rem;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: .25rem;
+}
+
+.depot-truck,
+.depot-charger {
+  position: absolute;
+  bottom: 0;
+  color: var(--primary);
+}
+
+.depot-truck {
+  left: 0;
+  transition: left .55s ease-out;
+}
+
+.depot-charger {
+  right: 0;
+  opacity: .45;
+}
+
+.depot-strip[data-state="parked"] .depot-truck {
+  left: calc(100% - 5.5rem);
+}
+
+.depot-strip[data-state="parked"] .depot-charger {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px var(--primary));
+}
+
+.depot-strip[data-state="driving"] .depot-truck {
+  animation: depot-drive 1.8s ease-in-out infinite alternate;
+}
+
+.depot-message {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem .75rem;
+  font-size: .75rem;
+  color: var(--muted-foreground);
+}
+
+@keyframes depot-drive {
+  from { left: 0; }
+  to { left: calc(100% - 5.5rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .depot-truck,
+  .depot-strip[data-state="driving"] .depot-truck {
+    animation: none;
+    transition: none;
+  }
+}
