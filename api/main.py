@@ -7,8 +7,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.schemas import ExplanationRequest, Scenario, SweepRequest
-from gridflex.explain import explain
+from api.schemas import (ComparisonMetrics, ExplanationRequest, ExplanationResponse, Scenario,
+                         SweepRequest, WhatIfRequest, WhatIfResponse)
+from gridflex.explain import explain_with_source
 from gridflex.fleet import generate_fleet
 from gridflex.grid_area import lookup
 from gridflex.naive import naive_schedule
@@ -129,7 +130,7 @@ def sweep(request: SweepRequest):
     return battery_sweep(planning, test, limit, vans, [0, 20, 40, 60, 80], s.battery_kw or 10, s.tolerance, s.q, 2).to_dicts()
 
 
-@app.post("/explain")
+@app.post("/explain", response_model=ExplanationResponse)
 def explain_route(request: ExplanationRequest):
     plan, report, *_ = run(request.scenario.model_dump_json())
     previous = run(request.previous.model_dump_json())[1] if request.previous else None
@@ -137,4 +138,42 @@ def explain_route(request: ExplanationRequest):
         area_info = lookup(request.scenario.postcode)
     except FileNotFoundError:
         area_info = None
-    return {"text": explain(request.scenario.model_dump(), plan, report, area_info, previous, request.question)}
+    text, source = explain_with_source(request.scenario.model_dump(), plan, report, area_info, previous, request.question)
+    return {"text": text, "source": source}
+
+
+def comparison_metrics(scenario: Scenario) -> ComparisonMetrics:
+    plan, report, *_ = run(scenario.model_dump_json())
+    return ComparisonMetrics(vans_full=sum(short <= 1e-9 for _, short in report.vans_short),
+                             vans_total=len(report.vans_short), unmet_kwh=float(plan.unmet_kwh.sum()),
+                             days_over_pct=report.days_over_pct, worst_overshoot_kw=report.worst_overshoot_kw,
+                             status=plan.status)
+
+
+@app.post("/what-if", response_model=WhatIfResponse)
+def what_if(request: WhatIfRequest):
+    s = request.scenario
+    values = s.model_dump()
+    if request.action == "extra_capacity":
+        if s.limit_kw + 10 > 160:
+            raise HTTPException(422, "Adding 10 kW exceeds the supported 160 kW limit.")
+        values["limit_kw"] = s.limit_kw + 10
+        description = "Increase the connection limit by 10 kW throughout the day."
+    elif request.action == "later_departure":
+        _, _, _, vans, _ = inputs(s)
+        if any(v.departure_slot + 4 > 96 for v in vans):
+            raise HTTPException(422, "A departure would fall outside the 24-hour scheduling window.")
+        values["overrides"] = {i: {"arrival_slot": v.arrival_slot, "departure_slot": v.departure_slot + 4,
+                                  "energy_kwh": v.energy_kwh, "charger_kw": v.charger_kw}
+                               for i, v in enumerate(vans)}
+        description = "Move each van's departure 1 hour later; arrivals and energy needs stay the same."
+    else:
+        if s.battery_kwh:
+            values["battery_kwh"], values["battery_kw"] = 0, 0
+            description = "Remove the configured battery."
+        else:
+            values["battery_kwh"], values["battery_kw"] = 60, 20
+            description = "Add an illustrative 60 kWh, 20 kW battery."
+    changed = Scenario.model_validate(values)
+    return WhatIfResponse(description=description, current=comparison_metrics(s),
+                          changed=comparison_metrics(changed), scenario=changed)

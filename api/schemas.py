@@ -40,3 +40,29 @@ class ExplanationRequest(BaseModel):
     scenario: Scenario
     previous: Scenario | None = None
     question: str | None = Field(default=None, max_length=500)
+
+
+class WhatIfRequest(BaseModel):
+    scenario: Scenario
+    action: Literal["extra_capacity", "later_departure", "battery"]
+
+
+class ExplanationResponse(BaseModel):
+    text: str
+    source: Literal["groq", "template"]
+
+
+class ComparisonMetrics(BaseModel):
+    vans_full: int
+    vans_total: int
+    unmet_kwh: float
+    days_over_pct: float
+    worst_overshoot_kw: float
+    status: str
+
+
+class WhatIfResponse(BaseModel):
+    description: str
+    current: ComparisonMetrics
+    changed: ComparisonMetrics
+    scenario: Scenario
