@@ -36,7 +36,17 @@ async function request(path: string, body?: unknown): Promise<Response> {
     if (path === "/batch-report/progress" && response.status === 404 && error?.detail === "Not Found") {
       throw new Error(`This GridFlex API at ${origin} is missing the multi-depot endpoint. Restart it from the current checkout and try again.`);
     }
-    throw new Error(typeof error?.detail === "string" ? error.detail : `Request failed (${response.status}).`);
+    const detail = error?.detail;
+    if (typeof detail === "string") throw new Error(detail);
+    if (Array.isArray(detail)) {
+      const messages = detail.slice(0, 4).map((issue) => {
+        if (typeof issue?.msg !== "string") return "";
+        const field = Array.isArray(issue.loc) ? issue.loc.filter((part: unknown) => part !== "body").join(".") : "";
+        return field ? `${field}: ${issue.msg}` : issue.msg;
+      }).filter(Boolean);
+      if (messages.length) throw new Error(messages.join(" · "));
+    }
+    throw new Error(`Request failed (${response.status}).`);
   }
   return response;
 }
