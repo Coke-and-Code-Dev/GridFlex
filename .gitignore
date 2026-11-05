@@ -4,6 +4,7 @@ CLAUDE.md
 
 # Data: raw GLASS parquet is multi-GB, never commit
 data/raw/
+data/*.parquet
 
 # Python
 __pycache__/
