@@ -88,7 +88,6 @@ export function PortfolioResults({ portfolio, canOpenSite, onOpenSite }: { portf
           </button>
         </section>
       )}
-      {report && portfolio.serverRunId && <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} />}
       {report && <div className="border-t border-border pt-4">
         <button type="button" onClick={download} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Download full PDF report</button>
       </div>}
@@ -137,7 +136,7 @@ function DepotDetails({ site }: { site: CompletedSite }) {
 }
 
 
-function PortfolioAssistant({ runId }: { runId: string }) {
+export function PortfolioAssistant({ runId, currentDepot }: { runId: string; currentDepot?: string }) {
   const [provider, setProvider] = useState<ExplanationProvider>("groq");
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
@@ -150,7 +149,7 @@ function PortfolioAssistant({ runId }: { runId: string }) {
     setBusy(true); setError("");
     try {
       const answer = await api<ExplanationResponse & { warnings: string[] }>("/portfolio/ask", {
-        run_id: runId, question: text, provider,
+        run_id: runId, current_depot: currentDepot || null, question: text, provider,
         history: messages.slice(-6).map(({ question, text }) => ({ question, text: text.slice(0, 3000) })),
       });
       setMessages((items) => [...items, { question: text, ...answer }]);
@@ -160,13 +159,14 @@ function PortfolioAssistant({ runId }: { runId: string }) {
   }
   return <section className="space-y-3 border-t border-border pt-4" aria-labelledby="portfolio-assistant-heading">
     <h3 id="portfolio-assistant-heading" className="text-lg font-semibold">Ask about your portfolio</h3>
+    <p className="text-sm text-muted-foreground">{currentDepot ? `Selected depot: ${currentDepot}` : "No depot selected. Ask about the full portfolio or name a depot."}</p>
     <p className="text-sm text-muted-foreground">Ask about a depot, postcode, fleet or the whole simulation.</p>
     <label className="text-sm">Explanation model <select value={provider} onChange={(e) => setProvider(e.target.value as ExplanationProvider)} className="ml-2 rounded border border-border bg-background p-2">
       <option value="groq">Groq (cloud)</option><option value="ollama">Qwen 9B (local)</option>
     </select></label>
     <div aria-live="polite" className="space-y-3">{messages.map((message, i) => <div key={i}>
       <p className="font-semibold">{message.question}</p><p className="whitespace-pre-wrap">{message.text}</p>
-      <p className="text-xs text-muted-foreground">{message.source === "ollama" ? "Local Qwen" : message.source === "groq" ? "Groq" : "Unavailable"}</p>
+      <p className="text-xs text-muted-foreground">{message.source === "ollama" ? "Local Qwen" : message.source === "groq" ? "Groq" : message.evidence.length ? "Calculated from simulation results" : "Unavailable"}</p>
       {message.warnings.map((warning) => <p key={warning} className="text-xs text-muted-foreground">{warning}</p>)}
       {!!message.evidence.length && <details className="text-sm text-muted-foreground"><summary>View supporting evidence</summary>{message.evidence.map((item) => <p className="break-words" key={item.id}>{item.id}: {item.text}</p>)}</details>}
     </div>)}</div>
