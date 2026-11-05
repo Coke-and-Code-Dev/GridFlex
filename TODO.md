@@ -11,10 +11,10 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 ## Joshua: Data + checking
 
 **Hour 0–1: skeleton + downloads**
-- [ ] First PR: empty package layout (`gridflex/`, `api/`, `scripts/`, `tests/`) and an empty `requirements.txt`, so nobody else creates them
-- [ ] Put `GLASS_v1.1.parquet` in `data/raw/` and verify the SHA-256
-- [ ] Download the four capacity-map files into `data/raw/capaciteitskaart/` with `curl -L` (§13); note the date
-- [ ] Download Liander's SBI overview (xlsx), "Geaggregeerde SBI-profielen" (zip) and "K&O profielen" (zip) into `data/raw/liander_sbi/`
+- [x] First PR: empty package layout (`gridflex/`, `api/`, `scripts/`, `tests/`) and an empty `requirements.txt`, so nobody else creates them
+- [x] Put `GLASS_v1.1.parquet` in `data/raw/` and verify the SHA-256 (matches the value in `data/README.md`)
+- [x] Download the four capacity-map files into `data/raw/capaciteitskaart/` with `curl -L` (§13); note the date (downloaded 2026-11-05)
+- [x] Download Liander's SBI overview (xlsx), "Geaggregeerde SBI-profielen" (zip) and "K&O profielen" (zip) into `data/raw/liander_sbi/` (downloaded 2026-11-05, not yet extracted)
 
 **Hour 1–4: GLASS profiles**
 - [ ] `scripts/extract_glass.py`: lazy filtered read, one parquet per condition, summary printout (§7.3)
