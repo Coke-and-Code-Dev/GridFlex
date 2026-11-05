@@ -3,6 +3,7 @@ import { simulatePortfolio, type PortfolioSite } from "@/types";
 
 export function usePortfolio(onStart: () => void) {
   const [runId, setRunId] = useState(0);
+  const [serverRunId, setServerRunId] = useState("");
   const [selected, setSelected] = useState("");
   const [running, setRunning] = useState(false);
   const [filename, setFilename] = useState("");
@@ -16,6 +17,7 @@ export function usePortfolio(onStart: () => void) {
     setRunning(true);
     setRunId((id) => id + 1);
     setSelected("");
+    setServerRunId("");
     onStart();
     setFilename(file.name);
     setTotal(0);
@@ -24,7 +26,7 @@ export function usePortfolio(onStart: () => void) {
     setError("");
     try {
       const pdf = await simulatePortfolio(await file.text(), (event) => {
-        if (event.type === "start") setTotal(event.total);
+        if (event.type === "start") { setTotal(event.total); setServerRunId(event.run_id); }
         else setSites((current) => [...current, event.result]);
       });
       setReport(pdf);
@@ -56,7 +58,7 @@ export function usePortfolio(onStart: () => void) {
     return () => window.removeEventListener("beforeunload", confirmLeave);
   }, [hasResultsToKeep]);
 
-  return { runId, selected, setSelected, running, filename, total, sites, report, error, generate, download };
+  return { runId, serverRunId, selected, setSelected, running, filename, total, sites, report, error, generate, download };
 }
 
 export type Portfolio = ReturnType<typeof usePortfolio>;

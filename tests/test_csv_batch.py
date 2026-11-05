@@ -60,7 +60,8 @@ def test_portfolio_progress_reports_failed_sites_and_delivers_pdf(monkeypatch):
     response = TestClient(app).post("/batch-report/progress", json={"csv": source})
     assert response.status_code == 200
     start, first, failed, last, report = map(json.loads, response.text.splitlines())
-    assert start == {"type": "start", "total": 3}
+    assert start["type"] == "start" and start["total"] == 3
+    assert len(start["run_id"]) == 32
     assert first["result"]["postcode"] == "1181KJ"
     assert first["result"]["scenario"]["postcode"] == "1181KJ"
     assert first["result"]["area"]["postcode"] == "1181KJ"

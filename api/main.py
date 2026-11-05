@@ -9,9 +9,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
+from api import portfolio_store
+from gridflex.portfolio_assistant import ask_portfolio
 from api.batch_report import SiteResult, compact_result, render_portfolio
 from api.csv_setup import read_scenarios
-from api.schemas import (ComparisonMetrics, CsvUpload, ExplanationRequest, ExplanationResponse, Scenario,
+from api.schemas import (PortfolioQuestion, ComparisonMetrics, CsvUpload, ExplanationRequest, ExplanationResponse, Scenario,
                          SweepRequest, WhatIfRequest, WhatIfResponse)
 from gridflex.assistant import answer_question
 from gridflex.fleet import generate_fleet
@@ -160,9 +162,10 @@ def batch_report(upload: CsvUpload):
 @app.post("/batch-report/progress", response_class=StreamingResponse)
 def batch_report_progress(upload: CsvUpload):
     sites = read_scenarios(upload.csv)
+    run_id = portfolio_store.create_run(len(sites))
 
     def stream():
-        yield json.dumps({"type": "start", "total": len(sites)}) + "\n"
+        yield json.dumps({"type": "start", "total": len(sites), "run_id": run_id}) + "\n"
         results = []
         for site, detail in simulate_sites(sites):
             results.append(site)
@@ -170,11 +173,34 @@ def batch_report_progress(upload: CsvUpload):
             if detail is not None:
                 summary.update(scenario=site.scenario.model_dump(), detail=detail,
                                area=asdict(site.area) if site.area else None)
+            portfolio_store.save_site(run_id, summary)
             yield json.dumps({"type": "site", "result": summary}, allow_nan=False) + "\n"
         pdf = render_portfolio(results)
+        portfolio_store.complete_run(run_id)
         yield json.dumps({"type": "pdf", "content": base64.b64encode(pdf).decode("ascii")}) + "\n"
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
+
+
+@app.post("/portfolio/ask")
+def portfolio_ask(request: PortfolioQuestion):
+    try:
+        portfolio = portfolio_store.get_run(request.run_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from None
+
+    def compare_battery(site):
+        scenario = Scenario.model_validate(site['scenario'])
+        comparison = what_if(WhatIfRequest(scenario=scenario, action='battery'))
+        a, b = comparison.current, comparison.changed
+        return (f"Exploratory battery comparison for {site['site']}: {comparison.description} "
+                f"Current versus changed: {a.days_over_pct:.2f}% versus {b.days_over_pct:.2f}% "
+                f"of held-out synthetic windows over limit; {a.unmet_kwh:.2f} versus {b.unmet_kwh:.2f} kWh unmet; "
+                f"worst overshoot {a.worst_overshoot_kw:.2f} versus {b.worst_overshoot_kw:.2f} kW. "
+                "Changing the battery re-optimizes the schedule. The comparison is not independent validation. "
+                "Battery replay clips negative net demand without updating state per window.")
+    return ask_portfolio(portfolio, request.question, [x.model_dump() for x in request.history],
+                         request.provider, compare_battery)
 
 
 @app.post("/sweep")

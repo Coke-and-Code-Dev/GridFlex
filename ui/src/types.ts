@@ -60,7 +60,7 @@ export type PortfolioSite = { site: string; postcode: string; province: string |
   { full: number; unmet_kwh: number; breach_pct: number; immediate_pct: number; worst_kw: number;
     verdict: OptimizeResult["report"]["verdict"]; status: string; scenario: Scenario; detail: OptimizeResult; area: Area | null }
 );
-type PortfolioEvent = { type: "start"; total: number } | { type: "site"; result: PortfolioSite } | { type: "pdf"; content: string };
+type PortfolioEvent = { type: "start"; total: number; run_id: string } | { type: "site"; result: PortfolioSite } | { type: "pdf"; content: string };
 
 export async function simulatePortfolio(csv: string, onProgress: (event: Exclude<PortfolioEvent, { type: "pdf" }>) => void) {
   const response = await request("/batch-report/progress", { csv });
