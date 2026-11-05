@@ -1,3 +1,4 @@
+import { scheduleAnswer, slotClock as time } from "@/lib/schedule-answer";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type WhatIfAction, type WhatIfResponse } from "@/types";
@@ -95,10 +96,6 @@ const initial: Scenario = {
   energy_kwh: [30, 40], charger_kw: 11, battery_kwh: 0, battery_kw: 0, q: .9, tolerance: .05, seed: 42,
 };
 
-const time = (slot: number) => {
-  const minutes = (720 + slot * 15) % 1440;
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-};
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 
 function Dashboard() {
@@ -126,7 +123,7 @@ function Dashboard() {
   const [whatIfBusy, setWhatIfBusy] = useState(false);
   const [whatIfError, setWhatIfError] = useState("");
   const [q, setQ] = useState("");
-  const [qa, setQa] = useState<{ question: string; text: string; source?: "groq" | "template"; evidence?: { id: string; text: string }[] }[]>([]);
+  const [qa, setQa] = useState<{ question: string; text: string; source?: "groq" | "template" | "schedule"; evidence?: { id: string; text: string }[] }[]>([]);
   const [asking, setAsking] = useState(false);
   const [decision, setDecision] = useState("");
 
@@ -191,8 +188,13 @@ function Dashboard() {
 
   async function ask(question: string) {
     if (!run || busy || asking || whatIfBusy || !question.trim()) return;
-    setAsking(true);
     setQ("");
+    const scheduled = scheduleAnswer(question, run.result);
+    if (scheduled !== undefined) {
+      setQa((items) => [...items, { question, text: scheduled, source: "schedule" }]);
+      return;
+    }
+    setAsking(true);
     try {
       const response = await api<ExplanationResponse>("/explain", { scenario: run.cfg, previous: run.previous, question, history: qa.slice(-6).map(({ question, text }) => ({ question, text: text.slice(0, 3000) })) });
       setQa((items) => [...items, { question, ...response }]);
@@ -450,10 +452,10 @@ function Dashboard() {
               <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq explanation based on computed evidence" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
               <p aria-live="polite">{explanation || "Preparing explanation…"}</p>
               <div className="flex flex-wrap gap-2">
-                {["When is risk highest?", "Which vans are short?", "How did the battery help?"].map((question) =>
+                {["When do all vans finish charging?", "When is risk highest?", "Which vans are short?", "How did the battery help?"].map((question) =>
                   <button key={question} className={btnGhost} disabled={busy || asking} onClick={() => ask(question)}>{question}</button>)}
               </div>
-              <ul aria-live="polite">{qa.map(({ question, text, source, evidence }, i) => <li key={i} className="mt-3"><strong>{question}</strong><p>{text}</p><p className="text-xs text-muted-foreground">{source === "groq" ? "Groq response" : "Local fallback"}</p>{!!evidence?.length && <details className="text-sm text-muted-foreground"><summary>Based on {evidence.length} evidence item{evidence.length === 1 ? "" : "s"}</summary><ul>{evidence.map((item) => <li key={item.id}>{item.text}</li>)}</ul></details>}</li>)}</ul>
+              <ul aria-live="polite">{qa.map(({ question, text, source, evidence }, i) => <li key={i} className="mt-3"><strong>{question}</strong><p className="whitespace-pre-line">{text}</p><p className="text-xs text-muted-foreground">{source === "schedule" ? "Calculated from this run’s van schedule" : source === "groq" ? "Groq response" : "Local fallback"}</p>{!!evidence?.length && <details className="text-sm text-muted-foreground"><summary>Based on {evidence.length} evidence item{evidence.length === 1 ? "" : "s"}</summary><ul>{evidence.map((item) => <li key={item.id}>{item.text}</li>)}</ul></details>}</li>)}</ul>
               <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); void ask(q); }}>
                 <label htmlFor="ask" className="sr-only">Ask about this run</label>
                 <input id="ask" className="grow rounded border border-input bg-background p-2" value={q} maxLength={500} onChange={(e) => setQ(e.target.value)} placeholder="Ask about this run" />
