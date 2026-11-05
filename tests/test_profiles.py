@@ -104,6 +104,20 @@ def test_split_is_deterministic_and_depends_on_seed():
     assert set(b1.sample_ids) != set(b3.sample_ids)
 
 
+@pytest.mark.parametrize("n_samples", [2, 3, 4])
+def test_split_of_a_tiny_condition_keeps_both_groups_non_empty(n_samples):
+    w = build_windows(make_df(range(n_samples), n_days=10), working_days_only=False)
+    planning, test = split_by_sample(w)
+    assert len(planning) > 0 and len(test) > 0
+    assert set(planning.sample_ids).isdisjoint(set(test.sample_ids))
+    assert cautious_baseline(planning).shape == (96,)
+
+
+def test_a_short_month_still_gives_the_expected_window_count():
+    w = build_windows(make_df(range(3), "2023-02-01", n_days=28), working_days_only=False)
+    assert len(w) == 3 * 27  # February: 28 days give 27 windows per sample
+
+
 def test_split_needs_two_samples():
     w = build_windows(make_df([0], n_days=5), working_days_only=False)
     with pytest.raises(ValueError):
