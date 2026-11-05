@@ -175,6 +175,12 @@ All values are sliders or editable in the van table, and the app labels them as 
 - **Monthly totals** may differ from `level_value`. If we display totals, compute them from the 15-minute values.
 - **Liander profile availability** for SBI 49, 52 and 46 (does a file exist; warning column). If not, switch the reality check to the logistics K&O profile.
 
+**Checked for the development scenario (category `009`, January 2023, run on 5 November 2026):**
+
+- Each condition has **150 samples × 31 days**, not ~100. A working-day window count is 21 per sample (3,150 windows); the 70/30 split gives 105 planning and 45 test samples (945 test windows).
+- Every sample's monthly energy equals `level_value` (ratio 1.00), so samples differ in **peaks and daily shape, not in monthly total**. Spread is therefore measured on daily peaks (CV 0.32 at level 1); the CV of mean power is ~0 by construction.
+- **Level 1 fits a 100 kW limit:** mean 10.8 kW, mean daily peak 26 kW, cautious baseline (p90) never above 26 kW, and the baseline alone exceeds 100 kW on 0.7% of test windows. Level 2 also fits (cautious baseline up to 49 kW). Level 3 does not: its baseline alone is over 100 kW on 21.5% of test windows, so it would need a higher limit. The development level stays at 1.
+
 ## 5. How it works
 
 ### 5.1 Pipeline
@@ -413,9 +419,23 @@ ey_hackathon/
 **`gridflex/profiles.py`**
 
 ```python
+@dataclass(frozen=True)
+class Condition:
+    category: str
+    month: str                          # "YYYY-MM"
+    level: int                          # level_id 0-3
+    level_value_kwh: float | None = None  # target kWh for the month, for "≈ X MWh/month"
+
+@dataclass
+class Windows:
+    values: np.ndarray                  # (n_windows, 96) kW; slot 0 = start_hour:00
+    sample_ids: np.ndarray              # (n_windows,)
+    dates: np.ndarray                   # (n_windows,) datetime64[D], the date each window starts on
+    start_hour: int = 12                # has __len__ and select(mask)
+
 def load_condition(category: str, month: str, level: int) -> pl.DataFrame
 def build_windows(df, start_hour: int = 12, working_days_only: bool = True) -> Windows
-    # Windows.values: np.ndarray (n_windows, 96); Windows.sample_ids: np.ndarray (n_windows,)
+    # A window needs day d+1 of the same sample and month; days missing from the data drop the windows spanning them.
 def split_by_sample(windows: Windows, test_share: float = 0.3, seed: int = 42) -> tuple[Windows, Windows]
 def cautious_baseline(planning: Windows, q: float = 0.90) -> np.ndarray  # (96,)
 def available_conditions() -> list[Condition]
