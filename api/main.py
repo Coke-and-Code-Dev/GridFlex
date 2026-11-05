@@ -111,7 +111,7 @@ def optimize_route(scenario: Scenario):
         "report": json_fields(report),
         "baseline_kw": baseline.tolist(),
         "limit_kw": limit.tolist(),
-        "immediate_power_kw": immediate.tolist(),
+        "immediate_power_kw": immediate.sum(axis=0).tolist(),
         "normal_band_kw": np.percentile(planning.values, [10, 90], axis=0).tolist(),
         "vans": [asdict(van) for van in vans],
     }

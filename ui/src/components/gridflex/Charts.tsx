@@ -5,7 +5,8 @@ export function LoadChart({ series, limit, title, band, stacked, startHour = 12 
   limit?: number[]; title: string; band?: [number[], number[]]; stacked?: [number[], number[]]; startHour?: number;
 }) {
   const slots = Math.max(...series.map(({ data }) => data.length), 2);
-  const max = Math.max(1, ...series.flatMap(({ data }) => data), ...(limit ?? []), ...(band?.flat() ?? []), ...(stacked?.flat() ?? []));
+  const validSeries = series.filter(({ data }) => data.length > 0 && data.every(Number.isFinite));
+  const max = Math.max(1, ...validSeries.flatMap(({ data }) => data), ...(limit ?? []), ...(band?.flat() ?? []), ...(stacked?.flat() ?? []));
   const x = (i: number) => P + (i * (W - P * 2)) / (slots - 1);
   const y = (v: number) => H - P - (v / max) * (H - P * 2);
   const points = (values: number[]) => values.map((v, i) => `${x(i)},${y(v)}`);
@@ -24,13 +25,14 @@ export function LoadChart({ series, limit, title, band, stacked, startHour = 12 
         {Array.from({ length: 8 }, (_, i) => (startHour + i * 3) % 24).map((h, i) => (
           <text key={i} x={x(i * 12)} y={H - 10} textAnchor="middle" className="fill-muted-foreground font-mono text-[10px]">{String(h).padStart(2, "0")}:00</text>
         ))}
-        {series.map((s) => (
+        {validSeries.map((s) => (
           <polyline key={s.label} fill="none" strokeWidth={2.5} strokeDasharray={s.dash} className={s.cls} points={s.data.map((v, i) => `${x(i)},${y(v)}`).join(" ")} />
         ))}
         {limit && <polyline fill="none" points={points(limit).join(" ")} className="stroke-destructive" strokeWidth={1.5} strokeDasharray="6 4" />}
       </svg>
+      {validSeries.length !== series.length && <p role="status" className="text-sm text-muted-foreground">Some chart data is unavailable. Rerun after restarting the GridFlex API.</p>}
       <figcaption className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
-        {series.map((s) => (
+        {validSeries.map((s) => (
           <span key={s.label} className="flex items-center gap-2">
             <svg width="18" height="6"><line x1="0" x2="18" y1="3" y2="3" strokeWidth="3" strokeDasharray={s.dash} className={s.cls} /></svg>
             {s.label}
