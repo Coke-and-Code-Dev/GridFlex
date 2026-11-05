@@ -200,7 +200,7 @@ def portfolio_ask(request: PortfolioQuestion):
                 "Changing the battery re-optimizes the schedule. The comparison is not independent validation. "
                 "Battery replay clips negative net demand without updating state per window.")
     return ask_portfolio(portfolio, request.question, [x.model_dump() for x in request.history],
-                         request.provider, compare_battery)
+                         request.provider, compare_battery, request.current_depot)
 
 
 @app.post("/sweep")
