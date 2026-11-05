@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type WhatIfAction, type WhatIfResponse } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DepotVan } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
 import { Help, helpText } from "@/components/gridflex/Help";
@@ -259,8 +258,8 @@ function Dashboard() {
       <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
           <span className="font-bold whitespace-nowrap"><span className="text-primary">▮</span> GridFlex AI</span>
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <TabsList aria-label="Dashboard sections" className="h-auto min-w-max justify-start gap-1 bg-transparent">
+          <div className="min-w-0 flex-1 basis-56">
+            <TabsList aria-label="Dashboard sections" className="h-auto flex-wrap justify-start gap-1 bg-transparent">
               {TABS.map(([id, label]) => (
                 <TabsTrigger key={id} value={id} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   {label}
@@ -273,7 +272,8 @@ function Dashboard() {
 
       <main className="relative mx-auto max-w-6xl px-6">
         {/* 01 Welcome */}
-        <TabsContent value="welcome"><section id="welcome" className="flex min-h-[80vh] flex-col justify-center py-20" style={{ transform: `translateY(${py * 0.12}px)` }}>
+        <TabsContent value="welcome"><section id="welcome" className="grid min-h-[72vh] items-center gap-8 py-12 lg:grid-cols-2">
+          <div>
           <Synthetic />
           <h1 className="mt-6 max-w-4xl text-5xl font-bold leading-[1.02] tracking-tight md:text-7xl">
             Plan fleet charging. <span className="text-primary">See the risk.</span>
@@ -286,6 +286,9 @@ function Dashboard() {
             <button type="button" onClick={() => setActiveTab("what-if")} className={btnGhost}>Explore what-if scenarios</button>
           </div>
           <p className="mt-10 font-mono text-xs text-muted-foreground">Synthetic load profiles · Held-out replay · Human decision</p>
+          </div>
+          <img src="/gridflex-brand.png" alt="GridFlex.ai logo with a yellow lightning bolt above an electric fleet depot"
+            width={1536} height={1024} className="h-auto w-full rounded-2xl border border-border" />
         </section></TabsContent>
 
         {/* 02 Configure */}
@@ -525,7 +528,6 @@ function Dashboard() {
             </div>
           </TabsContent>
         ))}
-        <DepotVan busy={busy} hasResults={Boolean(run)} onViewResults={() => setActiveTab("compare")} />
         <footer className="border-t border-border py-10 text-center font-mono text-xs text-muted-foreground">GLASS (CDLA-Permissive-2.0) · Synthetic data and simulation. Not a grid-operator approval.</footer>
       </main>
     </Tabs>
