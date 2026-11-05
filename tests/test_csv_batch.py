@@ -40,3 +40,33 @@ def test_portfolio_simulates_all_sample_sites():
     assert report.status_code == 200
     assert report.headers["content-type"] == "application/pdf"
     assert report.content.startswith(b"%PDF-")
+
+
+def test_portfolio_progress_reports_failed_sites_and_delivers_pdf(monkeypatch):
+    import base64
+    import json
+
+    import api.main as backend
+
+    source = (PUBLIC / "gridflex-portfolio-example.csv").read_text(encoding="utf-8")
+    optimize = backend.optimize_route
+
+    def fail_one_site(scenario):
+        if scenario.postcode == "2311BD":
+            raise ValueError("Solver unavailable for this site")
+        return optimize(scenario)
+
+    monkeypatch.setattr(backend, "optimize_route", fail_one_site)
+    response = TestClient(app).post("/batch-report/progress", json={"csv": source})
+    assert response.status_code == 200
+    start, first, failed, last, report = map(json.loads, response.text.splitlines())
+    assert start == {"type": "start", "total": 3}
+    assert first["result"]["postcode"] == "1181KJ"
+    assert first["result"]["scenario"]["postcode"] == "1181KJ"
+    assert first["result"]["area"]["postcode"] == "1181KJ"
+    assert len(first["result"]["detail"]["schedule"]["power"]) == 3
+    assert len(first["result"]["detail"]["limit_kw"]) == 96
+    assert failed["result"]["error"] == "Solver unavailable for this site"
+    assert last["result"]["postcode"] == "1315RA"
+    assert report["type"] == "pdf"
+    assert base64.b64decode(report["content"]).startswith(b"%PDF-")

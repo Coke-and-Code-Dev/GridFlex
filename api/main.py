@@ -1,13 +1,15 @@
 """Local API for the GridFlex dashboard."""
+import base64
+import json
 from dataclasses import asdict, replace
 from functools import lru_cache
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from api.batch_report import SiteResult, render_portfolio
+from api.batch_report import SiteResult, compact_result, render_portfolio
 from api.csv_setup import read_scenarios
 from api.schemas import (ComparisonMetrics, CsvUpload, ExplanationRequest, ExplanationResponse, Scenario,
                          SweepRequest, WhatIfRequest, WhatIfResponse)
@@ -128,26 +130,51 @@ def optimize_route(scenario: Scenario):
     }
 
 
-@app.post("/batch-report", response_class=Response)
-def batch_report(upload: CsvUpload):
-    results = []
-    for name, scenario in read_scenarios(upload.csv).items():
+def simulate_sites(sites):
+    for name, scenario in sites.items():
         try:
             area_info = lookup(scenario.postcode)
         except FileNotFoundError:
             area_info = None
         site = SiteResult(name, scenario, area_info)
+        detail = None
         try:
-            site.payload = optimize_route(scenario)
+            detail = optimize_route(scenario)
+            site.payload = compact_result(detail)
         except HTTPException as exc:
             site.error = str(exc.detail)
         except (ValueError, FileNotFoundError) as exc:
             site.error = str(exc)
-        results.append(site)
+        yield site, detail
+
+
+@app.post("/batch-report", response_class=Response)
+def batch_report(upload: CsvUpload):
+    results = [site for site, _ in simulate_sites(read_scenarios(upload.csv))]
     return Response(
         render_portfolio(results), media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="gridflex-portfolio.pdf"'},
     )
+
+
+@app.post("/batch-report/progress", response_class=StreamingResponse)
+def batch_report_progress(upload: CsvUpload):
+    sites = read_scenarios(upload.csv)
+
+    def stream():
+        yield json.dumps({"type": "start", "total": len(sites)}) + "\n"
+        results = []
+        for site, detail in simulate_sites(sites):
+            results.append(site)
+            summary = site.summary()
+            if detail is not None:
+                summary.update(scenario=site.scenario.model_dump(), detail=detail,
+                               area=asdict(site.area) if site.area else None)
+            yield json.dumps({"type": "site", "result": summary}, allow_nan=False) + "\n"
+        pdf = render_portfolio(results)
+        yield json.dumps({"type": "pdf", "content": base64.b64encode(pdf).decode("ascii")}) + "\n"
+
+    return StreamingResponse(stream(), media_type="application/x-ndjson")
 
 
 @app.post("/sweep")

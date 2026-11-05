@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BatchReport } from "@/components/gridflex/BatchReport";
+import { PortfolioResults, PortfolioUpload, usePortfolio } from "@/components/gridflex/BatchReport";
 import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
@@ -31,7 +31,7 @@ const TABS = [
   ["welcome", "Welcome"], ["configure", "Setup"],
   ["compare", "Charging plan"], ["schedule", "Van schedule"], ["explanation", "Explanation"], ["analysis", "Analysis"],
 ] as const;
-type DashboardTab = (typeof TABS)[number][0];
+type DashboardTab = (typeof TABS)[number][0] | "portfolio";
 const RESULT_TABS = TABS.slice(2);
 
 function useParallax() {
@@ -106,6 +106,7 @@ function csvName(name: string) {
 function Dashboard() {
   const py = useParallax();
   const [activeTab, setActiveTab] = useState<DashboardTab>("welcome");
+  const portfolio = usePortfolio(() => setActiveTab("portfolio"));
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -190,29 +191,33 @@ function Dashboard() {
         await new Promise<void>((resolve) => window.setTimeout(resolve, remainingTravel));
       }
       setVanDriving(false);
-      setRun({ cfg: snapshot, previous, result });
       setActiveTab((current) => current === "configure" ? "compare" : current);
-      setExplanation("");
-      setWhatIf(undefined);
-      setWhatIfError("");
-      setSelectedSlot(24);
-      setDecision("");
-      setQa([]);
-      setChecks([]);
-      setSweeps([]);
-      const params = new URLSearchParams({ category: snapshot.category, month: snapshot.month, level: String(snapshot.level) });
-      await Promise.allSettled([
-        api<Reality[]>(`/reality?${params}`).then(setChecks),
-        api<ExplanationResponse>("/explain", { scenario: snapshot, previous, provider })
-          .then(({ text, source }) => { setExplanation(text); setExplanationSource(source); })
-          .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); }),
-      ]);
+      await applyResult(snapshot, result, previous);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Optimization failed.");
     } finally {
       setVanDriving(false);
       setBusy(false);
     }
+  }
+
+  async function applyResult(snapshot: Scenario, result: OptimizeResult, previous?: Scenario) {
+    setRun({ cfg: snapshot, previous, result });
+    setExplanation("");
+    setWhatIf(undefined);
+    setWhatIfError("");
+    setSelectedSlot(24);
+    setDecision("");
+    setQa([]);
+    setChecks([]);
+    setSweeps([]);
+    const params = new URLSearchParams({ category: snapshot.category, month: snapshot.month, level: String(snapshot.level) });
+    await Promise.allSettled([
+      api<Reality[]>(`/reality?${params}`).then(setChecks),
+      api<ExplanationResponse>("/explain", { scenario: snapshot, previous, provider })
+        .then(({ text, source }) => { setExplanation(text); setExplanationSource(source); })
+        .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); }),
+    ]);
   }
 
   async function ask(question: string) {
@@ -319,6 +324,17 @@ function Dashboard() {
       </header>
 
       <main className="relative mx-auto max-w-6xl px-6">
+        {portfolio.filename && <TabsContent value="portfolio" className="py-8">
+          <PortfolioResults portfolio={portfolio} canOpenSite={!busy && !asking && !sweeping && !whatIfBusy && !importing}
+            onOpenSite={(site) => {
+              setBusy(true);
+              setCfg(site.scenario);
+              setImportedFile(portfolio.filename);
+              setError("");
+              setActiveTab("compare");
+              void applyResult(site.scenario, site.detail).finally(() => setBusy(false));
+            }} />
+        </TabsContent>}
         {/* 01 Welcome */}
         <TabsContent value="welcome"><section id="welcome" className="grid min-h-[72vh] items-center gap-8 py-12 lg:grid-cols-2">
           <div>
@@ -351,6 +367,7 @@ function Dashboard() {
             {importError && <p role="alert" className="text-sm text-destructive">{importError}</p>}
             {importedFile && !importing && <p role="status" className="text-sm">Loaded {importedFile} · {cfg.postcode} · {cfg.vans} vans. Review the setup and press Optimize.</p>}
           </div>
+          <PortfolioUpload portfolio={portfolio} />
           <div className="panel grid gap-5 p-6 sm:grid-cols-2">
             <div><label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label><Hint label="Postcode" /></div>
             <div><label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
@@ -521,7 +538,6 @@ function Dashboard() {
           </TabsContent>
           <TabsContent value="analysis">
             <Section id="analysis" n={6} title="Analysis">
-              <BatchReport />
               <div className="grid items-start gap-4 lg:grid-cols-2">
                 <section className="panel min-w-0 space-y-4 p-5" aria-labelledby="decision-evidence">
                   <h3 id="decision-evidence" className="text-xl font-semibold">What-if scenarios</h3>
@@ -594,7 +610,6 @@ function Dashboard() {
           </TabsContent>
         </> : RESULT_TABS.map(([id, label]) => (
           <TabsContent key={id} value={id} className="py-12">
-            {id === "analysis" && <BatchReport />}
             <div className="panel space-y-4 p-8 text-center">
               <h2 className="text-xl font-semibold">{label}</h2>
               <p className="text-muted-foreground">{busy ? "Optimize is running." : "Run Optimize in Setup to see results here."}</p>

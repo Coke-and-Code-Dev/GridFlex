@@ -691,7 +691,7 @@ React + TypeScript (ui/)  ──JSON──►  Python API (api/)  ──►  gri
 
 ### 8.2 CSV setup and portfolio reporting
 
-Setup accepts a UTF-8 CSV with one row per van. Repeat the depot settings on each row and use one `site_id` per depot. The single-site upload validates the CSV, fills Setup with the exact van requests for review before the user runs Optimize. Multi-site uploads run each depot independently and return a PDF with an overview and one analysis page per site, including capacity-map context, fleet and replay metrics, demand and breach charts, and any solver errors. The bundled example contains three synthetic depot fleets. The simulation does not pool grid limits across locations.
+Setup accepts a UTF-8 CSV with one row per van. Repeat the depot settings on each row and use one `site_id` per depot. The single-site upload validates the CSV, fills Setup with the exact van requests for review before the user runs Optimize. Multi-site uploads run each depot independently and return a PDF with an overview and analysis and fleet detail for each site, including capacity-map context, fleet and replay metrics, demand and breach charts, per-van charging end times and any solver errors. The Setup upload opens a Multi-depot results tab with progress and inspectable site results. Its PDF download uses the same run. The bundled example contains three synthetic depot fleets. The simulation does not pool grid limits across locations.
 
 ## 9. Team and build plan
 
