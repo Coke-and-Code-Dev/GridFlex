@@ -100,36 +100,37 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 > Handoff from Joshua: read [HANDOFF.md](HANDOFF.md#for-smriti-dashboard-and-explanation) first.
 
 **Hour 0–1**
-- [ ] Scaffold the React + TypeScript app in `ui/` and the API skeleton in `api/` (§8.1); both run locally
-- [ ] Pick the charting library (needs bands, stacked areas, heatmap, a limit line that changes over the day)
+- [x] Scaffold the React + TypeScript app in `ui/` and the API skeleton in `api/` (§8.1); both run locally
+- [x] Pick the charting library (needs bands, stacked areas, heatmap, a limit line that changes over the day)
 
 **Hour 1–4: shell**
 - [ ] Dashboard shell with all inputs from §8 and a dummy demand chart
-- [ ] API: all endpoints from §8.1 returning dummy JSON; `ui/src/types.ts` mirrors `api/schemas.py`
+- [x] Implement the §8.1 API endpoints using the project library and type their frontend payloads.
 - [ ] Debounced requests from sliders, loading state while the solver runs
-- [ ] Shared colours and labels: limit line, status colours, "synthetic data and simulation" footer
+- [x] Shared colours and labels: limit line, status colours, "synthetic data and simulation" footer
 
 **Hour 4–6: first real results**
-- [ ] Demand chart: p10–p90 band, cautious baseline, optimised charging, immediate charging, limit line `C[t]`
-- [ ] Verdict banner and KPI row from the `ReplayReport` (**checkpoint**)
+- [x] Demand chart: p10–p90 band, cautious baseline, optimised charging, immediate charging, limit line `C[t]`
+- [x] Verdict banner and KPI row from the `ReplayReport` (**checkpoint**)
 
 **Hour 6–10: full dashboard**
-- [ ] Battery and off-peak capacity inputs; battery charge/discharge in the demand chart; stored-energy chart
-- [ ] Van schedule heatmap with kWh needed, delivered and short
-- [ ] Flags table in plain language
-- [ ] "Your area" card from `AreaInfo`: colour, waiting list, fix year, projects, operator link, map date
+- [x] Battery and off-peak capacity inputs; battery charge/discharge in the demand chart; stored-energy chart
+- [x] Van schedule heatmap with kWh needed, delivered and short
+- [x] Flags table in plain language
+- [x] "Your area" card from `AreaInfo`: colour, waiting list, fix year, projects, operator link, map date
 
 **Hour 10–13: explanation + decision**
 - [ ] Propose the LLM provider against the criteria in §5.11; agree it with the team; API key into `.env`
+- [x] Grounded template summaries and follow-up answers from real replay results.
 - [ ] `explain.py`: explanation agent with scenario, plan, flags and area as input; provider code only in `call_llm()`; `template_summary()` fallback on any error
-- [ ] "What changed" explanation after each rerun (pass the previous `ReplayReport`)
-- [ ] Follow-up question box about the current result
-- [ ] Charger and battery sweep charts; "when it breaks" chart
-- [ ] Approve/Reject and **Download schedule (CSV)**
+- [x] "What changed" explanation after each rerun (pass the previous `ReplayReport`)
+- [x] Follow-up question box about the current result
+- [x] Charger and battery sweep charts; "when it breaks" chart
+- [x] Approve/Reject and **Download schedule (CSV)**
 
 **Hour 13–18**
-- [ ] Reality-check chart (GLASS vs. Liander band) with its one-line result
-- [ ] Loading states and error messages (no postcode match, solver timeout, API down)
+- [x] Reality-check chart (GLASS vs. Liander band) with its one-line result
+- [x] Loading states and error messages (no postcode match, solver timeout, API down)
 - [ ] Record a fallback video of the full demo
 - [ ] Prepare and rehearse demo part 3 (agent explanation, change two vans and explain what changed, follow-up question, risk timing)
 

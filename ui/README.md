@@ -1,3 +1,24 @@
+# GridFlex dashboard
+
+From the repository root, with Python 3.11 and the prepared data in place:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m uvicorn api.main:app --reload
+```
+
+In a second terminal:
+
+```powershell
+cd ui
+npm ci
+npm run dev
+```
+
+Open the URL printed by Vite and choose **Development scenario**, then **Optimize**. Increase the fleet from 10 to 12 and rerun to see the previous result in the explanation. The default API URL is http://127.0.0.1:8000. Set VITE_GRIDFLEX_API_URL for a different local API address.
+
+The explanation uses deterministic templates until the team selects a provider. Replay metrics describe held-out synthetic load windows. The local Approve and Reject controls record the decision for the current session.
+
 # Welcome to your Lovable project
 
 This project was built with [Lovable](https://lovable.dev).
