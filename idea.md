@@ -523,11 +523,25 @@ class ReplayReport:
     over_by_slot: np.ndarray          # (96,) count of over-limit days per slot
     mean_overshoot_kwh: float
     baseline_alone_over_pct: float
-    vans_short: list[tuple[str, float]]
+    vans_short: list[tuple[str, float]]   # one entry per van: (name, kWh short; 0.0 if fully charged)
     verdict: Literal["fits", "fits_with_risk", "does_not_fit"]
+    n_windows: int = 0                    # test windows replayed
+    immediate: ImmediateReplay | None = None  # §5.7 comparison, set when immediate_power is passed
 
+@dataclass
+class ImmediateReplay:
+    days_over_pct: float
+    worst_overshoot_kw: float
+    worst_overshoot_time: str
+
+# days_over_pct and baseline_alone_over_pct are percentages (0-100); tolerance is a fraction (0.05 = 5%).
+# worst_overshoot_time is "HH:MM" on the clock (from Windows.start_hour), "" if the limit is never exceeded.
+# A slot exactly at the limit is not over it. replay() reads only power, battery_charge, battery_discharge
+# and unmet_kwh from the result (structural SchedulePlan in replay.py), so ScheduleResult satisfies it as is.
 def replay(test: Windows, result: ScheduleResult, limit: np.ndarray,
-           van_names: list[str], tolerance: float = 0.05) -> ReplayReport
+           van_names: list[str], tolerance: float = 0.05,
+           immediate_power: np.ndarray | None = None) -> ReplayReport
+def replay_immediate(test: Windows, immediate_power: np.ndarray, limit: np.ndarray) -> ImmediateReplay
 def charger_sweep(planning, test, limit, fleet, n_max, battery=None) -> pl.DataFrame
 def battery_sweep(planning, test, limit, vans, sizes_kwh, power_kw) -> pl.DataFrame
 ```

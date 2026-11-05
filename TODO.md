@@ -24,8 +24,8 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [x] `tests/test_profiles.py`: windows never cross a month or sample; window count; no `sample_id` in both groups
 
 **Hour 4–6: replay**
-- [ ] `replay.py`: `replay()` with every flag from §5.8 and the verdict rule
-- [ ] `tests/test_replay.py`: hand-built windows with a known overshoot give the right numbers
+- [x] `replay.py`: `replay()` with every flag from §5.8 and the verdict rule
+- [x] `tests/test_replay.py`: hand-built windows with a known overshoot give the right numbers
 - [ ] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**)
 
 **Hour 6–10: capacity map**
