@@ -108,3 +108,52 @@ def test_chat_tool_preserves_other_van_requests(monkeypatch):
     assert data['source'] == 'groq'
     assert 'Van 1, Van 2 departure 30 minutes earlier' in data['text']
     assert 'same' not in data['text'].lower() or 'synthetic' in data['text'].lower()
+
+
+def test_natural_numbers_must_match_cited_facts_and_units():
+    facts = {'risk': 'Worst replay overshoot: 39.23 kW at 08:15.',
+             'battery': 'The planned battery discharge is 90.50 kWh.'}
+    answer = 'The worst overshoot was 39.23 kW at 08:15.'
+    assert render_answer(answer, ['risk'], facts)[0] == answer
+    for bad in ('The worst overshoot was 39.23 kWh at 08:15.',
+                'The worst overshoot was 90.50 kWh at 08:15.',
+                'The worst overshoot was 39.23 kW at 08:30.'):
+        with pytest.raises(ValueError):
+            render_answer(bad, ['risk'], facts)
+    with pytest.raises(ValueError):
+        render_answer('The battery reduced risk by 90.50 kWh.', ['battery'], facts)
+
+
+def test_validation_retry_and_no_evidence_duplication(monkeypatch, current):
+    calls = []
+    def model(system, user, schema, **kwargs):
+        calls.append(json.loads(user))
+        if len(calls) == 1:
+            return json.dumps({'answer': 'Risk was 999%.', 'fact_ids': ['replay']})
+        fact = calls[-1]['facts']['replay']
+        return json.dumps({'answer': fact, 'fact_ids': ['replay']})
+    monkeypatch.setattr('gridflex.assistant.call_llm', model)
+    result = answer_question(*current, question='What is the risk?')
+    assert result['source'] == 'groq'
+    assert result['text'] == result['evidence'][0]['text']
+    assert 'validation_feedback' in calls[1]
+
+
+def test_fallback_shows_relevant_risk_and_battery_evidence(monkeypatch, current):
+    def unavailable(*args, **kwargs):
+        raise ConnectionError('unavailable')
+    monkeypatch.setattr('gridflex.assistant.call_llm', unavailable)
+    risk = answer_question(*current, question='When is risk highest?', provider='ollama')
+    assert risk['source'] == 'template' and any(x['id'] == 'worst' for x in risk['evidence'])
+    battery = answer_question(*current, question='How did the battery help?', provider='ollama')
+    assert 'comparison' in battery['text'] and battery['evidence'][-1]['id'] == 'battery_impact'
+
+
+def test_battery_refusal_still_explains_available_evidence(monkeypatch, current):
+    monkeypatch.setattr('gridflex.assistant.call_llm', lambda *a, **k: json.dumps({
+        'answer': 'I cannot answer that from the available evidence. Please clarify your question or try a supported scenario.',
+        'fact_ids': []}))
+    result = answer_question(*current, question='How did the battery help?')
+    assert result['source'] == 'template'
+    assert 'comparable simulation' in result['text']
+    assert {item['id'] for item in result['evidence']} == {'battery_config', 'battery_impact'}
