@@ -1,0 +1,4 @@
+site_id,postcode,category,month,level,limit_kw,extra_kw,off_peak_start,off_peak_end,battery_kwh,battery_kw,q,risk_tolerance_pct,van_name,arrival,departure,energy_kwh,charger_kw
+Leiden depot,2311BD,009,2023-01,2,85,0,22:00,06:00,0,0,0.90,5,Van 1,17:00,06:00,30,11
+Leiden depot,2311BD,009,2023-01,2,85,0,22:00,06:00,0,0,0.90,5,Van 2,18:00,07:00,40,11
+Leiden depot,2311BD,009,2023-01,2,85,0,22:00,06:00,0,0,0.90,5,Van 3,18:30,06:30,35,11

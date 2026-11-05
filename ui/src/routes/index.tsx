@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BatchReport } from "@/components/gridflex/BatchReport";
 import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
@@ -27,9 +28,8 @@ export const Route = createFileRoute("/")({
 });
 
 const TABS = [
-  ["welcome", "Welcome"], ["configure", "Setup"], ["immediate", "Immediate charging"],
-  ["compare", "Charging plan"], ["schedule", "Van schedule"], ["explanation", "Explanation"], ["what-if", "What-if"],
-  ["risk", "Risk & sweeps"], ["reality", "Reality check"],
+  ["welcome", "Welcome"], ["configure", "Setup"],
+  ["compare", "Charging plan"], ["schedule", "Van schedule"], ["explanation", "Explanation"], ["analysis", "Analysis"],
 ] as const;
 type DashboardTab = (typeof TABS)[number][0];
 const RESULT_TABS = TABS.slice(2);
@@ -91,12 +91,17 @@ const btnPrimary = `${btn} bg-primary text-primary-foreground hover:shadow-glow`
 const btnGhost = `${btn} border border-border hover:bg-accent`;
 
 const initial: Scenario = {
-  category: "009", month: "2023-01", level: 1, postcode: "1181KJ", vans: 10, limit_kw: 100,
+  category: "009", month: "2023-01", level: 1, postcode: "2311BD", vans: 10, limit_kw: 100,
   extra_kw: 0, off_peak: ["22:00", "06:00"], arrival: ["17:00", "19:00"], departure: ["06:00", "07:00"],
   energy_kwh: [30, 40], charger_kw: 11, battery_kwh: 0, battery_kw: 0, q: .9, tolerance: .05, seed: 42,
 };
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+
+function csvName(name: string) {
+  const safe = /^[=+@-]/.test(name.trimStart()) ? "'" + name : name;
+  return '"' + safe.replaceAll('"', '""') + '"';
+}
 
 function Dashboard() {
   const py = useParallax();
@@ -145,6 +150,29 @@ function Dashboard() {
   }, [cfg.postcode]);
 
   const set = <K extends keyof Scenario>(key: K, value: Scenario[K]) => setCfg((old) => ({ ...old, [key]: value }));
+
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [importedFile, setImportedFile] = useState("");
+
+  async function importSetup(file: File) {
+    if (importing || busy || asking || sweeping || whatIfBusy) return;
+    setImporting(true);
+    setImportError("");
+    try {
+      if (file.size > 2_000_000) throw new Error("Choose a CSV under 2 MB.");
+      const scenario = await api<Scenario>("/import-setup", { csv: await file.text() });
+      setCfg(scenario);
+      setRun(undefined);
+      setError("");
+      setImportedFile(file.name);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "CSV import failed.";
+      setImportError(message === "Failed to fetch" ? "Could not reach the GridFlex API. Start it, then try the upload again." : message);
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function optimize() {
     if (busy || asking || sweeping || whatIfBusy) return;
@@ -245,7 +273,7 @@ function Dashboard() {
     if (!run) return;
     const { schedule, vans } = run.result;
     const rows = schedule.power.flatMap((slots, van) => slots.map((kw, slot) =>
-      `${vans[van]?.name},${slot},${time(slot)},${kw},${kw / 4}`));
+      `${csvName(vans[van]?.name ?? "")},${slot},${time(slot)},${kw},${kw / 4}`));
     const url = URL.createObjectURL(new Blob([["van,slot,start_time,charging_kw,charging_kwh", ...rows].join("\r\n")], { type: "text/csv" }));
     const link = document.createElement("a");
     link.href = url;
@@ -257,6 +285,10 @@ function Dashboard() {
   const r = run?.result;
   const s = r?.schedule;
   const report = r?.report;
+  const imported = Boolean(importedFile);
+  const setupVans = imported
+    ? Object.entries(cfg.overrides ?? {}).map(([index, van]) => ({ index: Number(index), name: van.name ?? `Van ${Number(index) + 1}`, van }))
+    : r?.vans.slice(0, cfg.vans).map((van, index) => ({ index, name: van.name, van })) ?? [];
   const fields = [
     ["Fleet size", "vans", 1, 40, 1, "vans"], ["Connection limit", "limit_kw", 60, 160, 1, "kW"],
     ["Off-peak uplift", "extra_kw", 0, 160, 1, "kW"], ["Charger power", "charger_kw", 1, 50, 1, "kW"],
@@ -299,7 +331,7 @@ function Dashboard() {
           </p>
           <div className="mt-8 flex gap-3">
             <button type="button" onClick={() => setActiveTab("configure")} className={btnPrimary}>Start planning</button>
-            <button type="button" onClick={() => setActiveTab("what-if")} className={btnGhost}>Explore what-if scenarios</button>
+            <button type="button" onClick={() => setActiveTab("analysis")} className={btnGhost}>Explore analysis</button>
           </div>
           <p className="mt-10 font-mono text-xs text-muted-foreground">Synthetic load profiles · Held-out replay · Human decision</p>
           </div>
@@ -309,6 +341,16 @@ function Dashboard() {
 
         {/* 02 Configure */}
         <TabsContent value="configure"><Section id="configure" n={2} title="Configure your depot">
+          <div className="panel mb-4 space-y-3 p-5">
+            <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background has-disabled:cursor-wait has-disabled:opacity-60">
+              {importing ? "Reading CSV…" : "Upload setup CSV"}
+              <input className="sr-only" type="file" accept=".csv,text/csv" disabled={importing || busy || asking || sweeping || whatIfBusy}
+                onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importSetup(file); }} />
+            </label>
+            <p className="text-sm text-muted-foreground">Upload a CSV for one depot. GridFlex fills the site settings and fleet below.</p>
+            {importError && <p role="alert" className="text-sm text-destructive">{importError}</p>}
+            {importedFile && !importing && <p role="status" className="text-sm">Loaded {importedFile} · {cfg.postcode} · {cfg.vans} vans. Review the setup and press Optimize.</p>}
+          </div>
           <div className="panel grid gap-5 p-6 sm:grid-cols-2">
             <div><label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label><Hint label="Postcode" /></div>
             <div><label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
@@ -322,7 +364,7 @@ function Dashboard() {
                 </option>
               ))}
             </select></label><Hint label="Business profile" /></div>
-            {fields.map(([label, key, min, max, step, unit]) =>
+            {fields.filter(([, key]) => !imported || (key !== "vans" && key !== "charger_kw")).map(([label, key, min, max, step, unit]) =>
               <Field key={key} label={label} value={cfg[key]} min={min} max={max} step={step} unit={unit} onChange={(value) => {
                 if (key === "vans") setCfg((old) => ({
                   ...old, vans: value,
@@ -331,7 +373,7 @@ function Dashboard() {
                 else set(key, value);
               }} />)}
             <Field label="Risk tolerance" value={Math.round(cfg.tolerance * 100)} min={0} max={100} unit="%" onChange={(value) => set("tolerance", value / 100)} />
-            {(["arrival", "departure", "off_peak"] as const).map((key) => (
+            {(["arrival", "departure", "off_peak"] as const).filter((key) => !imported || key === "off_peak").map((key) => (
               <fieldset key={key} className="flex flex-wrap gap-3">
                 <legend>{key === "off_peak" ? "Off-peak window" : `${key} window`}</legend>
                 <Hint label={key === "off_peak" ? "Off-peak window" : key === "arrival" ? "Arrival window" : "Departure window"} />
@@ -340,18 +382,25 @@ function Dashboard() {
                   onChange={(e) => set(key, i ? [cfg[key][0], e.target.value] : [e.target.value, cfg[key][1]])} /></label>)}
               </fieldset>
             ))}
-            <Field label="Energy per van" value={cfg.energy_kwh[1]} min={5} max={120} unit="kWh maximum" onChange={(value) => set("energy_kwh", [Math.max(0, value - 10), value])} />
-            <details className="sm:col-span-2">
-              <summary className="cursor-pointer">Advanced · edit individual vans</summary>
-              <p className="my-2 text-sm text-muted-foreground"><Hint label="Individual vans" /> Run Optimize once to generate van requests. Times are slots from noon, in 15-minute increments.</p>
-              {r && <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-                <thead><tr><th>Van</th><th>Arrival slot</th><th>Departure slot</th><th>Energy (kWh)</th><th>Charger (kW)</th></tr></thead>
-                <tbody>{r.vans.slice(0, cfg.vans).map(({ name, ...van }, index) => (
+            {!imported && <Field label="Energy per van" value={cfg.energy_kwh[1]} min={5} max={120} unit="kWh maximum" onChange={(value) => set("energy_kwh", [Math.max(0, value - 10), value])} />}
+            {Object.keys(cfg.overrides ?? {}).length > 0 && <p className="text-sm text-muted-foreground sm:col-span-2">
+              Individual van requests override the fleet defaults. View or clear them under Advanced.
+            </p>}
+            <details key={imported ? "imported" : "manual"} open={imported} className="sm:col-span-2">
+              <summary className="cursor-pointer">{imported ? "Imported fleet" : "Advanced · edit individual vans"}</summary>
+              <p className="my-2 text-sm text-muted-foreground"><Hint label="Individual vans" /> {imported ? "These exact requests will be used for optimization." : "Run Optimize once to generate van requests."}</p>
+              {setupVans.length > 0 && <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+                <thead><tr><th>Van</th><th>Arrival</th><th>Departure</th><th>Energy (kWh)</th><th>Charger (kW)</th></tr></thead>
+                <tbody>{setupVans.map(({ name, van, index }) => (
                   <tr key={name}><th>{name}</th>{([
                     ["arrival_slot", 0, 95, 1], ["departure_slot", 1, 96, 1],
                     ["energy_kwh", 0, 120, .01], ["charger_kw", 1, 50, 1],
                   ] as const).map(([key, min, max, step]) => {
-                    const current: VanOverride = cfg.overrides?.[index] ?? van;
+                    const current: VanOverride = cfg.overrides?.[index] ?? { ...van, name };
+                    if (imported && (key === "arrival_slot" || key === "departure_slot")) {
+                      const slot = current[key];
+                      return <td key={key}>{time(slot)}{slot >= 48 ? " next day" : ""}</td>;
+                    }
                     return <td key={key}><input className="w-24 rounded border border-input bg-background p-1"
                       aria-label={`${name} ${key.replaceAll("_", " ")}`} type="number" min={min} max={max} step={step}
                       value={current[key]} onChange={(e) => set("overrides", {
@@ -359,13 +408,10 @@ function Dashboard() {
                       })} /></td>;
                   })}</tr>
                 ))}</tbody></table></div>}
-              {Object.keys(cfg.overrides ?? {}).length > 0 && <button className={btnGhost} onClick={() => set("overrides", {})}>Clear van overrides</button>}
+              {Object.keys(cfg.overrides ?? {}).length > 0 && <button className={btnGhost} onClick={() => { set("overrides", {}); setImportedFile(""); }}>Clear van overrides</button>}
             </details>
             <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <Hint label="Scenario presets" /><button className={btnGhost} onClick={() => setCfg(initial)}>Development scenario</button>
-              <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65 })}>Tight connection</button>
-              <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65, battery_kwh: 60, battery_kw: 20 })}>Battery scenario</button>
-              <button className={btnPrimary} disabled={busy || asking || sweeping || whatIfBusy} onClick={optimize}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
+              <button className={btnPrimary} disabled={importing || busy || asking || sweeping || whatIfBusy} onClick={() => void optimize()}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
             </div>
             {error && <p role="alert" className="text-destructive sm:col-span-2">{error}</p>}
           </div>
@@ -384,17 +430,8 @@ function Dashboard() {
         </Section></TabsContent>
 
         {r && s && report && run ? <>
-          <TabsContent value="immediate">
-          <Section id="immediate" n={3} title="Immediate charging">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Stat label="Windows over limit" value={report.immediate ? `${report.immediate.days_over_pct.toFixed(2)}%` : "Unavailable"} />
-              <Stat label="Worst overshoot" value={report.immediate ? `${report.immediate.worst_overshoot_kw.toFixed(2)} kW` : "Unavailable"} />
-              <Stat label="Held-out windows" value={report.n_windows} />
-            </div>
-          </Section>
-          </TabsContent>
           <TabsContent value="compare">
-          <Section id="compare" n={4} title="Compare charging plans">
+          <Section id="compare" n={3} title="Compare charging plans">
             <p className="mb-4" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans · {run.cfg.month} <Hint label="Verdict and solver" /></p>
             <div className="grid gap-4 sm:grid-cols-4">
               <Stat label="Windows over limit" value={`${report.days_over_pct.toFixed(2)}%`} tone={report.days_over_pct ? "bad" : "good"} />
@@ -402,6 +439,17 @@ function Dashboard() {
               <Stat label="Vans fully charged" value={`${report.vans_short.filter(([, short]) => short === 0).length}/${run.cfg.vans}`} />
               <Stat label="kWh short" value={sum(s.unmet_kwh).toFixed(2)} tone={sum(s.unmet_kwh) ? "bad" : "good"} />
             </div>
+            <section aria-label="Immediate charging comparison" className="panel mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 text-sm">
+              <div>
+                <h3 className="font-semibold">Immediate charging</h3>
+                <p className="text-xs text-muted-foreground">Each van starts charging as soon as it arrives.</p>
+              </div>
+              {report.immediate ? <>
+                <span><strong>{report.immediate.days_over_pct.toFixed(2)}%</strong> windows over limit <Hint label="Windows over limit" /></span>
+                <span><strong>{report.immediate.worst_overshoot_kw.toFixed(2)} kW</strong> worst overshoot <Hint label="Worst overshoot" /></span>
+              </> : <span className="text-muted-foreground">Comparison unavailable</span>}
+              <span><strong>{report.n_windows}</strong> held-out windows <Hint label="Held-out windows" /></span>
+            </section>
             <div className="panel mt-4 p-4">
               <h3 className="font-semibold">Demand chart <Hint label="Demand chart" /></h3>
               <LoadChart title="Planning demand, noon to noon (kW)" limit={r.limit_kw} band={r.normal_band_kw} selectedSlot={selectedSlot} onSelectSlot={setSelectedSlot}
@@ -437,7 +485,7 @@ function Dashboard() {
           </Section>
           </TabsContent>
           <TabsContent value="schedule">
-            <Section id="schedule" n={5} title="Per-van charging schedule">
+            <Section id="schedule" n={4} title="Per-van charging schedule">
               <div className="panel mt-4 p-4">
               <h3 className="font-semibold">Van schedule <Hint label="Van schedule" /></h3>
               <Heatmap schedule={s.power} needs={r.vans.map((van) => Math.ceil(van.energy_kwh * 4) / 4)} chargerKw={run.cfg.charger_kw} />
@@ -448,7 +496,7 @@ function Dashboard() {
             </Section>
           </TabsContent>
           <TabsContent value="explanation">
-          <Section id="explanation" n={6} title="Explanation">
+          <Section id="explanation" n={5} title="Explanation">
             <article className="panel space-y-4 p-6">
               <fieldset className="flex flex-wrap items-center gap-2" disabled={busy || asking}>
                 <legend className="mb-2 text-sm font-semibold">Choose explanation model</legend>
@@ -471,73 +519,82 @@ function Dashboard() {
             </article>
           </Section>
           </TabsContent>
-          <TabsContent value="what-if"><Section id="what-if" n={7} title="What-if scenarios">
-          <section className="panel space-y-4 p-6" aria-labelledby="decision-evidence">
-            <h2 id="decision-evidence" className="text-xl font-semibold">Explain this decision</h2>
-            <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
-            <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
-            <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
-            <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
-            <p className="text-sm text-muted-foreground">Each option reruns the optimizer and replay on the same synthetic windows. Comparisons are exploratory; equally optimal schedules can differ.</p>
-            <div className="flex flex-wrap gap-2">
-              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("extra_capacity")}>Add 10 kW of capacity</button>
-              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("later_departure")}>Depart one hour later</button>
-              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("battery")}>{run.cfg.battery_kwh ? "Remove configured battery" : "Add 60 kWh battery"}</button>
-            </div>
-            {whatIfBusy && <p role="status">Recalculating both scenarios…</p>}
-            {whatIfError && <p role="alert" className="text-destructive">{whatIfError}</p>}
-            {whatIf && <div className="overflow-x-auto" aria-live="polite"><p className="mb-2">{whatIf.description}</p>
-              <table className="w-full text-left text-sm"><thead><tr><th>Metric</th><th>Current</th><th>Changed</th></tr></thead><tbody>
-                <tr><th>Vans fully charged</th><td>{whatIf.current.vans_full}/{whatIf.current.vans_total}</td><td>{whatIf.changed.vans_full}/{whatIf.changed.vans_total}</td></tr>
-                <tr><th>Unmet energy</th><td>{whatIf.current.unmet_kwh.toFixed(2)} kWh</td><td>{whatIf.changed.unmet_kwh.toFixed(2)} kWh</td></tr>
-                <tr><th>Synthetic windows over limit</th><td>{whatIf.current.days_over_pct.toFixed(2)}%</td><td>{whatIf.changed.days_over_pct.toFixed(2)}%</td></tr>
-                <tr><th>Worst overshoot</th><td>{whatIf.current.worst_overshoot_kw.toFixed(2)} kW</td><td>{whatIf.changed.worst_overshoot_kw.toFixed(2)} kW</td></tr>
-                <tr><th>Solver status</th><td>{whatIf.current.status}</td><td>{whatIf.changed.status}</td></tr>
-              </tbody></table>
-              {(whatIf.scenario.battery_kwh > 0 || run.cfg.battery_kwh > 0) && <p className="mt-2 text-xs text-muted-foreground">Battery replay clips negative net demand without recalculating battery state per window; this comparison is exploratory.</p>}
-            </div>}
-          </section></Section></TabsContent>
-          <TabsContent value="risk"><Section id="edge-case" n={8} title="Risk and sensitivity">
-            <div className="panel space-y-2 p-5">
-              <Row k="Worst overshoot time" v={report.worst_overshoot_time || "No breaches"} />
-              <Row k="Baseline alone over limit" v={`${report.baseline_alone_over_pct.toFixed(2)}%`} />
-              <Row k="Blocked planning slots" v={s.blocked_slots.map(time).join(", ") || "None"} />
-              <Row k="Vans with shortfalls" v={report.vans_short.filter(([, short]) => short > 0).map(([name, short]) => `${name}: ${short.toFixed(2)} kWh`).join(", ") || "None"} />
-              <h3 className="font-semibold">Breach timing <Hint label="Breach timing chart" /></h3>
-              <LoadChart title="Number of replay windows breaching the limit by time" series={[{ label: "Windows over limit", data: report.over_by_slot, cls: "stroke-destructive" }]} />
-              {!!run.cfg.battery_kwh && <div><h3 className="font-semibold">Battery stored energy <Hint label="Battery chart" /></h3><LoadChart title="Battery stored energy (kWh)" series={[{ label: "Stored energy", data: s.battery_soc_kwh, cls: "stroke-success" }]} /></div>}
-              {!!run.cfg.battery_kwh && <p className="text-sm">Replay clips negative net demand without recalculating battery state for each window.</p>}
-              <p className="text-sm">15-minute slots. The solver rounds the baseline up and limit down to integer kW, and energy demand up to 0.25 kWh.</p>
-            </div>
-            <div className="panel mt-4 space-y-4 p-5">
-              <button className={btnPrimary} onClick={sweep} disabled={busy || sweeping}>{sweeping ? "Running sweeps…" : "Run exploratory sweeps"}</button><Hint label="Exploratory sweeps" />
-              {error && <p role="alert" className="text-destructive">{error}</p>}
-              {sweeps.map(({ label, rows }) => <div key={label}><h3 className="font-semibold">{label}</h3>
-                <table className="w-full text-left text-sm"><thead><tr><th>Test point</th><th>Windows over</th><th>kWh short</th><th>Solver</th></tr></thead>
-                  <tbody>{rows.map((row) => <tr key={row.n ?? row.capacity_kwh}>
-                    <td>{row.n ?? `${row.capacity_kwh} kWh`}{row.smallest_fit ? " (smallest tested fit)" : ""}</td>
-                    <td>{row.days_over_pct == null ? "—" : <>
-                      <meter min={0} max={100} value={row.days_over_pct} aria-label="Windows over limit (%)" className="mr-2 w-24" />
-                      {row.days_over_pct.toFixed(2)}%
-                    </>}</td>
-                    <td>{row.kwh_short?.toFixed(2) ?? "—"}</td><td>{row.status}</td>
-                  </tr>)}</tbody></table>
-              </div>)}
-            </div>
-          </Section></TabsContent>
-          <TabsContent value="reality"><Section id="reality" n={9} title="Reality check">
-            <div className="panel space-y-4 p-5">
-              <h3 className="font-semibold">Reality check · GLASS and Liander (2023) <Hint label="Reality check" /></h3>
-              {!checks.length && <p>No comparison available for this run.</p>}
-              {checks.map((check) => <div key={check.sbi_code}><p>{check.summary}</p>
-                <LoadChart title={`Typical working day ${check.sbi_code}, midnight to midnight (relative load)`} startHour={0} band={[check.glass_band[0], check.glass_band[2]]}
-                  series={[{ label: "GLASS median", data: check.glass_band[1], cls: "stroke-primary" }, { label: "Liander reference", data: check.liander_band[1].map((v) => v ?? 0), cls: "stroke-success" }]} />
-              </div>)}
-              <p className="text-sm text-muted-foreground">GLASS was trained on Liander data, so this comparison is not an independent test.</p>
-            </div>
-          </Section></TabsContent>
+          <TabsContent value="analysis">
+            <Section id="analysis" n={6} title="Analysis">
+              <BatchReport />
+              <div className="grid items-start gap-4 lg:grid-cols-2">
+                <section className="panel min-w-0 space-y-4 p-5" aria-labelledby="decision-evidence">
+                  <h3 id="decision-evidence" className="text-xl font-semibold">What-if scenarios</h3>
+                  <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
+                  <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
+                  <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
+                  <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
+                  <p className="text-sm text-muted-foreground">Change one setting and compare both plans on the same synthetic windows. Equally optimal schedules can differ.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("extra_capacity")}>Add 10 kW of capacity</button>
+                    <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("later_departure")}>Depart one hour later</button>
+                    <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("battery")}>{run.cfg.battery_kwh ? "Remove configured battery" : "Add 60 kWh battery"}</button>
+                  </div>
+                  {whatIfBusy && <p role="status">Recalculating both scenarios…</p>}
+                  {whatIfError && <p role="alert" className="text-destructive">{whatIfError}</p>}
+                  {whatIf && <div className="overflow-x-auto" aria-live="polite"><p className="mb-2">{whatIf.description}</p>
+                    <table className="w-full text-left text-sm"><thead><tr><th>Metric</th><th>Current</th><th>Changed</th></tr></thead><tbody>
+                      <tr><th>Vans fully charged</th><td>{whatIf.current.vans_full}/{whatIf.current.vans_total}</td><td>{whatIf.changed.vans_full}/{whatIf.changed.vans_total}</td></tr>
+                      <tr><th>Unmet energy</th><td>{whatIf.current.unmet_kwh.toFixed(2)} kWh</td><td>{whatIf.changed.unmet_kwh.toFixed(2)} kWh</td></tr>
+                      <tr><th>Synthetic windows over limit</th><td>{whatIf.current.days_over_pct.toFixed(2)}%</td><td>{whatIf.changed.days_over_pct.toFixed(2)}%</td></tr>
+                      <tr><th>Worst overshoot</th><td>{whatIf.current.worst_overshoot_kw.toFixed(2)} kW</td><td>{whatIf.changed.worst_overshoot_kw.toFixed(2)} kW</td></tr>
+                      <tr><th>Solver status</th><td>{whatIf.current.status}</td><td>{whatIf.changed.status}</td></tr>
+                    </tbody></table>
+                    {(whatIf.scenario.battery_kwh > 0 || run.cfg.battery_kwh > 0) && <p className="mt-2 text-xs text-muted-foreground">Battery replay clips negative net demand without recalculating battery state per window; this comparison is exploratory.</p>}
+                  </div>}
+                </section>
+                <div className="min-w-0 space-y-4">
+                  <section className="panel space-y-2 p-5" aria-labelledby="risk-heading">
+                    <h3 id="risk-heading" className="text-xl font-semibold">Risk and sensitivity</h3>
+                    <Row k="Worst overshoot time" v={report.worst_overshoot_time || "No breaches"} />
+                    <Row k="Baseline alone over limit" v={`${report.baseline_alone_over_pct.toFixed(2)}%`} />
+                    <Row k="Blocked planning slots" v={s.blocked_slots.map(time).join(", ") || "None"} />
+                    <Row k="Vans with shortfalls" v={report.vans_short.filter(([, short]) => short > 0).map(([name, short]) => `${name}: ${short.toFixed(2)} kWh`).join(", ") || "None"} />
+                    <h3 className="font-semibold">Breach timing <Hint label="Breach timing chart" /></h3>
+                    <LoadChart title="Number of replay windows breaching the limit by time" series={[{ label: "Windows over limit", data: report.over_by_slot, cls: "stroke-destructive" }]} />
+                    {!!run.cfg.battery_kwh && <div><h3 className="font-semibold">Battery stored energy <Hint label="Battery chart" /></h3><LoadChart title="Battery stored energy (kWh)" series={[{ label: "Stored energy", data: s.battery_soc_kwh, cls: "stroke-success" }]} /></div>}
+                    {!!run.cfg.battery_kwh && <p className="text-sm">Replay clips negative net demand without recalculating battery state for each window.</p>}
+                    <p className="text-sm">15-minute slots. The solver rounds the baseline up and limit down to integer kW, and energy demand up to 0.25 kWh.</p>
+                  </section>
+                  <section className="panel space-y-4 p-5" aria-labelledby="sweep-heading">
+                    <h3 id="sweep-heading" className="text-xl font-semibold">Sweeps</h3>
+                    <button className={btnPrimary} onClick={sweep} disabled={busy || sweeping}>{sweeping ? "Running sweeps…" : "Run exploratory sweeps"}</button><Hint label="Exploratory sweeps" />
+                    {error && <p role="alert" className="text-destructive">{error}</p>}
+                    {sweeps.map(({ label, rows }) => <div key={label} className="overflow-x-auto"><h3 className="font-semibold">{label}</h3>
+                      <table className="w-full text-left text-sm"><thead><tr><th>Test point</th><th>Windows over</th><th>kWh short</th><th>Solver</th></tr></thead>
+                        <tbody>{rows.map((row) => <tr key={row.n ?? row.capacity_kwh}>
+                          <td>{row.n ?? `${row.capacity_kwh} kWh`}{row.smallest_fit ? " (smallest tested fit)" : ""}</td>
+                          <td>{row.days_over_pct == null ? "—" : <>
+                            <meter min={0} max={100} value={row.days_over_pct} aria-label="Windows over limit (%)" className="mr-2 w-24" />
+                            {row.days_over_pct.toFixed(2)}%
+                          </>}</td>
+                          <td>{row.kwh_short?.toFixed(2) ?? "—"}</td><td>{row.status}</td>
+                        </tr>)}</tbody></table>
+                    </div>)}
+                  </section>
+                </div>
+                <section className="panel min-w-0 space-y-4 p-5 lg:col-span-2" aria-labelledby="reality-heading">
+                    <h3 id="reality-heading" className="text-xl font-semibold">Reality check · GLASS and Liander (2023) <Hint label="Reality check" /></h3>
+                    {!checks.length && <p>No comparison available for this run.</p>}
+                    <div className="grid gap-4 xl:grid-cols-3">
+                    {checks.map((check) => <div className="min-w-0" key={check.sbi_code}><p>{check.summary}</p>
+                      <LoadChart title={`Typical working day ${check.sbi_code}, midnight to midnight (relative load)`} startHour={0} band={[check.glass_band[0], check.glass_band[2]]}
+                        series={[{ label: "GLASS median", data: check.glass_band[1], cls: "stroke-primary" }, { label: "Liander reference", data: check.liander_band[1].map((v) => v ?? 0), cls: "stroke-success" }]} />
+                    </div>)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">GLASS was trained on Liander data, so this comparison is not an independent test.</p>
+                </section>
+              </div>
+            </Section>
+          </TabsContent>
         </> : RESULT_TABS.map(([id, label]) => (
           <TabsContent key={id} value={id} className="py-12">
+            {id === "analysis" && <BatchReport />}
             <div className="panel space-y-4 p-8 text-center">
               <h2 className="text-xl font-semibold">{label}</h2>
               <p className="text-muted-foreground">{busy ? "Optimize is running." : "Run Optimize in Setup to see results here."}</p>

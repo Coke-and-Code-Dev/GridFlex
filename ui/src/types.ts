@@ -1,5 +1,5 @@
 export type Condition = { category: string; month: string; level: number; level_value_kwh: number | null };
-export type VanOverride = { arrival_slot: number; departure_slot: number; energy_kwh: number; charger_kw: number };
+export type VanOverride = { name?: string; arrival_slot: number; departure_slot: number; energy_kwh: number; charger_kw: number };
 export type Scenario = Pick<Condition, "category" | "month" | "level"> & {
   postcode: string; vans: number; limit_kw: number; extra_kw: number; off_peak: [string, string];
   arrival: [string, string]; departure: [string, string]; energy_kwh: [number, number];
@@ -27,7 +27,7 @@ export type Sweep = { n?: number; capacity_kwh?: number; days_over_pct: number |
   status: string; smallest_fit?: boolean };
 
 const origin = import.meta.env["VITE_GRIDFLEX_API_URL"] ?? "http://127.0.0.1:8000";
-export async function api<T>(path: string, body?: unknown): Promise<T> {
+async function request(path: string, body?: unknown): Promise<Response> {
   const response = await fetch(origin + path, body === undefined ? undefined : {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
@@ -35,7 +35,15 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
     const error = await response.json().catch(() => null);
     throw new Error(typeof error?.detail === "string" ? error.detail : `Request failed (${response.status}).`);
   }
-  return response.json();
+  return response;
+}
+
+export async function api<T>(path: string, body?: unknown): Promise<T> {
+  return (await request(path, body)).json();
+}
+
+export async function downloadReport(csv: string): Promise<Blob> {
+  return (await request("/batch-report", { csv })).blob();
 }
 
 export type Evidence = { id: string; text: string };
