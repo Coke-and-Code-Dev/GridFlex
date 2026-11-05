@@ -62,7 +62,7 @@ The Explanation tab lets you choose Groq or the local Ollama model `qwen3.5:9b` 
 
 ## CSV setup and multi-site reports
 
-From **Setup**, download either example CSV. Use one row per van. Repeat the site settings for every row sharing a `site_id`. Use Dutch postcodes, 15-minute clock times in the noon-to-noon planning window, and a business profile from the dropdown (preserve the leading zero in category `009`). Enter risk tolerance as a percentage, such as `5`. The examples use synthetic fleet data and real postcode keys for the indicative capacity map.
+The CSV templates are in `ui/public/`. Use one row per van. Repeat the site settings for every row sharing a `site_id`. Use Dutch postcodes, 15-minute clock times in the noon-to-noon planning window, and a business profile from the dropdown (preserve the leading zero in category `009`). Enter risk tolerance as a percentage, such as `5`. The examples use synthetic fleet data and real postcode keys for the indicative capacity map.
 
-- **Upload and optimize** expects a single site and opens the charging plan when ready.
-- **Multi-site simulation and PDF** accepts multiple site IDs. **Run three-depot sample** generates the example report directly. The upload limit is 2 MB and each site supports up to 40 vans.
+- **Upload setup CSV** in Setup expects a single site. Review the imported settings, then press **Optimize**.
+- **Multi-site simulation and PDF** in Analysis accepts multiple site IDs. The upload limit is 2 MB and each site supports up to 40 vans.

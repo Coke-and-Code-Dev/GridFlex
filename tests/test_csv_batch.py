@@ -16,7 +16,7 @@ def test_setup_csv_uses_exact_van_requests():
     imported = client.post("/import-setup", json={"csv": source})
     assert imported.status_code == 200
     scenario = imported.json()
-    assert scenario["postcode"] == "1181KJ"
+    assert scenario["postcode"] == "2311BD"
     result = client.post("/optimize", json=scenario)
     assert result.status_code == 200
     assert result.json()["vans"][1] == {
@@ -28,7 +28,7 @@ def test_setup_csv_uses_exact_van_requests():
 def test_setup_rejects_inconsistent_depot_settings():
     source = (PUBLIC / "gridflex-setup-example.csv").read_text(encoding="utf-8-sig")
     with pytest.raises(ValueError, match="Site settings differ"):
-        read_scenarios(source.replace("1181KJ", "2311BD", 1))
+        read_scenarios(source.replace("2311BD", "1315RA", 1))
 
 
 def test_portfolio_simulates_all_sample_sites():

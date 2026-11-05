@@ -39,13 +39,6 @@ export function BatchReport() {
             event.target.value = "";
             if (file) void generate(() => file.size > 2_000_000 ? Promise.reject(new Error("Choose a CSV under 2 MB.")) : file.text());
           }} /></label>
-        <button type="button" disabled={running} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
-          onClick={() => void generate(async () => {
-            const sample = await fetch("/gridflex-portfolio-example.csv");
-            if (!sample.ok) throw new Error("The sample CSV is unavailable.");
-            return sample.text();
-          })}>Run three-depot sample</button>
-        <a className="text-sm text-primary underline" href="/gridflex-portfolio-example.csv" download>Download sample CSV</a>
       </div>
       {status && <p role="status" className="text-sm">{status}</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

@@ -136,7 +136,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 ---
 
-- [x] Import a depot and its exact van requests from CSV, then optimize automatically.
+- [x] Import a depot and its exact van requests from CSV for review before optimization.
 - [x] Run multiple CSV sites independently and export a portfolio PDF with per-site charts.
 
 ## Before the demo (everyone, hour 13–18)

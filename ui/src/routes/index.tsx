@@ -91,7 +91,7 @@ const btnPrimary = `${btn} bg-primary text-primary-foreground hover:shadow-glow`
 const btnGhost = `${btn} border border-border hover:bg-accent`;
 
 const initial: Scenario = {
-  category: "009", month: "2023-01", level: 1, postcode: "1181KJ", vans: 10, limit_kw: 100,
+  category: "009", month: "2023-01", level: 1, postcode: "2311BD", vans: 10, limit_kw: 100,
   extra_kw: 0, off_peak: ["22:00", "06:00"], arrival: ["17:00", "19:00"], departure: ["06:00", "07:00"],
   energy_kwh: [30, 40], charger_kw: 11, battery_kwh: 0, battery_kw: 0, q: .9, tolerance: .05, seed: 42,
 };
@@ -152,25 +152,31 @@ function Dashboard() {
   const set = <K extends keyof Scenario>(key: K, value: Scenario[K]) => setCfg((old) => ({ ...old, [key]: value }));
 
   const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [importedFile, setImportedFile] = useState("");
 
   async function importSetup(file: File) {
     if (importing || busy || asking || sweeping || whatIfBusy) return;
     setImporting(true);
-    setError("");
+    setImportError("");
     try {
       if (file.size > 2_000_000) throw new Error("Choose a CSV under 2 MB.");
       const scenario = await api<Scenario>("/import-setup", { csv: await file.text() });
       setCfg(scenario);
-      await optimize(scenario);
+      setRun(undefined);
+      setError("");
+      setImportedFile(file.name);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "CSV import failed.");
+      const message = err instanceof Error ? err.message : "CSV import failed.";
+      setImportError(message === "Failed to fetch" ? "Could not reach the GridFlex API. Start it, then try the upload again." : message);
     } finally {
       setImporting(false);
     }
   }
 
-  async function optimize(snapshot: Scenario = cfg) {
+  async function optimize() {
     if (busy || asking || sweeping || whatIfBusy) return;
+    const snapshot = cfg;
     const previous = run?.cfg;
     setBusy(true);
     setVanDriving(true);
@@ -279,6 +285,10 @@ function Dashboard() {
   const r = run?.result;
   const s = r?.schedule;
   const report = r?.report;
+  const imported = Boolean(importedFile);
+  const setupVans = imported
+    ? Object.entries(cfg.overrides ?? {}).map(([index, van]) => ({ index: Number(index), name: van.name ?? `Van ${Number(index) + 1}`, van }))
+    : r?.vans.slice(0, cfg.vans).map((van, index) => ({ index, name: van.name, van })) ?? [];
   const fields = [
     ["Fleet size", "vans", 1, 40, 1, "vans"], ["Connection limit", "limit_kw", 60, 160, 1, "kW"],
     ["Off-peak uplift", "extra_kw", 0, 160, 1, "kW"], ["Charger power", "charger_kw", 1, 50, 1, "kW"],
@@ -331,17 +341,16 @@ function Dashboard() {
 
         {/* 02 Configure */}
         <TabsContent value="configure"><Section id="configure" n={2} title="Configure your depot">
-          <div className="panel mb-4 space-y-2 p-5">
-            <h3 className="font-semibold">Upload and optimize</h3>
-            <p className="text-sm text-muted-foreground">Load one depot and its vans from CSV. GridFlex will run Optimize automatically.</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="text-sm">Setup CSV <input type="file" accept=".csv,text/csv" disabled={importing || busy || asking || sweeping || whatIfBusy}
-                onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importSetup(file); }} /></label>
-              <a className="text-sm text-primary underline" href="/gridflex-setup-example.csv" download>Download sample CSV</a>
-            </div>
-            {importing && <p role="status">Reading and optimizing the uploaded setup…</p>}
+          <div className="panel mb-4 space-y-3 p-5">
+            <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background has-disabled:cursor-wait has-disabled:opacity-60">
+              {importing ? "Reading CSV…" : "Upload setup CSV"}
+              <input className="sr-only" type="file" accept=".csv,text/csv" disabled={importing || busy || asking || sweeping || whatIfBusy}
+                onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importSetup(file); }} />
+            </label>
+            <p className="text-sm text-muted-foreground">Upload a CSV for one depot. GridFlex fills the site settings and fleet below.</p>
+            {importError && <p role="alert" className="text-sm text-destructive">{importError}</p>}
+            {importedFile && !importing && <p role="status" className="text-sm">Loaded {importedFile} · {cfg.postcode} · {cfg.vans} vans. Review the setup and press Optimize.</p>}
           </div>
-          <BatchReport />
           <div className="panel grid gap-5 p-6 sm:grid-cols-2">
             <div><label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label><Hint label="Postcode" /></div>
             <div><label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
@@ -355,7 +364,7 @@ function Dashboard() {
                 </option>
               ))}
             </select></label><Hint label="Business profile" /></div>
-            {fields.map(([label, key, min, max, step, unit]) =>
+            {fields.filter(([, key]) => !imported || (key !== "vans" && key !== "charger_kw")).map(([label, key, min, max, step, unit]) =>
               <Field key={key} label={label} value={cfg[key]} min={min} max={max} step={step} unit={unit} onChange={(value) => {
                 if (key === "vans") setCfg((old) => ({
                   ...old, vans: value,
@@ -364,7 +373,7 @@ function Dashboard() {
                 else set(key, value);
               }} />)}
             <Field label="Risk tolerance" value={Math.round(cfg.tolerance * 100)} min={0} max={100} unit="%" onChange={(value) => set("tolerance", value / 100)} />
-            {(["arrival", "departure", "off_peak"] as const).map((key) => (
+            {(["arrival", "departure", "off_peak"] as const).filter((key) => !imported || key === "off_peak").map((key) => (
               <fieldset key={key} className="flex flex-wrap gap-3">
                 <legend>{key === "off_peak" ? "Off-peak window" : `${key} window`}</legend>
                 <Hint label={key === "off_peak" ? "Off-peak window" : key === "arrival" ? "Arrival window" : "Departure window"} />
@@ -373,21 +382,25 @@ function Dashboard() {
                   onChange={(e) => set(key, i ? [cfg[key][0], e.target.value] : [e.target.value, cfg[key][1]])} /></label>)}
               </fieldset>
             ))}
-            <Field label="Energy per van" value={cfg.energy_kwh[1]} min={5} max={120} unit="kWh maximum" onChange={(value) => set("energy_kwh", [Math.max(0, value - 10), value])} />
+            {!imported && <Field label="Energy per van" value={cfg.energy_kwh[1]} min={5} max={120} unit="kWh maximum" onChange={(value) => set("energy_kwh", [Math.max(0, value - 10), value])} />}
             {Object.keys(cfg.overrides ?? {}).length > 0 && <p className="text-sm text-muted-foreground sm:col-span-2">
               Individual van requests override the fleet defaults. View or clear them under Advanced.
             </p>}
-            <details className="sm:col-span-2">
-              <summary className="cursor-pointer">Advanced · edit individual vans</summary>
-              <p className="my-2 text-sm text-muted-foreground"><Hint label="Individual vans" /> Run Optimize once to generate van requests. Times are slots from noon, in 15-minute increments.</p>
-              {r && <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-                <thead><tr><th>Van</th><th>Arrival slot</th><th>Departure slot</th><th>Energy (kWh)</th><th>Charger (kW)</th></tr></thead>
-                <tbody>{r.vans.slice(0, cfg.vans).map(({ name, ...van }, index) => (
+            <details key={imported ? "imported" : "manual"} open={imported} className="sm:col-span-2">
+              <summary className="cursor-pointer">{imported ? "Imported fleet" : "Advanced · edit individual vans"}</summary>
+              <p className="my-2 text-sm text-muted-foreground"><Hint label="Individual vans" /> {imported ? "These exact requests will be used for optimization." : "Run Optimize once to generate van requests."}</p>
+              {setupVans.length > 0 && <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+                <thead><tr><th>Van</th><th>Arrival</th><th>Departure</th><th>Energy (kWh)</th><th>Charger (kW)</th></tr></thead>
+                <tbody>{setupVans.map(({ name, van, index }) => (
                   <tr key={name}><th>{name}</th>{([
                     ["arrival_slot", 0, 95, 1], ["departure_slot", 1, 96, 1],
                     ["energy_kwh", 0, 120, .01], ["charger_kw", 1, 50, 1],
                   ] as const).map(([key, min, max, step]) => {
                     const current: VanOverride = cfg.overrides?.[index] ?? { ...van, name };
+                    if (imported && (key === "arrival_slot" || key === "departure_slot")) {
+                      const slot = current[key];
+                      return <td key={key}>{time(slot)}{slot >= 48 ? " next day" : ""}</td>;
+                    }
                     return <td key={key}><input className="w-24 rounded border border-input bg-background p-1"
                       aria-label={`${name} ${key.replaceAll("_", " ")}`} type="number" min={min} max={max} step={step}
                       value={current[key]} onChange={(e) => set("overrides", {
@@ -395,12 +408,9 @@ function Dashboard() {
                       })} /></td>;
                   })}</tr>
                 ))}</tbody></table></div>}
-              {Object.keys(cfg.overrides ?? {}).length > 0 && <button className={btnGhost} onClick={() => set("overrides", {})}>Clear van overrides</button>}
+              {Object.keys(cfg.overrides ?? {}).length > 0 && <button className={btnGhost} onClick={() => { set("overrides", {}); setImportedFile(""); }}>Clear van overrides</button>}
             </details>
             <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <Hint label="Scenario presets" /><button className={btnGhost} onClick={() => setCfg(initial)}>Development scenario</button>
-              <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65 })}>Tight connection</button>
-              <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65, battery_kwh: 60, battery_kw: 20 })}>Battery scenario</button>
               <button className={btnPrimary} disabled={importing || busy || asking || sweeping || whatIfBusy} onClick={() => void optimize()}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
             </div>
             {error && <p role="alert" className="text-destructive sm:col-span-2">{error}</p>}
@@ -511,6 +521,7 @@ function Dashboard() {
           </TabsContent>
           <TabsContent value="analysis">
             <Section id="analysis" n={6} title="Analysis">
+              <BatchReport />
               <div className="grid items-start gap-4 lg:grid-cols-2">
                 <section className="panel min-w-0 space-y-4 p-5" aria-labelledby="decision-evidence">
                   <h3 id="decision-evidence" className="text-xl font-semibold">What-if scenarios</h3>
@@ -583,6 +594,7 @@ function Dashboard() {
           </TabsContent>
         </> : RESULT_TABS.map(([id, label]) => (
           <TabsContent key={id} value={id} className="py-12">
+            {id === "analysis" && <BatchReport />}
             <div className="panel space-y-4 p-8 text-center">
               <h2 className="text-xl font-semibold">{label}</h2>
               <p className="text-muted-foreground">{busy ? "Optimize is running." : "Run Optimize in Setup to see results here."}</p>
