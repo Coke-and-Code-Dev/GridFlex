@@ -4,11 +4,11 @@ Rules for everyone working in this repository: teammates and AI coding agents al
 
 ## Project
 
-**GridFlex** checks whether a business can add EV chargers under its existing grid connection limit for a given month. It proposes a charging schedule and flags how often that schedule would still go over the limit on realistic days.
+**GridFlex** checks whether a business can add EV chargers under its existing grid connection limit for a given month. It shows the local grid congestion for the business's postcode, proposes a charging and battery schedule, and flags how often that schedule would still go over the limit on realistic days.
 
-**Read [README.md](README.md) first.** It is the source of truth for the idea, architecture, module interfaces, scope and build plan. If you change the plan, update README.md in the same PR.
+**Read [idea.md](idea.md) first.** It is the source of truth for the idea, architecture, module interfaces, scope and build plan. If you change the plan, update idea.md in the same PR. Tasks per person are in [TODO.md](TODO.md); tick items off in the PR that completes them.
 
-The dataset is described in [data/README.md](data/README.md).
+The GLASS dataset is described in [data/README.md](data/README.md); the other data sources in idea.md §4.
 
 ## Mandatory workflow: every change goes through a pull request
 
@@ -37,14 +37,15 @@ The dataset is described in [data/README.md](data/README.md).
 ## Repository layout
 
 ```
-README.md            idea + implementation plan (source of truth)
+idea.md              idea + implementation plan (source of truth)
+TODO.md              tasks per person
 AGENTS.md            this file
 data/README.md       GLASS dataset card
-data/raw/            full GLASS parquet: git-ignored, never commit
-data/processed/      small per-condition extracts: committed
-scripts/             one-off data scripts (extract_glass.py)
-gridflex/            library code: profiles, fleet, naive, scheduler, replay, explain
-ui/                  dashboard (framework to be decided: README.md §6.1)
+data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, never commit
+data/processed/      small extracts: committed
+scripts/             one-off data scripts (extract_glass, prepare_grid_map, prepare_liander_sbi)
+gridflex/            library code: profiles, grid_area, fleet, naive, scheduler, replay, reality, explain
+ui/                  dashboard (framework to be decided: idea.md §8.1)
 tests/               pytest tests
 ```
 
@@ -54,34 +55,39 @@ tests/               pytest tests
 python -m venv .venv
 .venv\Scripts\activate          # Windows; use `source .venv/bin/activate` on macOS/Linux
 pip install -r requirements.txt
-python scripts/extract_glass.py --categories 009 --months 2024-01 --levels 0 1 2 3
+python scripts/extract_glass.py --categories 009 --months 2023-01 --levels 0 1 2 3
+python scripts/prepare_grid_map.py
+python scripts/prepare_liander_sbi.py --sbi 49 52 --months 2023-01
 pytest
 ```
 
-The command to run the dashboard will be added once the UI framework is chosen (README.md §6.1).
+Data download steps are in idea.md §13. The command to run the dashboard will be added once the UI framework is chosen (idea.md §8.1).
 
 ## Code conventions
 
 - Python 3.11. Use type hints and dataclasses for anything passed between modules.
 - Use **Polars** (not pandas) for data loading and **NumPy** arrays of shape `(n, 96)` for profiles and schedules.
-- Keep the interfaces in README.md §5.2 stable. If you need to change one, update README.md and tell the people using it.
+- Keep the interfaces in idea.md §7.3 stable. If you need to change one, update idea.md and tell the people using it.
+- The connection limit is always a `(96,)` array `C[t]`, never a single number, because it can change during the day.
 - Time is always in 15-minute slots (96 per window). Power is in **kW**, energy in **kWh**. Windows run noon to noon unless `start_hour` says otherwise.
-- `gridflex/` must not contain any UI code. All UI code lives in `ui/`. The UI framework is still an open question (README.md §6.1). Don't pick one in passing; agree it with the team first.
-- Add or update tests in `tests/` for any change to `scheduler.py`, `profiles.py` or `replay.py`.
+- `gridflex/` must not contain any UI code. All UI code lives in `ui/`. The UI framework (idea.md §8.1) and the LLM provider for the explanation agent (idea.md §5.11) are still open. Don't pick either in passing; agree it with the team first. Provider-specific code lives only in `call_llm()` in `explain.py`.
+- Add or update tests in `tests/` for any change to `scheduler.py`, `profiles.py`, `replay.py` or `grid_area.py`.
 
 ## Data rules
 
-- **Never commit the raw GLASS parquet** or anything in `data/raw/`. Only small extracts in `data/processed/` (aim for < 5 MB each).
-- Never load the full 43M-row file into memory. Use `pl.scan_parquet` with filters.
-- Rows join into a continuous series **only within the same `scenario`, `category`, year-month, `level_id` and `sample_id`**. Never join days across months or across samples.
-- GLASS is licensed CDLA-Permissive-2.0. Keep the attribution in README.md.
+- **Never commit anything in `data/raw/`** (GLASS parquet, capacity-map CSVs, Liander zips). Only small extracts in `data/processed/` (aim for < 5 MB each).
+- Never load the full 43M-row GLASS file into memory. Use `pl.scan_parquet` with filters.
+- GLASS rows join into a continuous series **only within the same `scenario`, `category`, year-month, `level_id` and `sample_id`**. Never join days across months or across samples.
+- Split GLASS into planning and test groups **by `sample_id`**, never by day. Test windows are only used for replay.
+- Capacity-map CSVs are semicolon-separated with comma decimals. Treat the map as indicative and always show its download date.
+- Keep the attributions in idea.md §14: GLASS (CDLA-Permissive-2.0), Netbeheer Nederland capaciteitskaart, Liander open data.
 
 ## Honesty rules (product)
 
-- Label everything in the app as **synthetic data / simulation**.
+- Label everything in the app as **synthetic data / simulation**, and fleet values as assumptions.
 - Never hide infeasibility: always show kWh short and days over the limit, even when they are bad.
 - The app only recommends. It never claims to control equipment or to be a grid-operator approval.
-- If an LLM explanation is added, it may only describe numbers already computed by the code. It must not calculate or invent figures, and there must be a non-LLM fallback.
+- The explanation agent may only describe numbers already computed by the code. It must not calculate or invent figures, and there must be a non-LLM fallback.
 
 ## Secrets
 
