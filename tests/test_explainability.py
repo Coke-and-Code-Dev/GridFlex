@@ -80,3 +80,26 @@ def test_whatif_limits_and_battery_are_explicit():
     assert response.status_code == 200
     assert response.json()['scenario']['battery_kwh'] == 60
     assert response.json()['scenario']['battery_kw'] == 20
+
+
+def test_fleet_completion_question_returns_end_of_last_charging_slot(monkeypatch, scenario_result):
+    import numpy as np
+
+    from gridflex.replay import slot_time
+
+    scenario, plan, _ = scenario_result
+
+    def provider_must_not_run(*args, **kwargs):
+        pytest.fail("Direct completion questions should use the schedule.")
+
+    monkeypatch.setattr("gridflex.assistant.call_llm", provider_must_not_run)
+    response = TestClient(app).post("/explain", json={
+        "scenario": scenario.model_dump(),
+        "question": "When will the charging of all the vans complete?",
+    })
+    assert response.status_code == 200
+    answer = response.json()
+    end = int(np.flatnonzero(plan.power.any(axis=0))[-1]) + 1
+    assert slot_time(end) in answer["text"]
+    assert answer["source"] == "template"
+    assert answer["evidence"][0]["id"] == "completion"
