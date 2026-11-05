@@ -5,9 +5,11 @@ from functools import lru_cache
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
-from api.schemas import (ComparisonMetrics, ExplanationRequest, ExplanationResponse, Scenario,
+from api.batch_report import SiteResult, render_portfolio
+from api.csv_setup import read_scenarios
+from api.schemas import (ComparisonMetrics, CsvUpload, ExplanationRequest, ExplanationResponse, Scenario,
                          SweepRequest, WhatIfRequest, WhatIfResponse)
 from gridflex.assistant import answer_question
 from gridflex.fleet import generate_fleet
@@ -49,7 +51,7 @@ def inputs(s):
     for index, override in s.overrides.items():
         if not 0 <= index < len(vans):
             raise ValueError('A van override is outside the current fleet.')
-        vans[index] = replace(vans[index], **override.model_dump())
+        vans[index] = replace(vans[index], **override.model_dump(exclude_none=True))
     if bool(s.battery_kwh) != bool(s.battery_kw):
         raise ValueError("Set both battery capacity and power, or set both to zero.")
     battery = Battery(s.battery_kwh, s.battery_kw) if s.battery_kwh else None
@@ -104,6 +106,14 @@ def reality(category: str, month: str, level: int = 1):
     return checks
 
 
+@app.post("/import-setup", response_model=Scenario)
+def import_setup(upload: CsvUpload):
+    sites = read_scenarios(upload.csv)
+    if len(sites) != 1:
+        raise ValueError("Setup expects one site_id. Use the multi-site simulation for multiple sites.")
+    return next(iter(sites.values()))
+
+
 @app.post("/optimize")
 def optimize_route(scenario: Scenario):
     plan, report, baseline, limit, immediate, vans, planning = run(scenario.model_dump_json())
@@ -116,6 +126,28 @@ def optimize_route(scenario: Scenario):
         "normal_band_kw": np.percentile(planning.values, [10, 90], axis=0).tolist(),
         "vans": [asdict(van) for van in vans],
     }
+
+
+@app.post("/batch-report", response_class=Response)
+def batch_report(upload: CsvUpload):
+    results = []
+    for name, scenario in read_scenarios(upload.csv).items():
+        try:
+            area_info = lookup(scenario.postcode)
+        except FileNotFoundError:
+            area_info = None
+        site = SiteResult(name, scenario, area_info)
+        try:
+            site.payload = optimize_route(scenario)
+        except HTTPException as exc:
+            site.error = str(exc.detail)
+        except (ValueError, FileNotFoundError) as exc:
+            site.error = str(exc)
+        results.append(site)
+    return Response(
+        render_portfolio(results), media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="gridflex-portfolio.pdf"'},
+    )
 
 
 @app.post("/sweep")
@@ -145,7 +177,7 @@ def explain_route(request: ExplanationRequest):
             shift = minutes // 15
             if any(v.departure_slot - shift <= v.arrival_slot for i, v in enumerate(vans, 1) if i in changed_vans):
                 raise ValueError('An earlier departure would not be after its arrival.')
-            values['overrides'] = {i: {'arrival_slot': v.arrival_slot,
+            values['overrides'] = {i: {'name': v.name, 'arrival_slot': v.arrival_slot,
                                         'departure_slot': v.departure_slot - (shift if i + 1 in changed_vans else 0),
                                         'energy_kwh': v.energy_kwh, 'charger_kw': v.charger_kw}
                                    for i, v in enumerate(vans)}
@@ -199,7 +231,7 @@ def what_if(request: WhatIfRequest):
         _, _, _, vans, _ = inputs(s)
         if any(v.departure_slot + 4 > 96 for v in vans):
             raise HTTPException(422, "A departure would fall outside the 24-hour scheduling window.")
-        values["overrides"] = {i: {"arrival_slot": v.arrival_slot, "departure_slot": v.departure_slot + 4,
+        values["overrides"] = {i: {"name": v.name, "arrival_slot": v.arrival_slot, "departure_slot": v.departure_slot + 4,
                                   "energy_kwh": v.energy_kwh, "charger_kw": v.charger_kw}
                                for i, v in enumerate(vans)}
         description = "Move each van's departure 1 hour later; arrivals and energy needs stay the same."

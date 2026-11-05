@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BatchReport } from "@/components/gridflex/BatchReport";
 import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
@@ -97,6 +98,11 @@ const initial: Scenario = {
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 
+function csvName(name: string) {
+  const safe = /^[=+@-]/.test(name.trimStart()) ? "'" + name : name;
+  return '"' + safe.replaceAll('"', '""') + '"';
+}
+
 function Dashboard() {
   const py = useParallax();
   const [activeTab, setActiveTab] = useState<DashboardTab>("welcome");
@@ -145,9 +151,26 @@ function Dashboard() {
 
   const set = <K extends keyof Scenario>(key: K, value: Scenario[K]) => setCfg((old) => ({ ...old, [key]: value }));
 
-  async function optimize() {
+  const [importing, setImporting] = useState(false);
+
+  async function importSetup(file: File) {
+    if (importing || busy || asking || sweeping || whatIfBusy) return;
+    setImporting(true);
+    setError("");
+    try {
+      if (file.size > 2_000_000) throw new Error("Choose a CSV under 2 MB.");
+      const scenario = await api<Scenario>("/import-setup", { csv: await file.text() });
+      setCfg(scenario);
+      await optimize(scenario);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "CSV import failed.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function optimize(snapshot: Scenario = cfg) {
     if (busy || asking || sweeping || whatIfBusy) return;
-    const snapshot = cfg;
     const previous = run?.cfg;
     setBusy(true);
     setVanDriving(true);
@@ -244,7 +267,7 @@ function Dashboard() {
     if (!run) return;
     const { schedule, vans } = run.result;
     const rows = schedule.power.flatMap((slots, van) => slots.map((kw, slot) =>
-      `${vans[van]?.name},${slot},${time(slot)},${kw},${kw / 4}`));
+      `${csvName(vans[van]?.name ?? "")},${slot},${time(slot)},${kw},${kw / 4}`));
     const url = URL.createObjectURL(new Blob([["van,slot,start_time,charging_kw,charging_kwh", ...rows].join("\r\n")], { type: "text/csv" }));
     const link = document.createElement("a");
     link.href = url;
@@ -308,6 +331,17 @@ function Dashboard() {
 
         {/* 02 Configure */}
         <TabsContent value="configure"><Section id="configure" n={2} title="Configure your depot">
+          <div className="panel mb-4 space-y-2 p-5">
+            <h3 className="font-semibold">Upload and optimize</h3>
+            <p className="text-sm text-muted-foreground">Load one depot and its vans from CSV. GridFlex will run Optimize automatically.</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm">Setup CSV <input type="file" accept=".csv,text/csv" disabled={importing || busy || asking || sweeping || whatIfBusy}
+                onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importSetup(file); }} /></label>
+              <a className="text-sm text-primary underline" href="/gridflex-setup-example.csv" download>Download sample CSV</a>
+            </div>
+            {importing && <p role="status">Reading and optimizing the uploaded setup…</p>}
+          </div>
+          <BatchReport />
           <div className="panel grid gap-5 p-6 sm:grid-cols-2">
             <div><label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label><Hint label="Postcode" /></div>
             <div><label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
@@ -340,6 +374,9 @@ function Dashboard() {
               </fieldset>
             ))}
             <Field label="Energy per van" value={cfg.energy_kwh[1]} min={5} max={120} unit="kWh maximum" onChange={(value) => set("energy_kwh", [Math.max(0, value - 10), value])} />
+            {Object.keys(cfg.overrides ?? {}).length > 0 && <p className="text-sm text-muted-foreground sm:col-span-2">
+              Individual van requests override the fleet defaults. View or clear them under Advanced.
+            </p>}
             <details className="sm:col-span-2">
               <summary className="cursor-pointer">Advanced · edit individual vans</summary>
               <p className="my-2 text-sm text-muted-foreground"><Hint label="Individual vans" /> Run Optimize once to generate van requests. Times are slots from noon, in 15-minute increments.</p>
@@ -350,7 +387,7 @@ function Dashboard() {
                     ["arrival_slot", 0, 95, 1], ["departure_slot", 1, 96, 1],
                     ["energy_kwh", 0, 120, .01], ["charger_kw", 1, 50, 1],
                   ] as const).map(([key, min, max, step]) => {
-                    const current: VanOverride = cfg.overrides?.[index] ?? van;
+                    const current: VanOverride = cfg.overrides?.[index] ?? { ...van, name };
                     return <td key={key}><input className="w-24 rounded border border-input bg-background p-1"
                       aria-label={`${name} ${key.replaceAll("_", " ")}`} type="number" min={min} max={max} step={step}
                       value={current[key]} onChange={(e) => set("overrides", {
@@ -364,7 +401,7 @@ function Dashboard() {
               <Hint label="Scenario presets" /><button className={btnGhost} onClick={() => setCfg(initial)}>Development scenario</button>
               <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65 })}>Tight connection</button>
               <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65, battery_kwh: 60, battery_kw: 20 })}>Battery scenario</button>
-              <button className={btnPrimary} disabled={busy || asking || sweeping || whatIfBusy} onClick={optimize}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
+              <button className={btnPrimary} disabled={importing || busy || asking || sweeping || whatIfBusy} onClick={() => void optimize()}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
             </div>
             {error && <p role="alert" className="text-destructive sm:col-span-2">{error}</p>}
           </div>

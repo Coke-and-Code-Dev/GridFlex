@@ -689,6 +689,10 @@ React + TypeScript (ui/)  ──JSON──►  Python API (api/)  ──►  gri
 - Charts need shaded bands, stacked areas, a heatmap and a limit line that changes over the day. The charting library is Smriti's choice.
 - The API allows requests from the local dev server (CORS) during development.
 
+### 8.2 CSV setup and portfolio reporting
+
+Setup accepts a UTF-8 CSV with one row per van. Repeat the depot settings on each row and use one `site_id` per depot. The single-site upload validates the CSV, loads the exact van requests and runs the existing optimizer. Multi-site uploads run each depot independently and return a PDF with an overview and one analysis page per site, including capacity-map context, fleet and replay metrics, demand and breach charts, and any solver errors. The bundled example contains three synthetic depot fleets. The simulation does not pool grid limits across locations.
+
 ## 9. Team and build plan
 
 | Person | Owns |

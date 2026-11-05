@@ -58,3 +58,11 @@ After a run, use the demand-chart slider to inspect a planning interval and the 
 ## Local Qwen option
 
 The Explanation tab lets you choose Groq or the local Ollama model `qwen3.5:9b` for subsequent questions or optimization. Start Ollama and ensure that model is installed. Ollama is called by the Python API at `127.0.0.1:11434`; the browser never calls the model directly. Both providers use the same computed facts and evidence validation. If the selected provider is unavailable or fails validation, a local template is used. Questions and computed synthetic evidence are sent to Groq when Groq is selected; with Ollama they remain on the local server. Switching providers does not alter the schedule.
+
+
+## CSV setup and multi-site reports
+
+From **Setup**, download either example CSV. Use one row per van. Repeat the site settings for every row sharing a `site_id`. Use Dutch postcodes, 15-minute clock times in the noon-to-noon planning window, and a business profile from the dropdown (preserve the leading zero in category `009`). Enter risk tolerance as a percentage, such as `5`. The examples use synthetic fleet data and real postcode keys for the indicative capacity map.
+
+- **Upload and optimize** expects a single site and opens the charging plan when ready.
+- **Multi-site simulation and PDF** accepts multiple site IDs. **Run three-depot sample** generates the example report directly. The upload limit is 2 MB and each site supports up to 40 vans.

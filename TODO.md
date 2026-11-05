@@ -136,6 +136,9 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 ---
 
+- [x] Import a depot and its exact van requests from CSV, then optimize automatically.
+- [x] Run multiple CSV sites independently and export a portfolio PDF with per-site charts.
+
 ## Before the demo (everyone, hour 13–18)
 
 - [ ] Pick the demo scenario from the working app: sector, month, level, limit, number of vans, postcode (Joshua's demo postcodes, Sunil's break point and battery size)

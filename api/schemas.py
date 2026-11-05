@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class VanOverride(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
     arrival_slot: int = Field(ge=0, lt=96)
     departure_slot: int = Field(gt=0, le=96)
     energy_kwh: float = Field(ge=0, le=120)
@@ -29,6 +30,10 @@ class Scenario(BaseModel):
     tolerance: float = Field(default=.05, ge=0, le=1)
     seed: int = Field(default=42, ge=0)
     overrides: dict[int, VanOverride] = Field(default_factory=dict)
+
+
+class CsvUpload(BaseModel):
+    csv: str = Field(min_length=1, max_length=2_000_000)
 
 
 class SweepRequest(BaseModel):
