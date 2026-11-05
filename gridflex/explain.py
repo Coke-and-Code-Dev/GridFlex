@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 import re
+import urllib.request
 
 from dotenv import dotenv_values
 from groq import Groq
@@ -74,20 +75,48 @@ def evidence_facts(result: ScheduleResult, report: ReplayReport, previous: Repla
     return facts
 
 
-def call_llm(system: str, user: str, schema: dict | None = None) -> str:
-    """Call Groq only on the server. The model selects IDs, never manufactures facts."""
+def call_llm(system: str, user: str, schema: dict | None = None, provider: str = "groq") -> str:
+    """Call Groq on the server with structured output and bounded reasoning."""
+    schema = schema or {"type": "object", "properties": {"fact_ids": {"type": "array", "items": {"type": "string"}}},
+              "required": ["fact_ids"], "additionalProperties": False}
+    if provider == "ollama":
+        # The model and URL are fixed server-side: no browser-supplied host or model.
+        payload = json.dumps({"model": "qwen3.5:9b", "messages": [
+            {"role": "system", "content": system}, {"role": "user", "content": user}],
+            "stream": False, "think": False, "format": schema,
+            "options": {"temperature": 0.2, "num_predict": 1024}}).encode()
+        request = urllib.request.Request("http://127.0.0.1:11434/api/chat", data=payload,
+                                         headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(request, timeout=120) as response:
+            result = json.load(response)
+        if not result.get("done") or result.get("done_reason") != "stop":
+            raise ValueError("Ollama response was incomplete")
+        return result["message"]["content"]
+    if provider != "groq":
+        raise ValueError("Unsupported explanation provider")
     key = os.environ.get("GROQ_API_KEY") or dotenv_values(Path(__file__).resolve().parents[1] / ".env").get("GROQ_API_KEY")
     if not key:
         raise RuntimeError("Groq API key not configured")
     client = Groq(api_key=key, timeout=12.0, max_retries=0)
-    schema = schema or {"type": "object", "properties": {"fact_ids": {"type": "array", "items": {"type": "string"}}},
-              "required": ["fact_ids"], "additionalProperties": False}
-    response = client.chat.completions.create(
-        model=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        response_format={"type": "json_schema", "json_schema": {"name": "evidence_selection", "strict": True, "schema": schema}},
-        temperature=0, max_completion_tokens=400,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            response_format={"type": "json_schema", "json_schema": {"name": "evidence_selection", "strict": True, "schema": schema}},
+            temperature=0.4, max_completion_tokens=1024, reasoning_effort="low",
+        )
+    except Exception as exc:
+        # Log only known error categories and status. Never log prompts,
+        # provider response bodies, credentials, or model output.
+        body = getattr(exc, "body", None)
+        error = body.get("error", {}) if isinstance(body, dict) else {}
+        code = error.get("code") if isinstance(error, dict) else None
+        known_codes = {"json_validate_failed", "rate_limit_exceeded"}
+        safe_code = code if isinstance(code, str) and code in known_codes else "other"
+        status = getattr(exc, "status_code", None)
+        logging.getLogger(__name__).warning("Groq request failed: type=%s status=%s category=%s",
+                                            type(exc).__name__, status if isinstance(status, int) else "none", safe_code)
+        raise
     return response.choices[0].message.content or ""
 
 
