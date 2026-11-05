@@ -29,10 +29,10 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [ ] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**)
 
 **Hour 6–10: capacity map**
-- [ ] `scripts/prepare_grid_map.py`: CSVs (semicolon, comma decimals) → `grid_pc6.parquet`, `grid_areas.parquet`, `grid_projects.parquet`, `grid_map_meta.json`
-- [ ] `grid_area.py`: `lookup(postcode) → AreaInfo`, including projects and the download date
-- [ ] `tests/test_grid_area.py`: known postcode, lower-case with a space, unknown postcode, area with missing values
-- [ ] Find 2–3 good demo postcodes: one red area in Liander's region with a waiting list and a fix year, one green area for contrast
+- [x] `scripts/prepare_grid_map.py`: CSVs (semicolon, comma decimals) → `grid_pc6.parquet`, `grid_areas.parquet`, `grid_projects.parquet`, `grid_map_meta.json`
+- [x] `grid_area.py`: `lookup(postcode) → AreaInfo`, including projects and the download date
+- [x] `tests/test_grid_area.py`: known postcode, lower-case with a space, unknown postcode, area with missing values
+- [x] Find 2–3 good demo postcodes: one red area in Liander's region with a waiting list and a fix year, one green area for contrast (§9: `1181KJ` red; green contrast is `2291AA` in Westland, because every green postcode in Liander's area still has a waiting list)
 
 **Hour 10–13: reality check**
 - [ ] Check Liander's overview for SBI 49, 52 and 46: does a file exist, recommended profile, warning column. If not, use the logistics K&O profile (§4.3)
