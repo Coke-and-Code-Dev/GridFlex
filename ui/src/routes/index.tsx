@@ -254,17 +254,6 @@ function Dashboard() {
   const r = run?.result;
   const s = r?.schedule;
   const report = r?.report;
-  const breachCounts = report?.over_by_slot ?? [];
-  const mostBreaches = Math.max(0, ...breachCounts);
-  const frequentSlot = mostBreaches > 0 ? breachCounts.indexOf(mostBreaches) : -1;
-  const worstSlot = report?.worst_overshoot_time
-    ? breachCounts.findIndex((_, slot) => time(slot) === report.worst_overshoot_time)
-    : -1;
-
-  function inspectSlot(slot: number) {
-    setSelectedSlot(slot);
-    setActiveTab("compare");
-  }
   const fields = [
     ["Fleet size", "vans", 1, 40, 1, "vans"], ["Connection limit", "limit_kw", 60, 160, 1, "kW"],
     ["Off-peak uplift", "extra_kw", 0, 160, 1, "kW"], ["Charger power", "charger_kw", 1, 50, 1, "kW"],
@@ -479,17 +468,6 @@ function Dashboard() {
             <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
             <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
             <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
-            <div className="flex flex-wrap gap-2">
-              {frequentSlot >= 0 && frequentSlot === worstSlot ? (
-                <button className={btnGhost} onClick={() => inspectSlot(frequentSlot)}>Inspect {time(frequentSlot)} · most frequent and worst breach</button>
-              ) : <>
-                {frequentSlot >= 0 && <button className={btnGhost} onClick={() => inspectSlot(frequentSlot)}>Most frequent breach · {time(frequentSlot)}</button>}
-                {worstSlot >= 0 && <button className={btnGhost} onClick={() => inspectSlot(worstSlot)}>Worst overshoot · {time(worstSlot)}</button>}
-              </>}
-              {frequentSlot >= 0 || worstSlot >= 0 ? (
-                <span className="self-center text-xs text-muted-foreground">The chart opens the planning profile at the selected time. The breach statistics come from replaying the plan across the test windows.</span>
-              ) : <span className="text-sm text-muted-foreground">No breaches to inspect.</span>}
-            </div>
             <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
             <p className="text-sm text-muted-foreground">Each option reruns the optimizer and replay on the same synthetic windows. Comparisons are exploratory; equally optimal schedules can differ.</p>
             <div className="flex flex-wrap gap-2">
