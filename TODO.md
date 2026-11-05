@@ -4,29 +4,21 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 **Checkpoint at hour 6:** a real schedule is built from GLASS, replayed on test days, and shown in the app.
 **If time gets tight, protect this order:** GLASS → scheduler → replay → dashboard → battery → postcode card → explanation agent → reality check.
-
----
-
-## Everyone (hour 0–1)
-
-- [ ] Install Python 3.11, create `.venv`, install requirements (§13)
-- [ ] Read idea.md §3, §5 and §7.3 together; agree the shared inputs and outputs
-- [ ] Pick the demo scenario: category, month (2023), consumption level, connection limit, number of vans, postcode
-- [ ] Agree the UI framework and the LLM provider (Smriti proposes both)
-- [ ] Create `requirements.txt` and the empty package layout (`gridflex/`, `scripts/`, `tests/`, `ui/`) in one PR
+**While building,** everyone uses the shared development scenario (§9); the demo scenario is picked once the app works.
 
 ---
 
 ## Joshua: Data + checking
 
-**Hour 0–1: downloads**
+**Hour 0–1: skeleton + downloads**
+- [ ] First PR: empty package layout (`gridflex/`, `api/`, `scripts/`, `tests/`) and an empty `requirements.txt`, so nobody else creates them
 - [ ] Put `GLASS_v1.1.parquet` in `data/raw/` and verify the SHA-256
 - [ ] Download the four capacity-map files into `data/raw/capaciteitskaart/` with `curl -L` (§13); note the date
 - [ ] Download Liander's SBI overview (xlsx), "Geaggregeerde SBI-profielen" (zip) and "K&O profielen" (zip) into `data/raw/liander_sbi/`
 
 **Hour 1–4: GLASS profiles**
 - [ ] `scripts/extract_glass.py`: lazy filtered read, one parquet per condition, summary printout (§7.3)
-- [ ] Extract the demo conditions; check spread across samples and the kW range (§4.5); adjust the demo level if needed
+- [ ] Extract the development conditions; check spread across samples and the kW range (§4.5); adjust the development level if needed
 - [ ] `profiles.py`: `load_condition`, `build_windows` (noon to noon, within one sample, working days only)
 - [ ] `profiles.py`: `split_by_sample` (70/30 by `sample_id`, fixed seed) and `cautious_baseline`
 - [ ] `tests/test_profiles.py`: windows never cross a month or sample; window count; no `sample_id` in both groups
@@ -34,7 +26,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 **Hour 4–6: replay**
 - [ ] `replay.py`: `replay()` with every flag from §5.8 and the verdict rule
 - [ ] `tests/test_replay.py`: hand-built windows with a known overshoot give the right numbers
-- [ ] Hand Smriti a real `ReplayReport` for the demo scenario (**checkpoint**)
+- [ ] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**)
 
 **Hour 6–10: capacity map**
 - [ ] `scripts/prepare_grid_map.py`: CSVs (semicolon, comma decimals) → `grid_pc6.parquet`, `grid_areas.parquet`, `grid_projects.parquet`, `grid_map_meta.json`
@@ -65,7 +57,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 **Hour 4–6: tests + charger sweep**
 - [ ] `tests/test_scheduler.py`: easy, impossible, partial, presence, charger max, energy accounting, immediate charging breaks the limit
 - [ ] `replay.py`: `charger_sweep()` (with Joshua)
-- [ ] Run the demo scenario end to end with Joshua's baseline (**checkpoint**)
+- [ ] Run the development scenario end to end with Joshua's baseline (**checkpoint**)
 
 **Hour 6–10: battery + limit over the day**
 - [ ] Add `Battery` to `optimize()`: charge/discharge, mode, energy balance, no export, end ≥ start (§5.6)
@@ -89,12 +81,13 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 ## Smriti: Dashboard + explanation
 
 **Hour 0–1**
-- [ ] Propose the UI framework against the criteria in §8.1; agree it with the team
-- [ ] Propose the LLM provider against the criteria in §5.11; get an API key into `.env`
+- [ ] Scaffold the React + TypeScript app in `ui/` and the API skeleton in `api/` (§8.1); both run locally
+- [ ] Pick the charting library (needs bands, stacked areas, heatmap, a limit line that changes over the day)
 
 **Hour 1–4: shell**
 - [ ] Dashboard shell with all inputs from §8 and a dummy demand chart
-- [ ] If the UI is a separate frontend: API layer with the endpoints from §8.1, returning JSON
+- [ ] API: all endpoints from §8.1 returning dummy JSON; `ui/src/types.ts` mirrors `api/schemas.py`
+- [ ] Debounced requests from sliders, loading state while the solver runs
 - [ ] Shared colours and labels: limit line, status colours, "synthetic data and simulation" footer
 
 **Hour 4–6: first real results**
@@ -108,6 +101,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [ ] "Your area" card from `AreaInfo`: colour, waiting list, fix year, projects, operator link, map date
 
 **Hour 10–13: explanation + decision**
+- [ ] Propose the LLM provider against the criteria in §5.11; agree it with the team; API key into `.env`
 - [ ] `explain.py`: explanation agent with scenario, plan, flags and area as input; provider code only in `call_llm()`; `template_summary()` fallback on any error
 - [ ] "What changed" explanation after each rerun (pass the previous `ReplayReport`)
 - [ ] Follow-up question box about the current result
@@ -122,8 +116,9 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 ---
 
-## Before the demo (everyone, hour 16–18)
+## Before the demo (everyone, hour 13–18)
 
+- [ ] Pick the demo scenario from the working app: sector, month, level, limit, number of vans, postcode (Joshua's demo postcodes, Sunil's break point and battery size)
 - [ ] All tests pass on `main`
 - [ ] Every number in the demo script (§10) is replaced with the real output
 - [ ] Attributions visible in the app (GLASS, Netbeheer Nederland, Liander)

@@ -17,6 +17,12 @@ venv/
 *.egg-info/
 .ipynb_checkpoints/
 
+# Frontend (React + TypeScript in ui/)
+node_modules/
+ui/dist/
+*.tsbuildinfo
+npm-debug.log*
+
 # Secrets
 .env
 .env.*

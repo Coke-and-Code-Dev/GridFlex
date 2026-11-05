@@ -45,8 +45,10 @@ data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, neve
 data/processed/      small extracts: committed
 scripts/             one-off data scripts (extract_glass, prepare_grid_map, prepare_liander_sbi)
 gridflex/            library code: profiles, grid_area, fleet, naive, scheduler, replay, reality, explain
-ui/                  dashboard (framework to be decided: idea.md §8.1)
+api/                 Python JSON API that calls gridflex/ (idea.md §8.1)
+ui/                  React + TypeScript dashboard (idea.md §8.1)
 tests/               pytest tests
+requirements.txt     Python dependencies (filled in as we build)
 ```
 
 ## Setup and commands
@@ -59,9 +61,20 @@ python scripts/extract_glass.py --categories 009 --months 2023-01 --levels 0 1 2
 python scripts/prepare_grid_map.py
 python scripts/prepare_liander_sbi.py --sbi 49 52 --months 2023-01
 pytest
+uvicorn api.main:app --reload   # API
+cd ui && npm install && npm run dev   # dashboard, in a second terminal
 ```
 
-Data download steps are in idea.md §13. The command to run the dashboard will be added once the UI framework is chosen (idea.md §8.1).
+Data download steps are in idea.md §13.
+
+## Dependencies: fill them in as you build
+
+There is no fixed dependency list up front. Whoever adds a new package records it **in the same PR**:
+
+- **Python:** after `pip install <package>`, add it to `requirements.txt` with the installed version (`<package>==<version>`; `pip show <package>` gives the version). One package per line, sorted alphabetically. Only list packages the code imports directly.
+- **Frontend:** always use `npm install <package>` (or `npm install -D <package>` for build and test tools) inside `ui/`, so `package.json` and `package-lock.json` are updated. Commit both files.
+- Never commit `.venv/` or `node_modules/`.
+- If `pip install -r requirements.txt` or `npm install` fails after pulling `main`, fix the list in a PR rather than installing things by hand.
 
 ## Code conventions
 
@@ -70,7 +83,9 @@ Data download steps are in idea.md §13. The command to run the dashboard will b
 - Keep the interfaces in idea.md §7.3 stable. If you need to change one, update idea.md and tell the people using it.
 - The connection limit is always a `(96,)` array `C[t]`, never a single number, because it can change during the day.
 - Time is always in 15-minute slots (96 per window). Power is in **kW**, energy in **kWh**. Windows run noon to noon unless `start_hour` says otherwise.
-- `gridflex/` must not contain any UI code. All UI code lives in `ui/`. The UI framework (idea.md §8.1) and the LLM provider for the explanation agent (idea.md §5.11) are still open. Don't pick either in passing; agree it with the team first. Provider-specific code lives only in `call_llm()` in `explain.py`.
+- `gridflex/` must not contain any web or UI code. The API lives in `api/`, the dashboard in `ui/` (React + TypeScript).
+- The frontend is TypeScript, not plain JavaScript. `ui/src/types.ts` mirrors the API models in `api/schemas.py`; change both in the same PR.
+- The LLM provider for the explanation agent (idea.md §5.11) is still open. Don't pick one in passing; agree it with the team first. Provider-specific code lives only in `call_llm()` in `explain.py`.
 - Add or update tests in `tests/` for any change to `scheduler.py`, `profiles.py`, `replay.py` or `grid_area.py`.
 
 ## Data rules

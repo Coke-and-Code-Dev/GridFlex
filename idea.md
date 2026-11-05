@@ -323,7 +323,7 @@ For the chosen category and month, compare GLASS (all samples) with Liander's 20
 
 An LLM-based agent gets the scenario, the checked plan and the computed flags, and writes a short plain-language explanation: why charging moved later, how the battery helped, where the risk is. The user can ask follow-up questions about the current result ("why is van 7 short?"). When the user changes an input (slider or van table), the app reruns the scheduler and replay first, and the agent then explains what changed compared with the previous plan. The agent never calculates or invents numbers. If the API is unavailable, a template-based summary of the same numbers is shown instead.
 
-**LLM provider: to be decided.** Smriti (dashboard and explanation) proposes one and the team agrees. Whatever we pick has to:
+**LLM provider: to be decided** before work on the explanation agent starts. Smriti (dashboard and explanation) proposes one and the team agrees. Whatever we pick has to:
 
 - Answer within a few seconds, so the demo doesn't stall.
 - Support structured input and output (JSON in, text or JSON out), and tool or function calling if we build the what-if assistant (§11).
@@ -346,7 +346,9 @@ In one line: *generative AI imagines the futures, an AI planner finds a plan tha
 
 ### 7.1 Stack
 
-Python 3.11 · Polars · NumPy · OR-Tools (CP-SAT) · pytest · Pydantic or dataclasses for shared inputs · LLM provider **to be decided** (§5.11) · UI framework **to be decided** (§8.1).
+- **Backend:** Python 3.11 · Polars · NumPy · OR-Tools (CP-SAT) · pytest · Pydantic for shared inputs and API models · FastAPI for the JSON API (suggested; it reuses the Pydantic models)
+- **Frontend:** React + TypeScript (§8.1)
+- **Explanation agent:** LLM provider **to be decided** (§5.11)
 
 ### 7.2 Repository layout
 
@@ -355,7 +357,7 @@ ey_hackathon/
 ├── idea.md                ← this document
 ├── TODO.md                ← tasks per person
 ├── AGENTS.md              ← rules for humans and AI agents
-├── requirements.txt
+├── requirements.txt       ← Python dependencies, filled in as we build
 ├── data/
 │   ├── README.md          ← GLASS dataset card
 │   ├── raw/               ← downloads: GLASS parquet, capacity-map CSVs, Liander zips (git-ignored)
@@ -374,7 +376,12 @@ ey_hackathon/
 │   ├── replay.py          ← stress test, flags, verdict, sweeps
 │   ├── reality.py         ← GLASS vs Liander comparison
 │   └── explain.py         ← explanation agent (LLM provider to be decided) + template fallback
-├── ui/                    ← dashboard (framework to be decided, §8.1)
+├── api/
+│   ├── main.py            ← JSON endpoints (§8.1), calls gridflex/
+│   └── schemas.py         ← request/response models
+├── ui/                    ← React + TypeScript dashboard (§8.1)
+│   ├── package.json       ← frontend dependencies, filled in as we build
+│   └── src/
 └── tests/
     ├── test_profiles.py
     ├── test_grid_area.py
@@ -546,7 +553,7 @@ def template_summary(...) -> str
 | Battery: no export | `dis[t] ≤ baseline + van charging` |
 | Battery helps | Same tight case: a battery reduces unmet energy or peak, never increases them |
 | Limit over the day | Extra off-peak capacity is only used inside its window |
-| Immediate charging breaks the limit | Naive schedule on the demo scenario goes over `C[t]` |
+| Immediate charging breaks the limit | Naive schedule on the development scenario goes over `C[t]` |
 | Windows | Noon-to-noon windows never cross a month or sample boundary; count ≈ samples × (days − 1) |
 | Split | No `sample_id` appears in both planning and test |
 | Replay | A hand-built window set with a known overshoot gives the right `days_over_pct` and worst overshoot |
@@ -583,18 +590,32 @@ A single page.
 11. **Explanation:** agent text (or template fallback), a "what changed" note after each rerun, and a box for follow-up questions about the result.
 12. **Decision:** Approve / Reject and **Download schedule (CSV)**. Footer: "Synthetic data and simulation. Not a grid-operator approval."
 
-### 8.1 UI framework: to be decided
+### 8.1 Frontend and API: React + TypeScript
 
-Smriti (dashboard) proposes a framework in the first hour and the team agrees. Whatever we pick has to:
+The dashboard is a **React + TypeScript** single-page app in `ui/`. It talks to a small Python JSON API in `api/`, which calls `gridflex/`.
 
-- Feel instant when dragging sliders. A solve plus replay takes well under a second; the UI must not add a full page rerun on top of that.
-- Allow a custom layout and custom charts (shaded bands, stacked areas, heatmap, a limit line that changes over the day, colour-coded status card).
-- Be something Smriti can build quickly.
+```
+React + TypeScript (ui/)  ──JSON──►  Python API (api/)  ──►  gridflex/ library
+```
 
-What stays fixed regardless of the choice:
+**Endpoints**
 
-- `gridflex/` stays a plain Python library with no UI code.
-- If the UI is a separate frontend, the backend exposes JSON endpoints: `GET /area/{postcode}`, `POST /optimize` (inputs → schedule + `ReplayReport`), `POST /sweep`, `GET /reality`, `POST /explain`.
+| Endpoint | Input | Output |
+|---|---|---|
+| `GET /conditions` | — | Available sectors, months and levels (with "≈ X MWh/month") |
+| `GET /area/{postcode}` | Postcode | `AreaInfo` |
+| `POST /optimize` | Scenario: condition, limit settings, vans, battery, q, tolerance | Schedule, `ReplayReport`, immediate-charging comparison, chart data (bands, baseline, `C[t]`) |
+| `POST /sweep` | Scenario + sweep type (chargers or battery) | Sweep table |
+| `GET /reality` | Category, month | `RealityCheck` |
+| `POST /explain` | Scenario, result, previous result, optional question | Explanation text |
+
+**Rules**
+
+- `gridflex/` stays a plain Python library: no web or UI code.
+- The API returns plain JSON (lists, not NumPy arrays). TypeScript types in `ui/src/types.ts` mirror the API models in `api/schemas.py`; change both in the same PR.
+- Sliders feel instant: send a request only when a slider stops moving (debounce ~300 ms), and show a loading state while the solver runs.
+- Charts need shaded bands, stacked areas, a heatmap and a limit line that changes over the day. The charting library is Smriti's choice.
+- The API allows requests from the local dev server (CORS) during development.
 
 ## 9. Team and build plan
 
@@ -602,21 +623,23 @@ What stays fixed regardless of the choice:
 |---|---|
 | **Joshua: Data + checking** | GLASS extract, windows, split, cautious baseline, replay and flags, capacity map, reality check |
 | **Sunil: Optimisation** | Fleet, immediate charging, CP-SAT scheduler, battery, limit over the day, sweeps, scheduler tests |
-| **Smriti: Dashboard + explanation** | UI framework, LLM provider proposal, all dashboard panels, API layer if needed, explanation agent and fallback, demo assets |
+| **Smriti: Dashboard + explanation** | React + TypeScript dashboard, API layer, all dashboard panels, LLM provider proposal, explanation agent and fallback, demo assets |
 
 Everyone works on `<name>-<change>` branches with PRs ([AGENTS.md](AGENTS.md)).
 
 | Time | Joshua | Sunil | Smriti | Done when… |
 |---|---|---|---|---|
-| **0–1 h** | Verify GLASS; download capacity map and Liander files | Agree interfaces (§7.3) | Propose UI framework and LLM provider; agree demo scenario | Everyone uses the same inputs and outputs |
-| **1–4 h** | `extract_glass.py`, windows, split, baseline | Fleet, immediate charging, van scheduler | Dashboard shell, inputs, dummy chart | One 96-slot scenario flows between modules |
+| **0–1 h** | Empty package layout (first PR); verify GLASS; download capacity map and Liander files | Agree interfaces (§7.3) | Scaffold React + TypeScript app and API skeleton | Everyone uses the same inputs and outputs |
+| **1–4 h** | `extract_glass.py`, windows, split, baseline | Fleet, immediate charging, van scheduler | Dashboard shell, inputs, dummy chart, `/optimize` returning dummy data | One 96-slot scenario flows between modules |
 | **4–6 h** | Replay, flags, verdict | Scheduler tests, charger sweep | Demand chart, KPIs, verdict banner | **Checkpoint:** real schedule, replayed, shown in the app |
 | **6–10 h** | Capacity map prep + `grid_area.py` | Battery + limit over the day | Battery/contract inputs, van heatmap, flags table, area card | A battery and an off-peak window change the plan and results |
-| **10–13 h** | Reality check | Battery sweep, performance | Explanation agent + fallback, sweeps charts, approve/reject, CSV | "How big a battery do I need?" answered on screen |
+| **10–13 h** | Reality check | Battery sweep, performance | Agree LLM provider; explanation agent + fallback, sweeps charts, approve/reject, CSV | "How big a battery do I need?" answered on screen |
 | **13–16 h** | Data edge cases, tests | Edge cases (impossible, timeout) | Polish, reality-check chart, fallback video | All tests pass; difficult cases handled honestly |
 | **16–18 h** | Rehearse | Rehearse | Rehearse | The demo runs smoothly twice in a row |
 
 If time gets tight, protect this order: **GLASS → scheduler → replay → dashboard → battery → postcode card → explanation agent → reality check**.
+
+While building, everyone uses one shared **development scenario**: category `009`, January 2023, level 1, 100 kW, 10 vans with the §4.4 defaults. The **demo scenario** (sector, month, level, limit, vans, postcode) is chosen once the app works, from what the sweeps show.
 
 ## 10. Four-minute demo
 
@@ -625,7 +648,7 @@ If time gets tight, protect this order: **GLASS → scheduler → replay → das
 3. **2:10–3:20, Smriti:** The explanation agent explains the plan. In the van table, move two vans' return to 20:00 → rerun → the agent explains what changed. Ask "why is the risk highest at 18:00?". Show when the risk happens.
 4. **3:20–4:00, Team:** The manager approves; nothing is switched automatically. Limitations in one breath. Close: "We don't test your plan on one made-up day. We test it on every realistic day."
 
-All numbers above are placeholders until the pipeline runs. Use a fixed demo seed and keep a recorded fallback video in case the live demo or the API fails. Never promise an improvement before the calculation shows it.
+All numbers above are placeholders: the demo scenario is chosen after the app is built (§9). Use a fixed demo seed and keep a recorded fallback video in case the live demo or the API fails. Never promise an improvement before the calculation shows it.
 
 ## 11. Stretch goals
 
@@ -650,11 +673,17 @@ Say these out loud in the pitch and show them in the app:
 
 ## 13. Setup
 
-Install Python if needed (Windows):
+Install Python and Node.js if needed (Windows):
 
 ```bash
 winget install --id Python.Python.3.11 -e
 ```
+
+```bash
+winget install --id OpenJS.NodeJS.LTS -e
+```
+
+**Backend:**
 
 ```bash
 python -m venv .venv
@@ -668,7 +697,17 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-`requirements.txt` (to create): `polars`, `pyarrow`, `numpy`, `ortools`, `pydantic`, `pytest`, plus the SDK of the chosen LLM provider and whatever the UI framework needs.
+`requirements.txt` is filled in as we build (see AGENTS.md). Expected: `polars`, `pyarrow`, `numpy`, `ortools`, `pydantic`, `fastapi`, `uvicorn`, `pytest`, plus the SDK of the chosen LLM provider.
+
+**Frontend:**
+
+```bash
+cd ui
+```
+
+```bash
+npm install
+```
 
 **Data downloads** (into `data/raw/`, which is git-ignored):
 
@@ -699,7 +738,17 @@ python scripts/prepare_liander_sbi.py --sbi 49 52 --months 2023-01
 pytest
 ```
 
-The command to run the dashboard depends on the UI framework (§8.1). API keys go in `.env`.
+**Run the app** (two terminals):
+
+```bash
+uvicorn api.main:app --reload
+```
+
+```bash
+cd ui && npm run dev
+```
+
+API keys go in `.env`.
 
 ## 14. References and attribution
 
