@@ -167,7 +167,7 @@ def explain_route(request: ExplanationRequest):
                 "the comparison is not independent validation. Battery replay clips negative net demand without updating battery state per window.")
 
     return answer_question(request.scenario, plan, report, baseline, limit, vans,
-                           request.question, [item.model_dump() for item in request.history], previous, compare)
+                           request.question, [item.model_dump() for item in request.history], previous, compare, request.provider)
 
 
 def comparison_metrics(scenario: Scenario) -> ComparisonMetrics:

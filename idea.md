@@ -355,7 +355,7 @@ For the chosen category and month, compare GLASS (all samples) with Liander's 20
 
 ### 5.11 Evidence-based explanations and Groq
 
-The dashboard shows the decision, replay evidence, solver status and assumptions. The demand chart allows inspection of each planning slot: baseline, van load, battery charge/discharge, rounded limit and headroom. Tight headroom is an observation, not proof of the solver's causal reasoning. Most frequent breach timing and the time of the worst single overshoot are separate.
+The explanation tab lets the user choose Groq or the locally installed Ollama model `qwen3.5:9b` for subsequent questions or optimization. Both use the same computed facts and evidence checks; local answers may take longer and fall back if Ollama is unavailable. Groq receives synthetic facts and recent questions over the network; local Qwen runs on this machine. The dashboard shows the decision, replay evidence, solver status and assumptions. The demand chart allows inspection of each planning slot: baseline, van load, battery charge/discharge, rounded limit and headroom. Tight headroom is an observation, not proof of the solver's causal reasoning. Most frequent breach timing and the time of the worst single overshoot are separate.
 
 `POST /what-if` reruns a scenario with one change: +10 kW connection limit, departures one hour later, or adding/removing a battery. It preserves the fleet's individual arrival times and energy requirements and compares unmet energy, vans served, replay risk, worst overshoot and solver status on the same windows. These comparisons are exploratory; equally optimal plans can differ and selecting a scenario on replay data is not independent validation. Battery replay retains its documented clipping limitation.
 
