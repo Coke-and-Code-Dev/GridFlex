@@ -119,7 +119,8 @@ Joshua’s data and replay code is on `main`. The scheduler and sweeps below are
 | `GET /reality` | `compare_all(category, month, level)` → list of `RealityCheck`; `summary(check)` for the sentence | see §4 below |
 | `POST /optimize` | `build_windows` / `split_by_sample` / `cautious_baseline`, then Sunil's `optimize()`, then `replay()` | `ScheduleResult` + `ReplayReport` (scheduler available on PR #11) |
 | `POST /sweep` | `charger_sweep()` or `battery_sweep()` | implemented on PR #11; see integration example below |
-| `POST /explain` | `explain.py` | not implemented yet |
+| `POST /explain` | `explain_with_source()` | Groq selects validated fact IDs; template fallback; available on `sunil-explainable-ai` |
+| `POST /what-if` | one-change optimization + replay | exploratory comparison, available on `sunil-explainable-ai` |
 
 Imports: `gridflex.profiles`, `gridflex.grid_area` (`lookup`, `map_date`), `gridflex.reality`, `gridflex.replay`.
 
@@ -249,7 +250,7 @@ Demo postcodes (idea.md §9): `1181KJ` Amstelveen (red, 29 requests, 5.8 MW, fix
 
 - The wireframe landed in `wireframe/`, while AGENTS.md and idea.md say the app lives in `ui/`. Not Joshua's call: please settle it (and update AGENTS.md) so nobody scaffolds a second app.
 - `requirements.txt` on PR #11 also pins `ortools`; install the branch requirements before importing the scheduler.
-- The explanation agent may only describe numbers the code computed. `explain.py` needs a non-LLM fallback and the provider stays in `call_llm()` (AGENTS.md).
+- The explanation agent describes only computed facts. Groq selects validated fact IDs in `call_llm()`; templates render all numbers and act as the fallback. The provider key is stored in the ignored local `.env`, and must not be committed.
 - Attributions to show in the app: GLASS (CDLA-Permissive-2.0), "Netbeheer Nederland, capaciteitskaart" with the map date, "Liander (2023)". Footer: "Synthetic data and simulation. Not a grid-operator approval."
 
 ---

@@ -48,3 +48,9 @@ npm run dev
 - TypeScript
 - React
 - Tailwind CSS
+
+## Explainable AI and Groq
+
+The API reads `GROQ_API_KEY` from its environment or the Git-ignored root `.env` file. Set it locally and restart the API after changing the key. Never commit the key. The default model is `openai/gpt-oss-120b`; `GROQ_MODEL` may override it server-side. Groq receives the user's explanation question and computed synthetic evidence, and selects relevant fact IDs. The server validates IDs and renders only computed statements. If Groq is unavailable or returns invalid output, the deterministic template is used.
+
+After a run, use the demand-chart slider to inspect a planning interval and the Explain this decision section to run one-change comparisons. Comparisons use synthetic windows and may vary across equally optimal schedules. Battery replay clips negative net demand without recomputing battery state per window.

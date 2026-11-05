@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride } from "@/types";
+import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type WhatIfAction, type WhatIfResponse } from "@/types";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
 import { Help, helpText } from "@/components/gridflex/Help";
@@ -106,6 +106,11 @@ function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [explanationSource, setExplanationSource] = useState<"groq" | "template">("template");
+  const [selectedSlot, setSelectedSlot] = useState(24);
+  const [whatIf, setWhatIf] = useState<WhatIfResponse>();
+  const [whatIfBusy, setWhatIfBusy] = useState(false);
+  const [whatIfError, setWhatIfError] = useState("");
   const [q, setQ] = useState("");
   const [qa, setQa] = useState<{ question: string; text: string }[]>([]);
   const [asking, setAsking] = useState(false);
@@ -130,7 +135,7 @@ function Dashboard() {
   const set = <K extends keyof Scenario>(key: K, value: Scenario[K]) => setCfg((old) => ({ ...old, [key]: value }));
 
   async function optimize() {
-    if (busy || asking || sweeping) return;
+    if (busy || asking || sweeping || whatIfBusy) return;
     const snapshot = cfg;
     const previous = run?.cfg;
     setBusy(true);
@@ -139,6 +144,9 @@ function Dashboard() {
       const result = await api<OptimizeResult>("/optimize", snapshot);
       setRun({ cfg: snapshot, previous, result });
       setExplanation("");
+      setWhatIf(undefined);
+      setWhatIfError("");
+      setSelectedSlot(24);
       setDecision("");
       setQa([]);
       setChecks([]);
@@ -146,9 +154,9 @@ function Dashboard() {
       const params = new URLSearchParams({ category: snapshot.category, month: snapshot.month, level: String(snapshot.level) });
       await Promise.allSettled([
         api<Reality[]>(`/reality?${params}`).then(setChecks),
-        api<{ text: string }>("/explain", { scenario: snapshot, previous })
-          .then(({ text }) => setExplanation(text))
-          .catch(() => setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`)),
+        api<ExplanationResponse>("/explain", { scenario: snapshot, previous })
+          .then(({ text, source }) => { setExplanation(text); setExplanationSource(source); })
+          .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); }),
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Optimization failed.");
@@ -158,7 +166,7 @@ function Dashboard() {
   }
 
   async function ask(question: string) {
-    if (!run || busy || asking || !question.trim()) return;
+    if (!run || busy || asking || whatIfBusy || !question.trim()) return;
     setAsking(true);
     setQ("");
     try {
@@ -171,8 +179,22 @@ function Dashboard() {
     }
   }
 
+  async function compareWhatIf(action: WhatIfAction) {
+    if (!run || whatIfBusy || busy) return;
+    setWhatIfBusy(true);
+    setWhatIfError("");
+    setWhatIf(undefined);
+    try {
+      setWhatIf(await api<WhatIfResponse>("/what-if", { scenario: run.cfg, action }));
+    } catch (err) {
+      setWhatIfError(err instanceof Error ? err.message : "Comparison failed.");
+    } finally {
+      setWhatIfBusy(false);
+    }
+  }
+
   async function sweep() {
-    if (!run || sweeping || busy) return;
+    if (!run || sweeping || busy || whatIfBusy) return;
     setSweeping(true);
     setError("");
     try {
@@ -306,7 +328,7 @@ function Dashboard() {
               <Hint label="Scenario presets" /><button className={btnGhost} onClick={() => setCfg(initial)}>Development scenario</button>
               <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65 })}>Tight connection</button>
               <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65, battery_kwh: 60, battery_kw: 20 })}>Battery scenario</button>
-              <button className={btnPrimary} disabled={busy || asking || sweeping} onClick={optimize}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
+              <button className={btnPrimary} disabled={busy || asking || sweeping || whatIfBusy} onClick={optimize}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
             </div>
             {error && <p role="alert" className="text-destructive sm:col-span-2">{error}</p>}
           </div>
@@ -342,7 +364,7 @@ function Dashboard() {
             </div>
             <div className="panel mt-4 p-4">
               <h3 className="font-semibold">Demand chart <Hint label="Demand chart" /></h3>
-              <LoadChart title="Planning demand, noon to noon (kW)" limit={r.limit_kw} band={r.normal_band_kw}
+              <LoadChart title="Planning demand, noon to noon (kW)" limit={r.limit_kw} band={r.normal_band_kw} selectedSlot={selectedSlot} onSelectSlot={setSelectedSlot}
                 stacked={[r.baseline_kw, r.baseline_kw.map((kw, slot) => kw + sum(s.power.map((van) => (van[slot] ?? 0))))]}
                 series={[
                   { label: "Cautious baseline", data: r.baseline_kw, cls: "stroke-muted-foreground" },
@@ -353,6 +375,19 @@ function Dashboard() {
                     { label: "Battery discharge", data: s.battery_discharge, cls: "stroke-success" },
                   ] : []),
                 ]} />
+              <p className="mt-3 text-sm text-muted-foreground">Click the chart or use the slider to inspect a 15-minute planning interval.</p>
+              <label className="mt-3 block text-sm" htmlFor="explain-slot">Selected time: <strong>{time(selectedSlot)}</strong></label>
+              <input id="explain-slot" aria-label="Select planning interval" className="w-full accent-primary" type="range" min={0} max={95} step={1} value={selectedSlot} onChange={(e) => setSelectedSlot(Number(e.target.value))} />
+              <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3" aria-live="polite">
+                <Row k="Cautious baseline" v={`${(r.baseline_kw[selectedSlot] ?? 0).toFixed(2)} kW`} />
+                <Row k="Rounded baseline used by solver" v={`${Math.ceil(r.baseline_kw[selectedSlot] ?? 0)} kW`} />
+                <Row k="Van charging" v={`${sum(s.power.map((van) => van[selectedSlot] ?? 0)).toFixed(2)} kW`} />
+                <Row k="Battery charge / discharge" v={`${s.battery_charge[selectedSlot] ?? 0} / ${s.battery_discharge[selectedSlot] ?? 0} kW`} />
+                <Row k="Conservative planned net demand" v={`${(Math.ceil(r.baseline_kw[selectedSlot] ?? 0) + sum(s.power.map((van) => van[selectedSlot] ?? 0)) + (s.battery_charge[selectedSlot] ?? 0) - (s.battery_discharge[selectedSlot] ?? 0)).toFixed(2)} kW`} />
+                <Row k="Modeled limit / rounded limit" v={`${(r.limit_kw[selectedSlot] ?? 0).toFixed(2)} / ${Math.floor(r.limit_kw[selectedSlot] ?? 0)} kW`} />
+                <Row k="Conservative headroom" v={`${(Math.floor(r.limit_kw[selectedSlot] ?? 0) - Math.ceil(r.baseline_kw[selectedSlot] ?? 0) - sum(s.power.map((van) => van[selectedSlot] ?? 0)) - (s.battery_charge[selectedSlot] ?? 0) + (s.battery_discharge[selectedSlot] ?? 0)).toFixed(2)} kW`} />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">This is the planning profile, not a replayed or measured day. Headroom can be negative when the baseline already exceeds the limit; a tight slot alone does not prove why the solver chose it.</p>
             </div>
             <div className="panel mt-4 p-4">
               <h3 className="font-semibold">Van schedule <Hint label="Van schedule" /></h3>
@@ -367,7 +402,7 @@ function Dashboard() {
           </Section>
           <Section id="explanation" n={5} title="Explanation">
             <article className="panel space-y-4 p-6">
-              <p className="text-sm text-muted-foreground">Template explanation from this run’s computed results <Hint label="Explanation and follow-up" /></p>
+              <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq-selected evidence from this run’s computed results" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
               <p aria-live="polite">{explanation || "Preparing explanation…"}</p>
               <div className="flex flex-wrap gap-2">
                 {["When is risk highest?", "Which vans are short?", "How did the battery help?"].map((question) =>
@@ -381,6 +416,36 @@ function Dashboard() {
               </form>
             </article>
           </Section>
+          <section className="panel space-y-4 p-6" aria-labelledby="decision-evidence">
+            <h2 id="decision-evidence" className="text-xl font-semibold">Explain this decision</h2>
+            <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
+            <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
+            <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
+            <div className="flex flex-wrap gap-2">
+              <button className={btnGhost} onClick={() => { const slot = report.over_by_slot.indexOf(Math.max(...report.over_by_slot)); setSelectedSlot(Math.max(0, slot)); document.getElementById("compare")?.scrollIntoView({ behavior: "smooth" }); }} disabled={!report.over_by_slot.some((n) => n > 0)}>Inspect most frequent breach time</button>
+              <button className={btnGhost} disabled={!report.worst_overshoot_time} onClick={() => { const [hours, minutes] = report.worst_overshoot_time.split(":").map(Number); setSelectedSlot((((hours ?? 0) * 60 + (minutes ?? 0) - 720 + 1440) % 1440) / 15); document.getElementById("compare")?.scrollIntoView({ behavior: "smooth" }); }}>Inspect worst overshoot time</button>
+              <span className="text-xs text-muted-foreground self-center">The most frequent breach slot may differ from the time of the single worst overshoot. The chart shows the planning profile at that clock time, not the replayed worst-case day.</span>
+            </div>
+            <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
+            <p className="text-sm text-muted-foreground">Each option reruns the optimizer and replay on the same synthetic windows. Comparisons are exploratory; equally optimal schedules can differ.</p>
+            <div className="flex flex-wrap gap-2">
+              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("extra_capacity")}>Add 10 kW of capacity</button>
+              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("later_departure")}>Depart one hour later</button>
+              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("battery")}>{run.cfg.battery_kwh ? "Remove configured battery" : "Add 60 kWh battery"}</button>
+            </div>
+            {whatIfBusy && <p role="status">Recalculating both scenarios…</p>}
+            {whatIfError && <p role="alert" className="text-destructive">{whatIfError}</p>}
+            {whatIf && <div className="overflow-x-auto" aria-live="polite"><p className="mb-2">{whatIf.description}</p>
+              <table className="w-full text-left text-sm"><thead><tr><th>Metric</th><th>Current</th><th>Changed</th></tr></thead><tbody>
+                <tr><th>Vans fully charged</th><td>{whatIf.current.vans_full}/{whatIf.current.vans_total}</td><td>{whatIf.changed.vans_full}/{whatIf.changed.vans_total}</td></tr>
+                <tr><th>Unmet energy</th><td>{whatIf.current.unmet_kwh.toFixed(2)} kWh</td><td>{whatIf.changed.unmet_kwh.toFixed(2)} kWh</td></tr>
+                <tr><th>Synthetic windows over limit</th><td>{whatIf.current.days_over_pct.toFixed(2)}%</td><td>{whatIf.changed.days_over_pct.toFixed(2)}%</td></tr>
+                <tr><th>Worst overshoot</th><td>{whatIf.current.worst_overshoot_kw.toFixed(2)} kW</td><td>{whatIf.changed.worst_overshoot_kw.toFixed(2)} kW</td></tr>
+                <tr><th>Solver status</th><td>{whatIf.current.status}</td><td>{whatIf.changed.status}</td></tr>
+              </tbody></table>
+              {(whatIf.scenario.battery_kwh > 0 || run.cfg.battery_kwh > 0) && <p className="mt-2 text-xs text-muted-foreground">Battery replay clips negative net demand without recalculating battery state per window; this comparison is exploratory.</p>}
+            </div>}
+          </section>
           <Section id="edge-case" n={6} title="Risk and sensitivity">
             <div className="panel space-y-2 p-5">
               <Row k="Worst overshoot time" v={report.worst_overshoot_time || "No breaches"} />
@@ -426,5 +491,5 @@ function Dashboard() {
 }
 
 function Row({ k, v }: { k: string; v: string }) {
-  return <div className="flex justify-between border-b border-border pb-2"><span className="text-muted-foreground">{k}<Hint label={k} /></span><span className="font-mono">{v}</span></div>;
+  return <div className="flex justify-between border-b border-border pb-2"><span className="text-muted-foreground">{k}{helpText[k] && <Hint label={k} />}</span><span className="font-mono">{v}</span></div>;
 }

@@ -1,8 +1,8 @@
 const W = 720, H = 260, P = 36;
 
-export function LoadChart({ series, limit, title, band, stacked, startHour = 12 }: {
+export function LoadChart({ series, limit, title, band, stacked, startHour = 12, selectedSlot, onSelectSlot }: {
   series: { label: string; data: number[]; cls: string; dash?: string }[];
-  limit?: number[]; title: string; band?: [number[], number[]]; stacked?: [number[], number[]]; startHour?: number;
+  limit?: number[]; title: string; band?: [number[], number[]]; stacked?: [number[], number[]]; startHour?: number; selectedSlot?: number; onSelectSlot?: (slot: number) => void;
 }) {
   const slots = Math.max(...series.map(({ data }) => data.length), 2);
   const validSeries = series.filter(({ data }) => data.length > 0 && data.every(Number.isFinite));
@@ -13,7 +13,12 @@ export function LoadChart({ series, limit, title, band, stacked, startHour = 12 
   const area = (values: [number[], number[]]) => [...points(values[1]), ...points(values[0]).reverse()].join(" ");
   return (
     <figure>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} className={`w-full ${onSelectSlot ? "cursor-crosshair" : ""}`}
+        onClick={onSelectSlot ? (event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const xView = (event.clientX - rect.left) * W / rect.width;
+          onSelectSlot(Math.max(0, Math.min(slots - 1, Math.round((xView - P) / (W - P * 2) * (slots - 1)))));
+        } : undefined}>
         {band && <polygon points={area(band)} className="fill-muted-foreground/20" />}
         {stacked && <polygon points={area(stacked)} className="fill-primary/20" />}
         {[0, 0.5, 1].map((t) => (
@@ -28,6 +33,7 @@ export function LoadChart({ series, limit, title, band, stacked, startHour = 12 
         {validSeries.map((s) => (
           <polyline key={s.label} fill="none" strokeWidth={2.5} strokeDasharray={s.dash} className={s.cls} points={s.data.map((v, i) => `${x(i)},${y(v)}`).join(" ")} />
         ))}
+        {selectedSlot !== undefined && <line x1={x(selectedSlot)} x2={x(selectedSlot)} y1={P} y2={H-P} className="stroke-primary" strokeWidth={1.5} strokeDasharray="3 3" />}
         {limit && <polyline fill="none" points={points(limit).join(" ")} className="stroke-destructive" strokeWidth={1.5} strokeDasharray="6 4" />}
       </svg>
       {validSeries.length !== series.length && <p role="status" className="text-sm text-muted-foreground">Some chart data is unavailable. Rerun after restarting the GridFlex API.</p>}
