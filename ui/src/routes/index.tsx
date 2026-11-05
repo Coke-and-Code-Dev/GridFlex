@@ -3,6 +3,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride } from "@/types";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
+import { Help, helpText } from "@/components/gridflex/Help";
+
+function Hint({ label }: { label: string }) {
+  return <Help label={label} text={helpText[label] ?? ""} />;
+}
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -52,10 +58,10 @@ function Field({ label, value, onChange, min, max, step = 1, unit }: { label: st
   const id = label.replace(/\W/g, "");
   return (
     <div>
-      <label htmlFor={id} className="flex justify-between text-sm text-muted-foreground">
-        <span>{label}</span>
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span><label htmlFor={id}>{label}</label><Hint label={label} /></span>
         <span className="font-mono text-foreground">{value} {unit}</span>
-      </label>
+      </div>
       <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="mt-2 w-full accent-primary" />
     </div>
   );
@@ -65,7 +71,7 @@ function Stat({ label, value, tone = "default" }: { label: string; value: ReactN
   const c = tone === "bad" ? "text-destructive" : tone === "good" ? "text-success" : "text-foreground";
   return (
     <div className="panel p-4">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}<Hint label={label} /></div>
       <div className={`mt-1 font-mono text-2xl font-semibold ${c}`}>{value}</div>
     </div>
   );
@@ -245,8 +251,8 @@ function Dashboard() {
         {/* 02 Configure */}
         <Section id="configure" n={2} title="Configure your depot">
           <div className="panel grid gap-5 p-6 sm:grid-cols-2">
-            <label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label>
-            <label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
+            <div><label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label><Hint label="Postcode" /></div>
+            <div><label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
               onChange={(e) => {
                 const c = conditions.find((item) => `${item.category}/${item.month}/${item.level}` === e.target.value);
                 if (c) setCfg((old) => ({ ...old, category: c.category, month: c.month, level: c.level }));
@@ -256,7 +262,7 @@ function Dashboard() {
                   {c.category === "009" ? "Transport and storage" : c.category === "008" ? "Wholesale and retail" : c.category} · {c.month} · {c.level_value_kwh == null ? `Level ${c.level}` : `≈ ${(c.level_value_kwh / 1000).toFixed(1)} MWh/month`}
                 </option>
               ))}
-            </select></label>
+            </select></label><Hint label="Business profile" /></div>
             {fields.map(([label, key, min, max, step, unit]) =>
               <Field key={key} label={label} value={cfg[key]} min={min} max={max} step={step} unit={unit} onChange={(value) => {
                 if (key === "vans") setCfg((old) => ({
@@ -269,6 +275,7 @@ function Dashboard() {
             {(["arrival", "departure", "off_peak"] as const).map((key) => (
               <fieldset key={key} className="flex flex-wrap gap-3">
                 <legend>{key === "off_peak" ? "Off-peak window" : `${key} window`}</legend>
+                <Hint label={key === "off_peak" ? "Off-peak window" : key === "arrival" ? "Arrival window" : "Departure window"} />
                 {([0, 1] as const).map((i) => <label key={i}>{i ? "End" : "Start"} <input type="time" step={900} value={cfg[key][i]}
                   className="rounded border border-input bg-background p-1"
                   onChange={(e) => set(key, i ? [cfg[key][0], e.target.value] : [e.target.value, cfg[key][1]])} /></label>)}
@@ -277,7 +284,7 @@ function Dashboard() {
             <Field label="Energy per van" value={cfg.energy_kwh[1]} min={5} max={120} unit="kWh maximum" onChange={(value) => set("energy_kwh", [Math.max(0, value - 10), value])} />
             <details className="sm:col-span-2">
               <summary className="cursor-pointer">Advanced · edit individual vans</summary>
-              <p className="my-2 text-sm text-muted-foreground">Run Optimize once to generate van requests. Times are slots from noon, in 15-minute increments.</p>
+              <p className="my-2 text-sm text-muted-foreground"><Hint label="Individual vans" /> Run Optimize once to generate van requests. Times are slots from noon, in 15-minute increments.</p>
               {r && <div className="overflow-x-auto"><table className="w-full text-left text-sm">
                 <thead><tr><th>Van</th><th>Arrival slot</th><th>Departure slot</th><th>Energy (kWh)</th><th>Charger (kW)</th></tr></thead>
                 <tbody>{r.vans.slice(0, cfg.vans).map(({ name, ...van }, index) => (
@@ -296,15 +303,15 @@ function Dashboard() {
               {Object.keys(cfg.overrides ?? {}).length > 0 && <button className={btnGhost} onClick={() => set("overrides", {})}>Clear van overrides</button>}
             </details>
             <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <button className={btnGhost} onClick={() => setCfg(initial)}>Development scenario</button>
+              <Hint label="Scenario presets" /><button className={btnGhost} onClick={() => setCfg(initial)}>Development scenario</button>
               <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65 })}>Tight connection</button>
               <button className={btnGhost} onClick={() => setCfg({ ...initial, vans: 14, limit_kw: 65, battery_kwh: 60, battery_kw: 20 })}>Battery scenario</button>
-              <button className={btnPrimary} disabled={busy || asking || sweeping} onClick={optimize}>{busy ? "Running…" : "Optimize"}</button>
+              <button className={btnPrimary} disabled={busy || asking || sweeping} onClick={optimize}>{busy ? "Running…" : "Optimize"}</button><Hint label="Optimize" />
             </div>
             {error && <p role="alert" className="text-destructive sm:col-span-2">{error}</p>}
           </div>
           <article className="panel mt-4 p-5">
-            <h3 className="font-semibold">Your area</h3>
+            <h3 className="font-semibold">Your area <Hint label="Your area" /></h3>
             {area ? <>
               <p className={area.status === "shortage" ? "text-destructive" : area.status === "available" ? "text-success" : "text-primary"}>{area.area_name ?? "No information"} · {area.status.replaceAll("_", " ")}</p>
               <p>Waiting list: {area.queue_requests ?? "No information"} requests · {area.queue_mw?.toFixed(2) ?? "No information"} MW. Expected fix: {area.expected_fix_year ?? "No information"}.</p>
@@ -326,7 +333,7 @@ function Dashboard() {
             </div>
           </Section>
           <Section id="compare" n={4} title="Compare charging plans">
-            <p className="mb-4" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans · {run.cfg.month}</p>
+            <p className="mb-4" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans · {run.cfg.month} <Hint label="Verdict and solver" /></p>
             <div className="grid gap-4 sm:grid-cols-4">
               <Stat label="Windows over limit" value={`${report.days_over_pct.toFixed(2)}%`} tone={report.days_over_pct ? "bad" : "good"} />
               <Stat label="Worst overshoot" value={`${report.worst_overshoot_kw.toFixed(2)} kW`} />
@@ -334,6 +341,7 @@ function Dashboard() {
               <Stat label="kWh short" value={sum(s.unmet_kwh).toFixed(2)} tone={sum(s.unmet_kwh) ? "bad" : "good"} />
             </div>
             <div className="panel mt-4 p-4">
+              <h3 className="font-semibold">Demand chart <Hint label="Demand chart" /></h3>
               <LoadChart title="Planning demand, noon to noon (kW)" limit={r.limit_kw} band={r.normal_band_kw}
                 stacked={[r.baseline_kw, r.baseline_kw.map((kw, slot) => kw + sum(s.power.map((van) => (van[slot] ?? 0))))]}
                 series={[
@@ -347,18 +355,19 @@ function Dashboard() {
                 ]} />
             </div>
             <div className="panel mt-4 p-4">
+              <h3 className="font-semibold">Van schedule <Hint label="Van schedule" /></h3>
               <Heatmap schedule={s.power} needs={r.vans.map((van) => Math.ceil(van.energy_kwh * 4) / 4)} chargerKw={run.cfg.charger_kw} />
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button className={btnPrimary} aria-pressed={decision === "approved"} onClick={() => setDecision("approved")}>Approve plan</button>
-              <button className={btnGhost} aria-pressed={decision === "rejected"} onClick={() => setDecision("rejected")}>Reject plan</button>
-              <button className={btnGhost} onClick={exportCsv}>Download schedule (CSV)</button>
+              <button className={btnGhost} aria-pressed={decision === "rejected"} onClick={() => setDecision("rejected")}>Reject plan</button><Hint label="Approve / Reject" />
+              <button className={btnGhost} onClick={exportCsv}>Download schedule (CSV)</button><Hint label="Download schedule (CSV)" />
             </div>
             {decision && <p role="status">Plan {decision} for this demo run.</p>}
           </Section>
           <Section id="explanation" n={5} title="Explanation">
             <article className="panel space-y-4 p-6">
-              <p className="text-sm text-muted-foreground">Template explanation from this run’s computed results</p>
+              <p className="text-sm text-muted-foreground">Template explanation from this run’s computed results <Hint label="Explanation and follow-up" /></p>
               <p aria-live="polite">{explanation || "Preparing explanation…"}</p>
               <div className="flex flex-wrap gap-2">
                 {["When is risk highest?", "Which vans are short?", "How did the battery help?"].map((question) =>
@@ -378,13 +387,14 @@ function Dashboard() {
               <Row k="Baseline alone over limit" v={`${report.baseline_alone_over_pct.toFixed(2)}%`} />
               <Row k="Blocked planning slots" v={s.blocked_slots.map(time).join(", ") || "None"} />
               <Row k="Vans with shortfalls" v={report.vans_short.filter(([, short]) => short > 0).map(([name, short]) => `${name}: ${short.toFixed(2)} kWh`).join(", ") || "None"} />
+              <h3 className="font-semibold">Breach timing <Hint label="Breach timing chart" /></h3>
               <LoadChart title="Number of replay windows breaching the limit by time" series={[{ label: "Windows over limit", data: report.over_by_slot, cls: "stroke-destructive" }]} />
-              {!!run.cfg.battery_kwh && <LoadChart title="Battery stored energy (kWh)" series={[{ label: "Stored energy", data: s.battery_soc_kwh, cls: "stroke-success" }]} />}
+              {!!run.cfg.battery_kwh && <div><h3 className="font-semibold">Battery stored energy <Hint label="Battery chart" /></h3><LoadChart title="Battery stored energy (kWh)" series={[{ label: "Stored energy", data: s.battery_soc_kwh, cls: "stroke-success" }]} /></div>}
               {!!run.cfg.battery_kwh && <p className="text-sm">Replay clips negative net demand without recalculating battery state for each window.</p>}
               <p className="text-sm">15-minute slots. The solver rounds the baseline up and limit down to integer kW, and energy demand up to 0.25 kWh.</p>
             </div>
             <div className="panel mt-4 space-y-4 p-5">
-              <button className={btnPrimary} onClick={sweep} disabled={busy || sweeping}>{sweeping ? "Running sweeps…" : "Run exploratory sweeps"}</button>
+              <button className={btnPrimary} onClick={sweep} disabled={busy || sweeping}>{sweeping ? "Running sweeps…" : "Run exploratory sweeps"}</button><Hint label="Exploratory sweeps" />
               {error && <p role="alert" className="text-destructive">{error}</p>}
               {sweeps.map(({ label, rows }) => <div key={label}><h3 className="font-semibold">{label}</h3>
                 <table className="w-full text-left text-sm"><thead><tr><th>Test point</th><th>Windows over</th><th>kWh short</th><th>Solver</th></tr></thead>
@@ -399,7 +409,7 @@ function Dashboard() {
               </div>)}
             </div>
             <div className="panel mt-4 space-y-4 p-5">
-              <h3 className="font-semibold">Reality check · GLASS and Liander (2023)</h3>
+              <h3 className="font-semibold">Reality check · GLASS and Liander (2023) <Hint label="Reality check" /></h3>
               {!checks.length && <p>No comparison available for this run.</p>}
               {checks.map((check) => <div key={check.sbi_code}><p>{check.summary}</p>
                 <LoadChart title={`Typical working day ${check.sbi_code}, midnight to midnight (relative load)`} startHour={0} band={[check.glass_band[0], check.glass_band[2]]}
@@ -416,5 +426,5 @@ function Dashboard() {
 }
 
 function Row({ k, v }: { k: string; v: string }) {
-  return <div className="flex justify-between border-b border-border pb-2"><span className="text-muted-foreground">{k}</span><span className="font-mono">{v}</span></div>;
+  return <div className="flex justify-between border-b border-border pb-2"><span className="text-muted-foreground">{k}<Hint label={k} /></span><span className="font-mono">{v}</span></div>;
 }
