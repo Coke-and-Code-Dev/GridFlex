@@ -130,6 +130,19 @@ def test_scheduler_matches_brute_force_for_a_small_case():
     assert (round(result.unmet_kwh[0]*4), result.peak_kw) == min(candidates)
 
 
+def test_same_inputs_give_the_same_plan():
+    from gridflex.scheduler import Battery
+    baseline = np.full(96, 40.0)
+    baseline[20:40] = 70.0
+    limit = limit_profile(100, 20)
+    vans = generate_fleet(12)
+    runs = [optimize(baseline, limit, vans, Battery(40, 15)) for _ in range(3)]
+    for other in runs[1:]:
+        assert np.array_equal(other.power, runs[0].power)
+        assert np.array_equal(other.battery_charge, runs[0].battery_charge)
+        assert np.array_equal(other.battery_discharge, runs[0].battery_discharge)
+
+
 def test_oversized_battery_remains_within_limits():
     from gridflex.scheduler import Battery
     r = optimize(np.full(96, 40.), np.full(96, 100.), [], Battery(1000, 10))

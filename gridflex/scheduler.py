@@ -117,6 +117,10 @@ def optimize(baseline: np.ndarray, limit: np.ndarray, vans: list[Van],
         model.minimize(objective)
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = time_limit_s
+        # One worker keeps the search order fixed, so the same inputs give the same
+        # plan on every run and laptop; with parallel workers, equally optimal plans
+        # (and their replay risk) changed with timing and core count.
+        solver.parameters.num_workers = 1
         status = solver.solve(model)
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             if last_solver is None:
