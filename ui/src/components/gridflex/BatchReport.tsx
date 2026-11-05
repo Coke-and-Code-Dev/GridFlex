@@ -1,54 +1,9 @@
-import { useState } from "react";
-import { simulatePortfolio, type PortfolioSite } from "@/types";
+import type { PortfolioSite } from "@/types";
+import type { Portfolio } from "@/hooks/use-portfolio";
 import { Heatmap, LoadChart } from "@/components/gridflex/Charts";
 import { slotClock } from "@/lib/schedule-answer";
 
 type CompletedSite = Exclude<PortfolioSite, { error: string }>;
-
-export function usePortfolio(onStart: () => void) {
-  const [running, setRunning] = useState(false);
-  const [filename, setFilename] = useState("");
-  const [total, setTotal] = useState(0);
-  const [sites, setSites] = useState<PortfolioSite[]>([]);
-  const [report, setReport] = useState<Blob>();
-  const [error, setError] = useState("");
-
-  async function generate(file: File) {
-    if (running) return;
-    setRunning(true);
-    onStart();
-    setFilename(file.name);
-    setTotal(0);
-    setSites([]);
-    setReport(undefined);
-    setError("");
-    try {
-      const pdf = await simulatePortfolio(await file.text(), (event) => {
-        if (event.type === "start") setTotal(event.total);
-        else setSites((current) => [...current, event.result]);
-      });
-      setReport(pdf);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate the report.");
-    } finally {
-      setRunning(false);
-    }
-  }
-
-  function download() {
-    if (!report) return;
-    const url = URL.createObjectURL(report);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "gridflex-portfolio.pdf";
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  return { running, filename, total, sites, report, error, generate, download };
-}
-
-type Portfolio = ReturnType<typeof usePortfolio>;
 
 export function PortfolioUpload({ portfolio }: { portfolio: Portfolio }) {
   return (
@@ -69,8 +24,7 @@ export function PortfolioUpload({ portfolio }: { portfolio: Portfolio }) {
 }
 
 export function PortfolioResults({ portfolio, canOpenSite, onOpenSite }: { portfolio: Portfolio; canOpenSite: boolean; onOpenSite: (site: CompletedSite) => void }) {
-  const { running, filename, total, sites, report, error, download } = portfolio;
-  const [selected, setSelected] = useState("");
+  const { running, filename, total, sites, report, error, download, selected, setSelected } = portfolio;
   const completed = sites.filter((site): site is CompletedSite => !("error" in site));
   const failures = sites.length - completed.length;
   const fullyCharged = completed.reduce((sum, site) => sum + site.full, 0);
