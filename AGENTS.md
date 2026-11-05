@@ -59,7 +59,7 @@ python -m venv .venv
 pip install -r requirements.txt
 python scripts/extract_glass.py --categories 009 --months 2023-01 --levels 0 1 2 3
 python scripts/prepare_grid_map.py
-python scripts/prepare_liander_sbi.py --sbi 49 52 --months 2023-01
+python scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01
 pytest
 uvicorn api.main:app --reload   # API
 cd ui && npm install && npm run dev   # dashboard, in a second terminal
