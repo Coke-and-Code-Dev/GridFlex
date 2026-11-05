@@ -28,8 +28,7 @@ export const Route = createFileRoute("/")({
 
 const TABS = [
   ["welcome", "Welcome"], ["configure", "Setup"], ["immediate", "Immediate charging"],
-  ["compare", "Charging plan"], ["schedule", "Van schedule"], ["explanation", "Explanation"], ["what-if", "What-if"],
-  ["risk", "Risk & sweeps"], ["reality", "Reality check"],
+  ["compare", "Charging plan"], ["schedule", "Van schedule"], ["explanation", "Explanation"], ["analysis", "Analysis"],
 ] as const;
 type DashboardTab = (typeof TABS)[number][0];
 const RESULT_TABS = TABS.slice(2);
@@ -298,7 +297,7 @@ function Dashboard() {
           </p>
           <div className="mt-8 flex gap-3">
             <button type="button" onClick={() => setActiveTab("configure")} className={btnPrimary}>Start planning</button>
-            <button type="button" onClick={() => setActiveTab("what-if")} className={btnGhost}>Explore what-if scenarios</button>
+            <button type="button" onClick={() => setActiveTab("analysis")} className={btnGhost}>Explore analysis</button>
           </div>
           <p className="mt-10 font-mono text-xs text-muted-foreground">Synthetic load profiles · Held-out replay · Human decision</p>
           </div>
@@ -464,71 +463,78 @@ function Dashboard() {
             </article>
           </Section>
           </TabsContent>
-          <TabsContent value="what-if"><Section id="what-if" n={7} title="What-if scenarios">
-          <section className="panel space-y-4 p-6" aria-labelledby="decision-evidence">
-            <h2 id="decision-evidence" className="text-xl font-semibold">Explain this decision</h2>
-            <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
-            <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
-            <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
-            <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
-            <p className="text-sm text-muted-foreground">Each option reruns the optimizer and replay on the same synthetic windows. Comparisons are exploratory; equally optimal schedules can differ.</p>
-            <div className="flex flex-wrap gap-2">
-              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("extra_capacity")}>Add 10 kW of capacity</button>
-              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("later_departure")}>Depart one hour later</button>
-              <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("battery")}>{run.cfg.battery_kwh ? "Remove configured battery" : "Add 60 kWh battery"}</button>
-            </div>
-            {whatIfBusy && <p role="status">Recalculating both scenarios…</p>}
-            {whatIfError && <p role="alert" className="text-destructive">{whatIfError}</p>}
-            {whatIf && <div className="overflow-x-auto" aria-live="polite"><p className="mb-2">{whatIf.description}</p>
-              <table className="w-full text-left text-sm"><thead><tr><th>Metric</th><th>Current</th><th>Changed</th></tr></thead><tbody>
-                <tr><th>Vans fully charged</th><td>{whatIf.current.vans_full}/{whatIf.current.vans_total}</td><td>{whatIf.changed.vans_full}/{whatIf.changed.vans_total}</td></tr>
-                <tr><th>Unmet energy</th><td>{whatIf.current.unmet_kwh.toFixed(2)} kWh</td><td>{whatIf.changed.unmet_kwh.toFixed(2)} kWh</td></tr>
-                <tr><th>Synthetic windows over limit</th><td>{whatIf.current.days_over_pct.toFixed(2)}%</td><td>{whatIf.changed.days_over_pct.toFixed(2)}%</td></tr>
-                <tr><th>Worst overshoot</th><td>{whatIf.current.worst_overshoot_kw.toFixed(2)} kW</td><td>{whatIf.changed.worst_overshoot_kw.toFixed(2)} kW</td></tr>
-                <tr><th>Solver status</th><td>{whatIf.current.status}</td><td>{whatIf.changed.status}</td></tr>
-              </tbody></table>
-              {(whatIf.scenario.battery_kwh > 0 || run.cfg.battery_kwh > 0) && <p className="mt-2 text-xs text-muted-foreground">Battery replay clips negative net demand without recalculating battery state per window; this comparison is exploratory.</p>}
-            </div>}
-          </section></Section></TabsContent>
-          <TabsContent value="risk"><Section id="edge-case" n={8} title="Risk and sensitivity">
-            <div className="panel space-y-2 p-5">
-              <Row k="Worst overshoot time" v={report.worst_overshoot_time || "No breaches"} />
-              <Row k="Baseline alone over limit" v={`${report.baseline_alone_over_pct.toFixed(2)}%`} />
-              <Row k="Blocked planning slots" v={s.blocked_slots.map(time).join(", ") || "None"} />
-              <Row k="Vans with shortfalls" v={report.vans_short.filter(([, short]) => short > 0).map(([name, short]) => `${name}: ${short.toFixed(2)} kWh`).join(", ") || "None"} />
-              <h3 className="font-semibold">Breach timing <Hint label="Breach timing chart" /></h3>
-              <LoadChart title="Number of replay windows breaching the limit by time" series={[{ label: "Windows over limit", data: report.over_by_slot, cls: "stroke-destructive" }]} />
-              {!!run.cfg.battery_kwh && <div><h3 className="font-semibold">Battery stored energy <Hint label="Battery chart" /></h3><LoadChart title="Battery stored energy (kWh)" series={[{ label: "Stored energy", data: s.battery_soc_kwh, cls: "stroke-success" }]} /></div>}
-              {!!run.cfg.battery_kwh && <p className="text-sm">Replay clips negative net demand without recalculating battery state for each window.</p>}
-              <p className="text-sm">15-minute slots. The solver rounds the baseline up and limit down to integer kW, and energy demand up to 0.25 kWh.</p>
-            </div>
-            <div className="panel mt-4 space-y-4 p-5">
-              <button className={btnPrimary} onClick={sweep} disabled={busy || sweeping}>{sweeping ? "Running sweeps…" : "Run exploratory sweeps"}</button><Hint label="Exploratory sweeps" />
-              {error && <p role="alert" className="text-destructive">{error}</p>}
-              {sweeps.map(({ label, rows }) => <div key={label}><h3 className="font-semibold">{label}</h3>
-                <table className="w-full text-left text-sm"><thead><tr><th>Test point</th><th>Windows over</th><th>kWh short</th><th>Solver</th></tr></thead>
-                  <tbody>{rows.map((row) => <tr key={row.n ?? row.capacity_kwh}>
-                    <td>{row.n ?? `${row.capacity_kwh} kWh`}{row.smallest_fit ? " (smallest tested fit)" : ""}</td>
-                    <td>{row.days_over_pct == null ? "—" : <>
-                      <meter min={0} max={100} value={row.days_over_pct} aria-label="Windows over limit (%)" className="mr-2 w-24" />
-                      {row.days_over_pct.toFixed(2)}%
-                    </>}</td>
-                    <td>{row.kwh_short?.toFixed(2) ?? "—"}</td><td>{row.status}</td>
-                  </tr>)}</tbody></table>
-              </div>)}
-            </div>
-          </Section></TabsContent>
-          <TabsContent value="reality"><Section id="reality" n={9} title="Reality check">
-            <div className="panel space-y-4 p-5">
-              <h3 className="font-semibold">Reality check · GLASS and Liander (2023) <Hint label="Reality check" /></h3>
-              {!checks.length && <p>No comparison available for this run.</p>}
-              {checks.map((check) => <div key={check.sbi_code}><p>{check.summary}</p>
-                <LoadChart title={`Typical working day ${check.sbi_code}, midnight to midnight (relative load)`} startHour={0} band={[check.glass_band[0], check.glass_band[2]]}
-                  series={[{ label: "GLASS median", data: check.glass_band[1], cls: "stroke-primary" }, { label: "Liander reference", data: check.liander_band[1].map((v) => v ?? 0), cls: "stroke-success" }]} />
-              </div>)}
-              <p className="text-sm text-muted-foreground">GLASS was trained on Liander data, so this comparison is not an independent test.</p>
-            </div>
-          </Section></TabsContent>
+          <TabsContent value="analysis">
+            <Section id="analysis" n={7} title="Analysis">
+              <div className="grid items-start gap-4 lg:grid-cols-2">
+                <section className="panel min-w-0 space-y-4 p-5" aria-labelledby="decision-evidence">
+                  <h3 id="decision-evidence" className="text-xl font-semibold">What-if scenarios</h3>
+                  <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
+                  <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
+                  <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
+                  <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
+                  <p className="text-sm text-muted-foreground">Change one setting and compare both plans on the same synthetic windows. Equally optimal schedules can differ.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("extra_capacity")}>Add 10 kW of capacity</button>
+                    <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("later_departure")}>Depart one hour later</button>
+                    <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("battery")}>{run.cfg.battery_kwh ? "Remove configured battery" : "Add 60 kWh battery"}</button>
+                  </div>
+                  {whatIfBusy && <p role="status">Recalculating both scenarios…</p>}
+                  {whatIfError && <p role="alert" className="text-destructive">{whatIfError}</p>}
+                  {whatIf && <div className="overflow-x-auto" aria-live="polite"><p className="mb-2">{whatIf.description}</p>
+                    <table className="w-full text-left text-sm"><thead><tr><th>Metric</th><th>Current</th><th>Changed</th></tr></thead><tbody>
+                      <tr><th>Vans fully charged</th><td>{whatIf.current.vans_full}/{whatIf.current.vans_total}</td><td>{whatIf.changed.vans_full}/{whatIf.changed.vans_total}</td></tr>
+                      <tr><th>Unmet energy</th><td>{whatIf.current.unmet_kwh.toFixed(2)} kWh</td><td>{whatIf.changed.unmet_kwh.toFixed(2)} kWh</td></tr>
+                      <tr><th>Synthetic windows over limit</th><td>{whatIf.current.days_over_pct.toFixed(2)}%</td><td>{whatIf.changed.days_over_pct.toFixed(2)}%</td></tr>
+                      <tr><th>Worst overshoot</th><td>{whatIf.current.worst_overshoot_kw.toFixed(2)} kW</td><td>{whatIf.changed.worst_overshoot_kw.toFixed(2)} kW</td></tr>
+                      <tr><th>Solver status</th><td>{whatIf.current.status}</td><td>{whatIf.changed.status}</td></tr>
+                    </tbody></table>
+                    {(whatIf.scenario.battery_kwh > 0 || run.cfg.battery_kwh > 0) && <p className="mt-2 text-xs text-muted-foreground">Battery replay clips negative net demand without recalculating battery state per window; this comparison is exploratory.</p>}
+                  </div>}
+                </section>
+                <div className="min-w-0 space-y-4">
+                  <section className="panel space-y-2 p-5" aria-labelledby="risk-heading">
+                    <h3 id="risk-heading" className="text-xl font-semibold">Risk and sensitivity</h3>
+                    <Row k="Worst overshoot time" v={report.worst_overshoot_time || "No breaches"} />
+                    <Row k="Baseline alone over limit" v={`${report.baseline_alone_over_pct.toFixed(2)}%`} />
+                    <Row k="Blocked planning slots" v={s.blocked_slots.map(time).join(", ") || "None"} />
+                    <Row k="Vans with shortfalls" v={report.vans_short.filter(([, short]) => short > 0).map(([name, short]) => `${name}: ${short.toFixed(2)} kWh`).join(", ") || "None"} />
+                    <h3 className="font-semibold">Breach timing <Hint label="Breach timing chart" /></h3>
+                    <LoadChart title="Number of replay windows breaching the limit by time" series={[{ label: "Windows over limit", data: report.over_by_slot, cls: "stroke-destructive" }]} />
+                    {!!run.cfg.battery_kwh && <div><h3 className="font-semibold">Battery stored energy <Hint label="Battery chart" /></h3><LoadChart title="Battery stored energy (kWh)" series={[{ label: "Stored energy", data: s.battery_soc_kwh, cls: "stroke-success" }]} /></div>}
+                    {!!run.cfg.battery_kwh && <p className="text-sm">Replay clips negative net demand without recalculating battery state for each window.</p>}
+                    <p className="text-sm">15-minute slots. The solver rounds the baseline up and limit down to integer kW, and energy demand up to 0.25 kWh.</p>
+                  </section>
+                  <section className="panel space-y-4 p-5" aria-labelledby="sweep-heading">
+                    <h3 id="sweep-heading" className="text-xl font-semibold">Sweeps</h3>
+                    <button className={btnPrimary} onClick={sweep} disabled={busy || sweeping}>{sweeping ? "Running sweeps…" : "Run exploratory sweeps"}</button><Hint label="Exploratory sweeps" />
+                    {error && <p role="alert" className="text-destructive">{error}</p>}
+                    {sweeps.map(({ label, rows }) => <div key={label} className="overflow-x-auto"><h3 className="font-semibold">{label}</h3>
+                      <table className="w-full text-left text-sm"><thead><tr><th>Test point</th><th>Windows over</th><th>kWh short</th><th>Solver</th></tr></thead>
+                        <tbody>{rows.map((row) => <tr key={row.n ?? row.capacity_kwh}>
+                          <td>{row.n ?? `${row.capacity_kwh} kWh`}{row.smallest_fit ? " (smallest tested fit)" : ""}</td>
+                          <td>{row.days_over_pct == null ? "—" : <>
+                            <meter min={0} max={100} value={row.days_over_pct} aria-label="Windows over limit (%)" className="mr-2 w-24" />
+                            {row.days_over_pct.toFixed(2)}%
+                          </>}</td>
+                          <td>{row.kwh_short?.toFixed(2) ?? "—"}</td><td>{row.status}</td>
+                        </tr>)}</tbody></table>
+                    </div>)}
+                  </section>
+                </div>
+                <section className="panel min-w-0 space-y-4 p-5 lg:col-span-2" aria-labelledby="reality-heading">
+                    <h3 id="reality-heading" className="text-xl font-semibold">Reality check · GLASS and Liander (2023) <Hint label="Reality check" /></h3>
+                    {!checks.length && <p>No comparison available for this run.</p>}
+                    <div className="grid gap-4 xl:grid-cols-3">
+                    {checks.map((check) => <div className="min-w-0" key={check.sbi_code}><p>{check.summary}</p>
+                      <LoadChart title={`Typical working day ${check.sbi_code}, midnight to midnight (relative load)`} startHour={0} band={[check.glass_band[0], check.glass_band[2]]}
+                        series={[{ label: "GLASS median", data: check.glass_band[1], cls: "stroke-primary" }, { label: "Liander reference", data: check.liander_band[1].map((v) => v ?? 0), cls: "stroke-success" }]} />
+                    </div>)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">GLASS was trained on Liander data, so this comparison is not an independent test.</p>
+                </section>
+              </div>
+            </Section>
+          </TabsContent>
         </> : RESULT_TABS.map(([id, label]) => (
           <TabsContent key={id} value={id} className="py-12">
             <div className="panel space-y-4 p-8 text-center">
