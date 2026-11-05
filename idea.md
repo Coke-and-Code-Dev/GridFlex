@@ -323,7 +323,7 @@ For the chosen category and month, compare GLASS (all samples) with Liander's 20
 
 An LLM-based agent gets the scenario, the checked plan and the computed flags, and writes a short plain-language explanation: why charging moved later, how the battery helped, where the risk is. The user can ask follow-up questions about the current result ("why is van 7 short?"). When the user changes an input (slider or van table), the app reruns the scheduler and replay first, and the agent then explains what changed compared with the previous plan. The agent never calculates or invents numbers. If the API is unavailable, a template-based summary of the same numbers is shown instead.
 
-**LLM provider: to be decided.** The dashboard owner proposes one and the team agrees. Whatever we pick has to:
+**LLM provider: to be decided.** Smriti (dashboard and explanation) proposes one and the team agrees. Whatever we pick has to:
 
 - Answer within a few seconds, so the demo doesn't stall.
 - Support structured input and output (JSON in, text or JSON out), and tool or function calling if we build the what-if assistant (§11).
@@ -585,11 +585,11 @@ A single page.
 
 ### 8.1 UI framework: to be decided
 
-The dashboard owner proposes a framework in the first hour and the team agrees. Whatever we pick has to:
+Smriti (dashboard) proposes a framework in the first hour and the team agrees. Whatever we pick has to:
 
 - Feel instant when dragging sliders. A solve plus replay takes well under a second; the UI must not add a full page rerun on top of that.
 - Allow a custom layout and custom charts (shaded bands, stacked areas, heatmap, a limit line that changes over the day, colour-coded status card).
-- Be something the dashboard owner can build quickly.
+- Be something Smriti can build quickly.
 
 What stays fixed regardless of the choice:
 
@@ -600,13 +600,13 @@ What stays fixed regardless of the choice:
 
 | Person | Owns |
 |---|---|
-| **1: Data + checking** | GLASS extract, windows, split, cautious baseline, replay and flags, capacity map, reality check |
-| **2: Optimisation** | Fleet, immediate charging, CP-SAT scheduler, battery, limit over the day, sweeps, scheduler tests |
-| **3: Dashboard + explanation** | UI framework, LLM provider proposal, all dashboard panels, API layer if needed, explanation agent and fallback, demo assets |
+| **Joshua: Data + checking** | GLASS extract, windows, split, cautious baseline, replay and flags, capacity map, reality check |
+| **Sunil: Optimisation** | Fleet, immediate charging, CP-SAT scheduler, battery, limit over the day, sweeps, scheduler tests |
+| **Smriti: Dashboard + explanation** | UI framework, LLM provider proposal, all dashboard panels, API layer if needed, explanation agent and fallback, demo assets |
 
 Everyone works on `<name>-<change>` branches with PRs ([AGENTS.md](AGENTS.md)).
 
-| Time | Person 1 | Person 2 | Person 3 | Done when… |
+| Time | Joshua | Sunil | Smriti | Done when… |
 |---|---|---|---|---|
 | **0–1 h** | Verify GLASS; download capacity map and Liander files | Agree interfaces (§7.3) | Propose UI framework and LLM provider; agree demo scenario | Everyone uses the same inputs and outputs |
 | **1–4 h** | `extract_glass.py`, windows, split, baseline | Fleet, immediate charging, van scheduler | Dashboard shell, inputs, dummy chart | One 96-slot scenario flows between modules |
@@ -620,9 +620,9 @@ If time gets tight, protect this order: **GLASS → scheduler → replay → das
 
 ## 10. Four-minute demo
 
-1. **0:00–0:50, Person 1:** "In 57% of Dutch postcodes, the grid operators report a shortage of capacity for new business demand." Type a postcode → red card: 29 requests waiting, grid reinforcement planned for late 2032. Show the band of 100 realistic days for a logistics depot, and the reality check against Liander's real data.
-2. **0:50–2:10, Person 2:** 10 vans charging on arrival → over the limit on most days. Click **Optimize** → every van full by morning, over the limit on 2% of days. Drag to 15 vans → ❌. Turn on a battery, or add off-peak capacity → ✅ again. Show the battery sweep: "the smallest safe battery is 60 kWh."
-3. **2:10–3:20, Person 3:** The explanation agent explains the plan. In the van table, move two vans' return to 20:00 → rerun → the agent explains what changed. Ask "why is the risk highest at 18:00?". Show when the risk happens.
+1. **0:00–0:50, Joshua:** "In 57% of Dutch postcodes, the grid operators report a shortage of capacity for new business demand." Type a postcode → red card: 29 requests waiting, grid reinforcement planned for late 2032. Show the band of 100 realistic days for a logistics depot, and the reality check against Liander's real data.
+2. **0:50–2:10, Sunil:** 10 vans charging on arrival → over the limit on most days. Click **Optimize** → every van full by morning, over the limit on 2% of days. Drag to 15 vans → ❌. Turn on a battery, or add off-peak capacity → ✅ again. Show the battery sweep: "the smallest safe battery is 60 kWh."
+3. **2:10–3:20, Smriti:** The explanation agent explains the plan. In the van table, move two vans' return to 20:00 → rerun → the agent explains what changed. Ask "why is the risk highest at 18:00?". Show when the risk happens.
 4. **3:20–4:00, Team:** The manager approves; nothing is switched automatically. Limitations in one breath. Close: "We don't test your plan on one made-up day. We test it on every realistic day."
 
 All numbers above are placeholders until the pipeline runs. Use a fixed demo seed and keep a recorded fallback video in case the live demo or the API fails. Never promise an improvement before the calculation shows it.

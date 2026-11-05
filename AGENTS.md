@@ -18,7 +18,7 @@ The GLASS dataset is described in [data/README.md](data/README.md); the other da
 2. Create a branch named **`<name>-<change>`**:
    - `<name>`: the first name of the person the change is for, lowercase (an AI agent uses the name of the human it's working for)
    - `<change>`: a short description in lowercase kebab-case
-   - Examples: `smriti-cpsat-scheduler`, `joshua-glass-extract`, `alex-sweep-chart`
+   - Examples: `sunil-cpsat-scheduler`, `joshua-glass-extract`, `smriti-dashboard-shell`
 3. Make the change and commit it on that branch.
 4. Push the branch and open a pull request into `main`.
 5. Merge only through the PR. Delete the branch after merging.

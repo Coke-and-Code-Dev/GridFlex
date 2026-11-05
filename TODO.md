@@ -12,12 +12,12 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 - [ ] Install Python 3.11, create `.venv`, install requirements (§13)
 - [ ] Read idea.md §3, §5 and §7.3 together; agree the shared inputs and outputs
 - [ ] Pick the demo scenario: category, month (2023), consumption level, connection limit, number of vans, postcode
-- [ ] Agree the UI framework and the LLM provider (Person 3 proposes both)
+- [ ] Agree the UI framework and the LLM provider (Smriti proposes both)
 - [ ] Create `requirements.txt` and the empty package layout (`gridflex/`, `scripts/`, `tests/`, `ui/`) in one PR
 
 ---
 
-## Person 1: Data + checking
+## Joshua: Data + checking
 
 **Hour 0–1: downloads**
 - [ ] Put `GLASS_v1.1.parquet` in `data/raw/` and verify the SHA-256
@@ -34,7 +34,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 **Hour 4–6: replay**
 - [ ] `replay.py`: `replay()` with every flag from §5.8 and the verdict rule
 - [ ] `tests/test_replay.py`: hand-built windows with a known overshoot give the right numbers
-- [ ] Hand Person 3 a real `ReplayReport` for the demo scenario (**checkpoint**)
+- [ ] Hand Smriti a real `ReplayReport` for the demo scenario (**checkpoint**)
 
 **Hour 6–10: capacity map**
 - [ ] `scripts/prepare_grid_map.py`: CSVs (semicolon, comma decimals) → `grid_pc6.parquet`, `grid_areas.parquet`, `grid_projects.parquet`, `grid_map_meta.json`
@@ -54,25 +54,25 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 ---
 
-## Person 2: Optimisation
+## Sunil: Optimisation
 
 **Hour 1–4: vans**
 - [ ] `fleet.py`: `Van` dataclass and `generate_fleet` (seeded; the first N vans are always the same)
 - [ ] `naive.py`: immediate charging
 - [ ] `scheduler.py`: `limit_profile()` and `optimize()` for vans only: overshoot, unmet and peak stages (§5.6)
-- [ ] Test on a flat fake baseline until Person 1's real baseline is ready
+- [ ] Test on a flat fake baseline until Joshua's real baseline is ready
 
 **Hour 4–6: tests + charger sweep**
 - [ ] `tests/test_scheduler.py`: easy, impossible, partial, presence, charger max, energy accounting, immediate charging breaks the limit
-- [ ] `replay.py`: `charger_sweep()` (with Person 1)
-- [ ] Run the demo scenario end to end with Person 1's baseline (**checkpoint**)
+- [ ] `replay.py`: `charger_sweep()` (with Joshua)
+- [ ] Run the demo scenario end to end with Joshua's baseline (**checkpoint**)
 
 **Hour 6–10: battery + limit over the day**
 - [ ] Add `Battery` to `optimize()`: charge/discharge, mode, energy balance, no export, end ≥ start (§5.6)
 - [ ] Add the battery-throughput stage to the objective
 - [ ] Extra off-peak capacity through `limit_profile()`; check it's only used inside its window
 - [ ] Battery tests: never both at once, limits and balance, no export, battery never makes things worse
-- [ ] Make sure replay uses the battery schedule and `C[t]` (with Person 1)
+- [ ] Make sure replay uses the battery schedule and `C[t]` (with Joshua)
 
 **Hour 10–13: battery sweep + speed**
 - [ ] `replay.py`: `battery_sweep()` returning the smallest battery that brings risk under the tolerance
@@ -86,7 +86,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 ---
 
-## Person 3: Dashboard + explanation
+## Smriti: Dashboard + explanation
 
 **Hour 0–1**
 - [ ] Propose the UI framework against the criteria in §8.1; agree it with the team
