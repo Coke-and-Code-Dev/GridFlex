@@ -1,17 +1,52 @@
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 
 export function Help({ label, text }: { label: string; text: string }) {
   const id = useId();
+  const panel = useRef<HTMLSpanElement>(null);
+  const hideTimer = useRef<number>(undefined);
+  const cancelHide = () => window.clearTimeout(hideTimer.current);
+  const show = (trigger: HTMLButtonElement) => {
+    cancelHide();
+    const tip = panel.current;
+    if (!tip) return;
+    if (!tip.matches(":popover-open")) tip.showPopover();
+    const anchor = trigger.getBoundingClientRect();
+    const gap = 6;
+    const left = Math.max(8, Math.min(anchor.left, window.innerWidth - tip.offsetWidth - 8));
+    const top = anchor.bottom + gap + tip.offsetHeight <= window.innerHeight - 8
+      ? anchor.bottom + gap
+      : Math.max(8, anchor.top - tip.offsetHeight - gap);
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+    tip.style.bottom = "auto";
+    tip.style.right = "auto";
+    tip.style.margin = "0";
+  };
+  const hideSoon = () => {
+    cancelHide();
+    hideTimer.current = window.setTimeout(() => panel.current?.hidePopover(), 220);
+  };
+  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
   return <>
-    <button type="button" popoverTarget={id} aria-label={`Help: ${label}`}
+    <button type="button" popoverTarget={id} aria-label={`Help: ${label}`} aria-describedby={`${id}-text`}
+      onPointerEnter={(event) => { if (event.pointerType === "mouse") show(event.currentTarget); }}
+      onPointerLeave={(event) => { if (event.pointerType === "mouse" && !event.currentTarget.matches(":focus-visible")) hideSoon(); }}
+      onClick={(event) => {
+        event.preventDefault();
+        show(event.currentTarget);
+      }}
+      onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) show(event.currentTarget); }}
+      onBlur={(event) => { if (!panel.current?.contains(event.relatedTarget)) hideSoon(); }}
       className="ml-1 inline-grid size-6 shrink-0 place-items-center rounded-full border border-primary/50 text-xs font-semibold text-primary hover:bg-primary/15">?</button>
-    <span id={id} popover="auto" role="group" aria-label={label}
+    <span ref={panel} id={id} popover="auto"
+      onPointerEnter={cancelHide} onPointerLeave={hideSoon}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) hideSoon(); }} role="group" aria-label={label}
       className="fixed inset-x-0 bottom-6 top-auto mx-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-primary/50 bg-card p-4 text-left font-sans text-sm font-normal normal-case tracking-normal text-foreground shadow-2xl">
       <span className="flex items-center justify-between gap-4">
         <strong>{label}</strong>
         <button type="button" popoverTarget={id} popoverTargetAction="hide" className="rounded px-2 py-1 text-primary hover:bg-primary/15">Close</button>
       </span>
-      <span className="mt-2 block leading-relaxed text-muted-foreground">{text}</span>
+      <span id={`${id}-text`} className="mt-2 block leading-relaxed text-muted-foreground">{text}</span>
     </span>
   </>;
 }
