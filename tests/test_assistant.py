@@ -21,7 +21,7 @@ def test_completion_is_end_of_last_scheduled_slot(current):
     from gridflex.replay import slot_time
     last = max(int(np.flatnonzero(row > 0)[-1]) + 1 for row in p.power if np.any(row > 0))
     assert slot_time(last) in facts['completion']
-    assert 'not proof' in facts['completion']
+    assert ('finish charging' in facts['completion']) == all(short <= 1e-9 for _, short in r.vans_short)
 
 
 def test_unsupported_number_or_evidence_is_rejected():
@@ -65,9 +65,9 @@ def test_tool_comparison_is_run_once_and_its_result_is_the_evidence(monkeypatch,
 
 def test_invalid_answer_falls_back_without_generic_misleading_risk(monkeypatch, current):
     monkeypatch.setattr('gridflex.assistant.call_llm', lambda *a, **k: '{"answer":"It finishes at 02:30.","fact_ids":[]}')
-    result = answer_question(*current, question='When will charging finish?')
+    result = answer_question(*current, question='When will this complete?')
     assert result['source'] == 'template'
-    assert 'last scheduled charging ends' in result['text']
+    assert result['text'] == build_facts(*current)['completion']
     assert '02:30' not in result['text'] or '02:30' in result['evidence'][0]['text']
 
 

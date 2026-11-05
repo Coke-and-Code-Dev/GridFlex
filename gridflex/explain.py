@@ -75,19 +75,32 @@ def evidence_facts(result: ScheduleResult, report: ReplayReport, previous: Repla
 
 
 def call_llm(system: str, user: str, schema: dict | None = None) -> str:
-    """Call Groq only on the server. The model selects IDs, never manufactures facts."""
+    """Call Groq on the server with structured output and bounded reasoning."""
     key = os.environ.get("GROQ_API_KEY") or dotenv_values(Path(__file__).resolve().parents[1] / ".env").get("GROQ_API_KEY")
     if not key:
         raise RuntimeError("Groq API key not configured")
     client = Groq(api_key=key, timeout=12.0, max_retries=0)
     schema = schema or {"type": "object", "properties": {"fact_ids": {"type": "array", "items": {"type": "string"}}},
               "required": ["fact_ids"], "additionalProperties": False}
-    response = client.chat.completions.create(
-        model=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        response_format={"type": "json_schema", "json_schema": {"name": "evidence_selection", "strict": True, "schema": schema}},
-        temperature=0, max_completion_tokens=400,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            response_format={"type": "json_schema", "json_schema": {"name": "evidence_selection", "strict": True, "schema": schema}},
+            temperature=0.4, max_completion_tokens=1024, reasoning_effort="low",
+        )
+    except Exception as exc:
+        # Log only known error categories and status. Never log prompts,
+        # provider response bodies, credentials, or model output.
+        body = getattr(exc, "body", None)
+        error = body.get("error", {}) if isinstance(body, dict) else {}
+        code = error.get("code") if isinstance(error, dict) else None
+        known_codes = {"json_validate_failed", "rate_limit_exceeded"}
+        safe_code = code if isinstance(code, str) and code in known_codes else "other"
+        status = getattr(exc, "status_code", None)
+        logging.getLogger(__name__).warning("Groq request failed: type=%s status=%s category=%s",
+                                            type(exc).__name__, status if isinstance(status, int) else "none", safe_code)
+        raise
     return response.choices[0].message.content or ""
 
 
