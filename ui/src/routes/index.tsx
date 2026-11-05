@@ -112,7 +112,7 @@ function Dashboard() {
   const [whatIfBusy, setWhatIfBusy] = useState(false);
   const [whatIfError, setWhatIfError] = useState("");
   const [q, setQ] = useState("");
-  const [qa, setQa] = useState<{ question: string; text: string }[]>([]);
+  const [qa, setQa] = useState<{ question: string; text: string; source?: "groq" | "template"; evidence?: { id: string; text: string }[] }[]>([]);
   const [asking, setAsking] = useState(false);
   const [decision, setDecision] = useState("");
 
@@ -170,8 +170,8 @@ function Dashboard() {
     setAsking(true);
     setQ("");
     try {
-      const { text } = await api<{ text: string }>("/explain", { scenario: run.cfg, previous: run.previous, question });
-      setQa((items) => [...items, { question, text }]);
+      const response = await api<ExplanationResponse>("/explain", { scenario: run.cfg, previous: run.previous, question, history: qa.slice(-6).map(({ question, text }) => ({ question, text: text.slice(0, 3000) })) });
+      setQa((items) => [...items, { question, ...response }]);
     } catch {
       setQa((items) => [...items, { question, text: "The explanation endpoint is unavailable. See the current replay metrics above." }]);
     } finally {
@@ -402,13 +402,13 @@ function Dashboard() {
           </Section>
           <Section id="explanation" n={5} title="Explanation">
             <article className="panel space-y-4 p-6">
-              <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq-selected evidence from this run’s computed results" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
+              <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq explanation based on computed evidence" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
               <p aria-live="polite">{explanation || "Preparing explanation…"}</p>
               <div className="flex flex-wrap gap-2">
                 {["When is risk highest?", "Which vans are short?", "How did the battery help?"].map((question) =>
                   <button key={question} className={btnGhost} disabled={busy || asking} onClick={() => ask(question)}>{question}</button>)}
               </div>
-              <ul aria-live="polite">{qa.map(({ question, text }, i) => <li key={i} className="mt-3"><strong>{question}</strong><p>{text}</p></li>)}</ul>
+              <ul aria-live="polite">{qa.map(({ question, text, source, evidence }, i) => <li key={i} className="mt-3"><strong>{question}</strong><p>{text}</p><p className="text-xs text-muted-foreground">{source === "groq" ? "Groq response" : "Local fallback"}</p>{!!evidence?.length && <details className="text-sm text-muted-foreground"><summary>Based on {evidence.length} evidence item{evidence.length === 1 ? "" : "s"}</summary><ul>{evidence.map((item) => <li key={item.id}>{item.text}</li>)}</ul></details>}</li>)}</ul>
               <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); void ask(q); }}>
                 <label htmlFor="ask" className="sr-only">Ask about this run</label>
                 <input id="ask" className="grow rounded border border-input bg-background p-2" value={q} maxLength={500} onChange={(e) => setQ(e.target.value)} placeholder="Ask about this run" />

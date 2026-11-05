@@ -26,6 +26,9 @@ def template_summary(result: ScheduleResult, report: ReplayReport,
         for name, short in report.vans_short:
             if re.search(rf"\b{re.escape(name.casefold())}\b", query):
                 return f"{name} has a {short:.2f} kWh shortfall in this plan."
+        if "which" in query and "van" in query:
+            short_vans = [f"{name}: {short:.2f} kWh" for name, short in report.vans_short if short > 0]
+            return "Vans with shortfalls: " + ", ".join(short_vans) if short_vans else "No vans are short; every van meets its rounded charging requirement."
         if "battery" in query:
             return f"The plan discharges {result.battery_discharge.sum() / 4:.2f} kWh. Compare battery sizes in the exploratory sweep."
         if any(word in query for word in ("risk", "when", "over", "limit")):
@@ -71,13 +74,13 @@ def evidence_facts(result: ScheduleResult, report: ReplayReport, previous: Repla
     return facts
 
 
-def call_llm(system: str, user: str) -> str:
+def call_llm(system: str, user: str, schema: dict | None = None) -> str:
     """Call Groq only on the server. The model selects IDs, never manufactures facts."""
     key = os.environ.get("GROQ_API_KEY") or dotenv_values(Path(__file__).resolve().parents[1] / ".env").get("GROQ_API_KEY")
     if not key:
         raise RuntimeError("Groq API key not configured")
     client = Groq(api_key=key, timeout=12.0, max_retries=0)
-    schema = {"type": "object", "properties": {"fact_ids": {"type": "array", "items": {"type": "string"}}},
+    schema = schema or {"type": "object", "properties": {"fact_ids": {"type": "array", "items": {"type": "string"}}},
               "required": ["fact_ids"], "additionalProperties": False}
     response = client.chat.completions.create(
         model=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),

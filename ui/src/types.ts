@@ -38,7 +38,8 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
   return response.json();
 }
 
-export type ExplanationResponse = { text: string; source: "groq" | "template" };
+export type Evidence = { id: string; text: string };
+export type ExplanationResponse = { text: string; source: "groq" | "template"; evidence: Evidence[] };
 export type WhatIfAction = "extra_capacity" | "later_departure" | "battery";
 export type ComparisonMetrics = { vans_full: number; vans_total: number; unmet_kwh: number; days_over_pct: number; worst_overshoot_kw: number; status: string };
 export type WhatIfResponse = { description: string; current: ComparisonMetrics; changed: ComparisonMetrics; scenario: Scenario };
