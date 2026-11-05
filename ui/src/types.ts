@@ -42,8 +42,41 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
   return (await request(path, body)).json();
 }
 
-export async function downloadReport(csv: string): Promise<Blob> {
-  return (await request("/batch-report", { csv })).blob();
+export type PortfolioSite = { site: string; postcode: string; province: string | null; vans: number } & (
+  { error: string } |
+  { full: number; unmet_kwh: number; breach_pct: number; immediate_pct: number; worst_kw: number;
+    verdict: OptimizeResult["report"]["verdict"]; status: string }
+);
+type PortfolioEvent = { type: "start"; total: number } | { type: "site"; result: PortfolioSite } | { type: "pdf"; content: string };
+
+export async function simulatePortfolio(csv: string, onProgress: (event: Exclude<PortfolioEvent, { type: "pdf" }>) => void) {
+  const response = await request("/batch-report/progress", { csv });
+  const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
+  if (!reader) throw new Error("The API did not return a report stream.");
+  let pending = "";
+  let report: Blob | undefined;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = (pending + value).split("\n");
+      pending = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line) continue;
+        const event: PortfolioEvent = JSON.parse(line);
+        if (event.type === "pdf") {
+          const bytes = Uint8Array.from(atob(event.content), (char) => char.charCodeAt(0));
+          report = new Blob([bytes], { type: "application/pdf" });
+        } else {
+          onProgress(event);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (!report) throw new Error("The simulation ended before the PDF was ready. Try running it again.");
+  return report;
 }
 
 export type Evidence = { id: string; text: string };

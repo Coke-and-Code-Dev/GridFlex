@@ -319,6 +319,7 @@ function Dashboard() {
       </header>
 
       <main className="relative mx-auto max-w-6xl px-6">
+        <div hidden={activeTab !== "analysis"} className="pt-8"><BatchReport /></div>
         {/* 01 Welcome */}
         <TabsContent value="welcome"><section id="welcome" className="grid min-h-[72vh] items-center gap-8 py-12 lg:grid-cols-2">
           <div>
@@ -521,7 +522,6 @@ function Dashboard() {
           </TabsContent>
           <TabsContent value="analysis">
             <Section id="analysis" n={6} title="Analysis">
-              <BatchReport />
               <div className="grid items-start gap-4 lg:grid-cols-2">
                 <section className="panel min-w-0 space-y-4 p-5" aria-labelledby="decision-evidence">
                   <h3 id="decision-evidence" className="text-xl font-semibold">What-if scenarios</h3>
@@ -594,7 +594,6 @@ function Dashboard() {
           </TabsContent>
         </> : RESULT_TABS.map(([id, label]) => (
           <TabsContent key={id} value={id} className="py-12">
-            {id === "analysis" && <BatchReport />}
             <div className="panel space-y-4 p-8 text-center">
               <h2 className="text-xl font-semibold">{label}</h2>
               <p className="text-muted-foreground">{busy ? "Optimize is running." : "Run Optimize in Setup to see results here."}</p>
