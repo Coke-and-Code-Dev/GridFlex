@@ -1,6 +1,6 @@
-# Handoff notes from Joshua
+# GridFlex handoff notes for Smriti and Sunil
 
-Joshua's data and checking work is merged into `main`. This file tells Sunil and Smriti what exists, how to call it, and what to watch out for. The plan stays in [idea.md](idea.md) (section numbers refer to it) and the task lists in [TODO.md](TODO.md). Facts below were measured on the real data on 5 November 2026.
+Joshua's data and checking work is merged into `main`. Sunil's optimization engine and sweeps are available on `sunil-optimization-core` in draft [PR #11](https://github.com/josh1221wa/ey_hackathon/pull/11); they are not on `main` until merged. This file describes how to integrate the two parts and what to watch out for. The plan stays in [idea.md](idea.md) (section numbers refer to it) and the task lists in [TODO.md](TODO.md). Facts below were measured on the real data on 5 November 2026.
 
 ## Both: set up in two minutes
 
@@ -12,7 +12,7 @@ uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 .venv\Scripts\python.exe -m pytest
 ```
 
-You should see **65 passed**. Branch names are `<name>-<change>`; every change goes through a PR (AGENTS.md). Use the venv's Python (`.venv\Scripts\python.exe`), not a bare `python`.
+On the optimization branch, the current suite reports **83 passed**; the count on `main` may differ until PR #11 is merged. Branch names are `<name>-<change>`; every change goes through a PR (AGENTS.md). Use the venv's Python (`.venv\Scripts\python.exe`), not a bare `python`.
 
 Conventions that everything shares (AGENTS.md and idea.md §7.3):
 
@@ -72,11 +72,11 @@ report = replay(test, result, limit, [v.name for v in vans],
 
 Also: `limit` must have shape `(96,)` (a clear `ValueError` otherwise), and `van_names` must be in the same order as the rows of `power`. `tolerance` is a **fraction** (0.05 = 5%), while `days_over_pct` and `baseline_alone_over_pct` in the report are **percentages** (0–100). The verdict is `does_not_fit` if any van has `unmet_kwh > 0`, otherwise `fits_with_risk` if the share of days over the limit is above the tolerance, otherwise `fits`. A slot exactly at the limit does not count as over it. `report.vans_short` has one `(name, kWh short)` entry per van, including 0.0 for full vans.
 
-**`replay` has only ever been run with a stand-in object, never with a real `ScheduleResult`.** Your first real integration run is the checkpoint. If anything does not line up (shapes, units), tell Joshua or fix the side that is wrong and update idea.md §7.3.
+**The real integration checkpoint now passes:** `replay()` has been tested with the implemented `ScheduleResult` and the 945 held-out development windows. Joshua review of the shared replay and sweep logic remains pending.
 
-### 3. The checkpoint (please do this as soon as `optimize()` works)
+### 3. The completed checkpoint
 
-TODO.md asks Joshua to hand Smriti a real `ReplayReport` for the development scenario. You can do it yourself in a few lines:
+A real development replay is available at `examples/replay_report_dev.json` on the optimization branch. You can regenerate the report with:
 
 ```python
 import dataclasses, json
@@ -85,12 +85,12 @@ d["over_by_slot"] = report.over_by_slot.tolist()
 json.dump(d, open("replay_report_dev.json", "w"), indent=2)
 ```
 
-Send Smriti the file (or the path). The development scenario is 10 vans with the §4.4 defaults, 100 kW, level 1.
+The development scenario uses 10 vans with the §4.4 defaults, 100 kW and level 1. It is an example only; calculate results for the user’s current inputs.
 
 ### 4. Numbers that help you plan the demo (measured, not scheduler results)
 
 - **Immediate charging breaks the limit.** With a throwaway fleet of 10 vans (11 kW, 30–40 kWh, arriving 17:00–19:00), the fleet alone peaks at 110 kW and goes over 100 kW on **100%** of test days. 5 vans did that on 1.8% of days. Your `generate_fleet` will differ in the details; check that your own immediate-charging run breaks the limit too (a test in idea.md §7.4).
-- **There is a floor under "days over limit".** The building alone is above 100 kW on **0.74%** of test windows (rare spikes in GLASS), so `days_over_pct` can never reach 0 for any plan. This is reported separately as `baseline_alone_over_pct`; the 5% default tolerance leaves room for it. Do not read this floor as a scheduler bug.
+- **There is a floor under "days over limit".** The building alone is above 100 kW on **0.74%** of test windows (rare spikes in GLASS), so a plan without battery support cannot reduce baseline-only violations to zero. This is reported separately as `baseline_alone_over_pct`; the 5% default tolerance leaves room for it. Do not read this floor as a scheduler bug.
 - **Level 1 at 100 kW has a lot of room.** Rough upper bound on energy between 19:00 and 06:00: about 918 kWh, i.e. at most ~26 vans of 35 kWh before energy runs out (ignoring the 11 kW charger limit and arrival times). So "drag to 15 vans → ❌" will probably **not** happen at level 1 and 100 kW. To make the break appear at a believable fleet size, consider a tighter limit (about 60 kW gives a bound of ~14 vans) or another level (level 2 at 100 kW: ~23 vans; level 3 at 100 kW: ~15 vans but its baseline alone is over the limit on 21.5% of test windows, so it needs a higher limit). This is a hint for choosing the demo scenario; your sweeps decide.
 - Every level exists for January 2023 only. Other months need an extract from Joshua (one command, separate PR).
 
@@ -110,17 +110,83 @@ These are on your list "with Joshua". Rules for them: compute `planning`, `test`
 
 ### 1. What you can call today
 
-All of this is in `gridflex/`, merged, and tested. Import it from the API; do not copy it.
+Joshua’s data and replay code is on `main`. The scheduler and sweeps below are implemented and tested on `sunil-optimization-core` / PR #11, pending merge. Import the library from the API; do not copy it. No API endpoints are implemented by this PR.
 
 | Endpoint (idea.md §8.1) | Call | Returns |
 |---|---|---|
 | `GET /conditions` | `available_conditions()` | `list[Condition]`: `category`, `month`, `level`, `level_value_kwh` |
 | `GET /area/{postcode}` | `lookup(postcode)` | `AreaInfo` or `None` (answer 404 or "no match" for `None`) |
 | `GET /reality` | `compare_all(category, month, level)` → list of `RealityCheck`; `summary(check)` for the sentence | see §4 below |
-| `POST /optimize` | `build_windows` / `split_by_sample` / `cautious_baseline`, then Sunil's `optimize()`, then `replay()` | `ReplayReport` (**scheduler not in `main` yet**) |
-| `POST /sweep`, `POST /explain` | Sunil's sweeps; your `explain.py` | not available yet |
+| `POST /optimize` | `build_windows` / `split_by_sample` / `cautious_baseline`, then Sunil's `optimize()`, then `replay()` | `ScheduleResult` + `ReplayReport` (scheduler available on PR #11) |
+| `POST /sweep` | `charger_sweep()` or `battery_sweep()` | implemented on PR #11; see integration example below |
+| `POST /explain` | `explain.py` | not implemented yet |
 
 Imports: `gridflex.profiles`, `gridflex.grid_area` (`lookup`, `map_date`), `gridflex.reality`, `gridflex.replay`.
+
+### Optimizer integration example (PR #11)
+
+Run from the repository root with the project virtual environment. This uses the development scenario; replace the values with validated API inputs. Use `planning` to build the baseline and `test` for replay, never mix customer samples. The optional sweep lines are examples; a production endpoint can return each table with `.to_dicts()`.
+
+```python
+import dataclasses
+import json
+import numpy as np
+from gridflex.profiles import load_condition, build_windows, split_by_sample, cautious_baseline
+from gridflex.fleet import generate_fleet
+from gridflex.naive import naive_schedule
+from gridflex.scheduler import NoScheduleError, limit_profile, optimize
+from gridflex.replay import replay, charger_sweep, battery_sweep
+
+windows = build_windows(load_condition('009', '2023-01', 1))
+planning, test = split_by_sample(windows)
+baseline = cautious_baseline(planning, q=0.90)
+limit = limit_profile(100.0)
+vans = generate_fleet(10, seed=42)
+try:
+    result = optimize(baseline, limit, vans)
+except NoScheduleError as exc:
+    raise RuntimeError(f'No usable charging plan: {exc.status}') from exc
+report = replay(test, result, limit, [van.name for van in vans], tolerance=0.05, immediate_power=naive_schedule(vans))
+payload = {
+    'schedule': {**dataclasses.asdict(result), 'power': result.power.tolist(),
+                 'battery_charge': result.battery_charge.tolist(),
+                 'battery_discharge': result.battery_discharge.tolist(),
+                 'battery_soc_kwh': result.battery_soc_kwh.tolist(),
+                 'unmet_kwh': result.unmet_kwh.tolist()},
+    'report': {**dataclasses.asdict(report), 'over_by_slot': report.over_by_slot.tolist()},
+    'baseline_kw': baseline.tolist(), 'limit_kw': limit.tolist(),
+    'immediate_power_kw': naive_schedule(vans).tolist(),
+}
+json.dumps(payload, allow_nan=False)
+print('status:', result.status, 'vans:',len(vans),'test windows:', report.n_windows,'over %:',round(report.days_over_pct,3))
+# Optional comparisons; pass real API inputs rather than hard-coding these settings.
+assert charger_sweep(planning, test, limit, vans, n_max=2).height == 2
+assert battery_sweep(planning, test, limit, vans, [0, 20], power_kw=10).height == 2
+```
+
+`ScheduleResult` fields for the API:
+
+| Field | Shape / meaning |
+|---|---|
+| `power` | `(n_vans, 96)`, integer kW; rows are in the same order as `vans` |
+| `battery_charge`, `battery_discharge` | `(96,)`, kW; all zero with no battery |
+| `battery_soc_kwh` | `(97,)`, stored energy at each boundary; all zero with no battery |
+| `unmet_kwh` | `(n_vans,)`, **already kWh**; never divide by four again |
+| `peak_kw` | peak on the conservative, rounded planning baseline, including battery |
+| `blocked_slots` | indices where the returned plan is above the rounded modeled cap |
+| `status`, `solve_seconds` | solver outcome and total run time |
+
+Create a battery with `Battery(capacity_kwh=20, power_kw=10, efficiency=0.90, start_soc=0.5)` and pass it to `optimize(..., battery=battery)`. Use `limit_profile(100, 50, ("22:00", "06:00"))` to test 50 kW of extra off-peak capacity. That is a contract assumption, not a real-world approval.
+
+**Failure handling:** `OPTIMAL` means all objective stages were proven optimal. `FEASIBLE` is a valid plan without that full proof; display its status. If there is no valid solution, `optimize` raises `NoScheduleError` with `exc.status` (`UNKNOWN`, `INFEASIBLE`, or `MODEL_INVALID`). Return a clear error or no-result state; do not call `replay()` on an invented schedule. Inputs outside the supported shape or range raise `ValueError`. Convert NumPy arrays to lists, and mirror API model changes in `ui/src/types.ts`.
+
+**Sweep outputs:** `charger_sweep` returns `n`, `days_over_pct`, `kwh_short`, `status`. `battery_sweep` returns `capacity_kwh`, `days_over_pct`, `kwh_short`, `fits`, `status`, `smallest_fit`. `fits` requires the risk tolerance **and** no energy shortfall; `smallest_fit` marks the smallest tested fitting size, not an untested global minimum. If no solution was found for a point, its metrics are `None` and its solver status is shown. Results are cached by inputs when optimal. If the same replay windows are used to choose the demo or battery size, describe these comparisons as exploratory.
+
+**Rounding:** charging uses integer kW per 15-minute slot; energy demand rounds up to 0.25 kWh. The optimizer rounds the baseline up and the connection limit down to integer kW. Battery state is represented to 0.0001 kWh. Show these assumptions in the UI.
+
+**Battery replay limitation:** replay currently clips negative net demand to zero when a fixed battery-discharge plan is applied to a lower-load test window. It does not resimulate the battery state after clipping. Joshua review is pending; do not claim that every battery replay is a physically validated control trajectory.
+
+**Development run:** the example has 10 vans, 945 held-out synthetic windows, no unmet energy, 1.16% of windows over the limit for one optimal plan, and 100% for immediate charging. Baseline alone exceeds the limit on 0.74% of windows. The 1.16% can differ across equally optimal schedules; use actual results and report worst overshoot too. These are synthetic scenario outcomes, not real-site probabilities.
 
 ### 2. Field lists for `api/schemas.py` and `ui/src/types.ts` (mirror them in the same PR)
 
@@ -182,7 +248,7 @@ Demo postcodes (idea.md §9): `1181KJ` Amstelveen (red, 29 requests, 5.8 MW, fix
 ### 9. Housekeeping
 
 - The wireframe landed in `wireframe/`, while AGENTS.md and idea.md say the app lives in `ui/`. Not Joshua's call: please settle it (and update AGENTS.md) so nobody scaffolds a second app.
-- `requirements.txt` already has `fastapi`, `uvicorn`, `pydantic` and `pyarrow`.
+- `requirements.txt` on PR #11 also pins `ortools`; install the branch requirements before importing the scheduler.
 - The explanation agent may only describe numbers the code computed. `explain.py` needs a non-LLM fallback and the provider stays in `call_llm()` (AGENTS.md).
 - Attributions to show in the app: GLASS (CDLA-Permissive-2.0), "Netbeheer Nederland, capaciteitskaart" with the map date, "Liander (2023)". Footer: "Synthetic data and simulation. Not a grid-operator approval."
 

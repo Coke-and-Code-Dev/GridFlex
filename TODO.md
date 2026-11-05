@@ -66,27 +66,27 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 > Handoff from Joshua: read [HANDOFF.md](HANDOFF.md#for-sunil-optimisation) first.
 
 **Hour 1–4: vans**
-- [ ] `fleet.py`: `Van` dataclass and `generate_fleet` (seeded; the first N vans are always the same)
-- [ ] `naive.py`: immediate charging
-- [ ] `scheduler.py`: `limit_profile()` and `optimize()` for vans only: overshoot, unmet and peak stages (§5.6)
-- [ ] Test on a flat fake baseline until Joshua's real baseline is ready
+- [x] `fleet.py`: `Van` dataclass and `generate_fleet` (seeded; the first N vans are always the same)
+- [x] `naive.py`: immediate charging
+- [x] `scheduler.py`: `limit_profile()` and `optimize()` for vans only: overshoot, unmet and peak stages (§5.6)
+- [x] Test on a flat fake baseline until Joshua's real baseline is ready
 
 **Hour 4–6: tests + charger sweep**
-- [ ] `tests/test_scheduler.py`: easy, impossible, partial, presence, charger max, energy accounting, immediate charging breaks the limit
-- [ ] `replay.py`: `charger_sweep()` (with Joshua)
-- [ ] Run the development scenario end to end with Joshua's baseline (**checkpoint**)
+- [x] `tests/test_scheduler.py`: easy, impossible, partial, presence, charger max, energy accounting, immediate charging breaks the limit
+- [ ] `replay.py`: `charger_sweep()` (implemented; Joshua review pending)
+- [x] Run the development scenario end to end with Joshua's baseline (**checkpoint**)
 
 **Hour 6–10: battery + limit over the day**
-- [ ] Add `Battery` to `optimize()`: charge/discharge, mode, energy balance, no export, end ≥ start (§5.6)
-- [ ] Add the battery-throughput stage to the objective
-- [ ] Extra off-peak capacity through `limit_profile()`; check it's only used inside its window
-- [ ] Battery tests: never both at once, limits and balance, no export, battery never makes things worse
-- [ ] Make sure replay uses the battery schedule and `C[t]` (with Joshua)
+- [x] Add `Battery` to `optimize()`: charge/discharge, mode, energy balance, no export, end ≥ start (§5.6)
+- [x] Add the battery-throughput stage to the objective
+- [x] Extra off-peak capacity through `limit_profile()`; check it's only used inside its window
+- [x] Battery tests: never both at once, limits and balance, no export, battery never makes things worse
+- [ ] Make sure replay uses the battery schedule and `C[t]` (implemented and tested; Joshua review pending)
 
 **Hour 10–13: battery sweep + speed**
-- [ ] `replay.py`: `battery_sweep()` returning the smallest battery that brings risk under the tolerance
-- [ ] Time a full solve, replay and sweep; cache results per input set; aim for under 1 s per solve
-- [ ] Solver timeout: very short time limit → status `UNKNOWN`/`FEASIBLE`, reported honestly
+- [x] `replay.py`: `battery_sweep()` returning the smallest battery that brings risk under the tolerance
+- [x] Time a full solve, replay and sweep; cache results per input set; aim for under 1 s per solve
+- [x] Solver timeout: very short time limit → status `UNKNOWN`/`FEASIBLE`, reported honestly
 
 **Hour 13–18**
 - [ ] Edge cases: zero vans, a van that arrives after it leaves, a battery larger than needed, limit below baseline all day

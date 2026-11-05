@@ -293,7 +293,7 @@ Every step (scheduler, replay, charts) uses `C[t]`, never a single number.
 - **Grid limit:** `ceil(B[t]) + Σ_v p[v,t] + ch[t] − dis[t] ≤ C[t] + o[t]` for every t. Slots with `o[t] > 0` are flagged as "baseline alone exceeds the limit". The overshoot variable keeps the model solvable in those cases, instead of returning "infeasible" with no plan.
 - **Van energy:** `need_v = ceil(4 · E_v)`, `Σ_t p[v,t] + u[v] ≥ need_v`, `Σ_t p[v,t] ≤ need_v`.
 - **Battery never charges and discharges at once:** `ch[t] ≤ P_bat · mode[t]`, `dis[t] ≤ P_bat · (1 − mode[t])`.
-- **Battery energy balance:** `soc[t+1] = soc[t] + round(2500 · η) · ch[t] − 2500 · dis[t]`, with `soc[0] = s0`. Efficiency losses are applied when charging.
+- **Battery energy balance:** `soc[t+1] = soc[t] + round(2500 · η) · ch[t] − 2500 · dis[t]`, with `soc[0] = round(10000 · E_bat · s0)`. Efficiency losses are applied when charging.
 - **No export:** `dis[t] ≤ floor(B[t]) + Σ_v p[v,t]`. The battery only powers the site, never the grid.
 - **No borrowing from tomorrow:** `soc[96] ≥ soc[0]`.
 
@@ -304,9 +304,9 @@ Every step (scheduler, replay, charts) uses `C[t]`, never a single number.
 3. Fix that, then minimize the peak grid use `max_t (ceil(B[t]) + Σ_v p[v,t] + ch[t] − dis[t])`.
 4. Fix that, then minimize battery throughput `Σ_t (ch[t] + dis[t])`, so the battery doesn't cycle for no reason.
 
-Time limit: 10 s per stage. Report the solver status (optimal, feasible, infeasible, unknown); a time limit doesn't prove optimality.
+Time limit: 10 s per stage. An OPTIMAL result requires all stages to be proven optimal; FEASIBLE means the returned plan is valid but at least one stage was not proven optimal. If no plan has been found, optimize raises NoScheduleError with UNKNOWN, INFEASIBLE or MODEL_INVALID; callers must not replay fabricated schedules. If a later stage times out without a solution, the last valid result is retained as FEASIBLE.
 
-**Rounding convention:** integer kW per 15-minute slot; energy needs rounded *up* to the nearest 0.25 kWh. State this in the UI.
+**Rounding convention:** integer kW per 15-minute slot; energy needs rounded *up* to the nearest 0.25 kWh. Baseline demand is rounded up and a fractional connection limit is rounded down to integer kW. Battery capacity and state of charge are represented in 0.0001 kWh units; charge efficiency is rounded to that representation. State these assumptions in the UI.
 
 ### 5.7 Immediate charging (for comparison)
 
@@ -537,6 +537,7 @@ def limit_profile(firm_kw: float, extra_kw: float = 0, extra_window=("22:00", "0
                   start_hour: int = 12) -> np.ndarray  # (96,)
 def optimize(baseline: np.ndarray, limit: np.ndarray, vans: list[Van],
              battery: Battery | None = None, time_limit_s: float = 10.0) -> ScheduleResult
+# Raises NoScheduleError with a solver status if no valid schedule was found.
 ```
 
 **`gridflex/naive.py`**
@@ -575,8 +576,10 @@ def replay(test: Windows, result: ScheduleResult, limit: np.ndarray,
            van_names: list[str], tolerance: float = 0.05,
            immediate_power: np.ndarray | None = None) -> ReplayReport
 def replay_immediate(test: Windows, immediate_power: np.ndarray, limit: np.ndarray) -> ImmediateReplay
-def charger_sweep(planning, test, limit, fleet, n_max, battery=None) -> pl.DataFrame
-def battery_sweep(planning, test, limit, vans, sizes_kwh, power_kw) -> pl.DataFrame
+def charger_sweep(planning, test, limit, fleet, n_max, battery=None, tolerance=0.05, q=0.90, time_limit_s=10.0) -> pl.DataFrame
+def battery_sweep(planning, test, limit, vans, sizes_kwh, power_kw, tolerance=0.05, q=0.90, time_limit_s=10.0) -> pl.DataFrame
+# Sweeps are exploratory if their replay windows are used to choose a scenario.
+# Battery fits requires both risk within tolerance and no unmet van energy; smallest_fit marks the smallest tested fit.
 ```
 
 **`gridflex/reality.py`**
