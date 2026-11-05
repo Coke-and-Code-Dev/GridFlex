@@ -1,4 +1,4 @@
-export function DepotVan({ busy, hasResults }: { busy: boolean; hasResults: boolean }) {
+export function DepotVan({ busy, hasResults, onViewResults }: { busy: boolean; hasResults: boolean; onViewResults: () => void }) {
   const state = busy ? "driving" : hasResults ? "parked" : "waiting";
 
   return (
@@ -18,7 +18,7 @@ export function DepotVan({ busy, hasResults }: { busy: boolean; hasResults: bool
       </div>
       <div className="depot-message">
         <span role="status">{busy ? "Van on the move" : hasResults ? "Van parked · Results available" : "Van ready for its first run"}</span>
-        {!busy && hasResults && <a className="text-primary underline underline-offset-4" href="#compare">View results ↑</a>}
+        {!busy && hasResults && <button type="button" className="text-primary underline underline-offset-4" onClick={onViewResults}>View results ↑</button>}
       </div>
     </aside>
   );
