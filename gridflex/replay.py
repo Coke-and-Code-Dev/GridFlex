@@ -13,6 +13,8 @@ are percentages (0-100); `tolerance` is a fraction (0.05 = 5%), as in idea.md 7.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import OrderedDict
+import hashlib
 from typing import Literal, Protocol
 
 import numpy as np
@@ -155,3 +157,98 @@ def replay(
         n_windows=len(test),
         immediate=None if immediate_power is None else replay_immediate(test, immediate_power, limit),
     )
+
+
+_SWEEP_CACHE = OrderedDict()
+_SWEEP_CACHE_LIMIT = 16
+
+
+def _sweep_key(kind, planning, test, limit, settings):
+    digest = hashlib.blake2b(digest_size=20)
+    for value in (planning.values, test.values, np.asarray(limit)):
+        arr = np.ascontiguousarray(value)
+        digest.update(str((arr.shape, arr.dtype)).encode())
+        digest.update(arr.tobytes())
+    digest.update(repr((kind, test.start_hour, settings)).encode())
+    return digest.digest()
+
+
+def _cache_sweep(key, table):
+    if all(status == 'OPTIMAL' for status in table['status'].to_list()):
+        _SWEEP_CACHE[key] = table.clone()
+        _SWEEP_CACHE.move_to_end(key)
+        if len(_SWEEP_CACHE) > _SWEEP_CACHE_LIMIT:
+            _SWEEP_CACHE.popitem(last=False)
+    return table
+
+
+def charger_sweep(planning: Windows, test: Windows, limit: np.ndarray, fleet: list,
+                  n_max: int, battery=None, tolerance: float = 0.05, q: float = 0.90,
+                  time_limit_s: float = 10.0):
+    """Compare fixed fleet prefixes on the same planning and test windows.
+
+    Percentages are descriptive of these synthetic windows. A sweep that is used to
+    select a scenario also uses the replay data for tuning, so it is exploratory.
+    """
+    import polars as pl
+    from gridflex.profiles import cautious_baseline
+    from gridflex.scheduler import NoScheduleError, optimize
+    if not isinstance(n_max, int) or not 0 <= n_max <= len(fleet):
+        raise ValueError('n_max must be between 0 and the fleet size')
+    if not 0 <= tolerance <= 1:
+        raise ValueError('tolerance must be a fraction between 0 and 1')
+    key = _sweep_key('charger', planning, test, limit,
+                     (tuple(fleet), n_max, battery, tolerance, q, time_limit_s))
+    if key in _SWEEP_CACHE:
+        _SWEEP_CACHE.move_to_end(key)
+        return _SWEEP_CACHE[key].clone()
+    baseline = cautious_baseline(planning, q)
+    rows = []
+    for n in range(1, n_max + 1):
+        vans = fleet[:n]
+        try:
+            result = optimize(baseline, limit, vans, battery, time_limit_s)
+        except NoScheduleError as exc:
+            rows.append({'n': n, 'days_over_pct': None, 'kwh_short': None, 'status': exc.status})
+            continue
+        report = replay(test, result, limit, [v.name for v in vans], tolerance=tolerance)
+        rows.append({'n': n, 'days_over_pct': report.days_over_pct,
+                     'kwh_short': float(result.unmet_kwh.sum()), 'status': result.status})
+    return _cache_sweep(key, pl.DataFrame(rows, schema={'n': pl.Int64, 'days_over_pct': pl.Float64,
+                                     'kwh_short': pl.Float64, 'status': pl.String}))
+
+
+def battery_sweep(planning: Windows, test: Windows, limit: np.ndarray, vans: list,
+                  sizes_kwh: list[float], power_kw: int, tolerance: float = 0.05,
+                  q: float = 0.90, time_limit_s: float = 10.0):
+    """Compare tested battery sizes; mark feasibility only when risk and fleet needs fit."""
+    import polars as pl
+    from gridflex.profiles import cautious_baseline
+    from gridflex.scheduler import Battery, NoScheduleError, optimize
+    if not 0 <= tolerance <= 1:
+        raise ValueError('tolerance must be a fraction between 0 and 1')
+    key = _sweep_key('battery', planning, test, limit,
+                     (tuple(vans), tuple(sizes_kwh), power_kw, tolerance, q, time_limit_s))
+    if key in _SWEEP_CACHE:
+        _SWEEP_CACHE.move_to_end(key)
+        return _SWEEP_CACHE[key].clone()
+    baseline = cautious_baseline(planning, q)
+    rows = []
+    for size in sizes_kwh:
+        battery = Battery(size, power_kw) if size else None
+        try:
+            result = optimize(baseline, limit, vans, battery, time_limit_s)
+        except NoScheduleError as exc:
+            rows.append({'capacity_kwh': float(size), 'days_over_pct': None,
+                         'kwh_short': None, 'fits': None, 'status': exc.status})
+            continue
+        report = replay(test, result, limit, [v.name for v in vans], tolerance=tolerance)
+        rows.append({'capacity_kwh': float(size), 'days_over_pct': report.days_over_pct,
+                     'kwh_short': float(result.unmet_kwh.sum()), 'fits': report.verdict == 'fits',
+                     'status': result.status})
+    smallest = min((row['capacity_kwh'] for row in rows if row['fits']), default=None)
+    for row in rows:
+        row['smallest_fit'] = smallest is not None and row['capacity_kwh'] == smallest and row['fits']
+    return _cache_sweep(key, pl.DataFrame(rows, schema={'capacity_kwh': pl.Float64, 'days_over_pct': pl.Float64,
+                                     'kwh_short': pl.Float64, 'fits': pl.Boolean, 'status': pl.String,
+                                     'smallest_fit': pl.Boolean}))
