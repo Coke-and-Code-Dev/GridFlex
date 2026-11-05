@@ -143,6 +143,8 @@ def main() -> None:
     p.add_argument("--out", type=Path, default=DEFAULT_OUT)
     p.add_argument("--skip-hash", action="store_true", help="Skip the SHA-256 check (not recommended)")
     args = p.parse_args()
+    if hasattr(sys.stdout, "reconfigure"):  # a Windows console may not be UTF-8; never crash on a print
+        sys.stdout.reconfigure(errors="replace")
 
     if not args.raw.exists():
         sys.exit(f"{args.raw} not found. See idea.md section 13 for the download.")
