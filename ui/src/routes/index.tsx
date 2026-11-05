@@ -266,18 +266,20 @@ function Dashboard() {
       <div aria-hidden className="grid-bg pointer-events-none fixed inset-0 opacity-60" style={{ transform: `translateY(${py * -0.15}px)` }} />
       <div aria-hidden className="pointer-events-none fixed -right-40 top-20 h-[32rem] w-[32rem] rounded-full bg-primary/10 blur-3xl" style={{ transform: `translateY(${py * -0.35}px)` }} />
 
-      <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
-          <span className="font-bold whitespace-nowrap"><span className="text-primary">▮</span> GridFlex AI</span>
-          <div className="min-w-0 flex-1 basis-56">
-            <TabsList aria-label="Dashboard sections" className="h-auto flex-wrap justify-start gap-1 bg-transparent">
-              {TABS.map(([id, label]) => (
-                <TabsTrigger key={id} value={id} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  {label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+      <header className="top-0 z-20 border-b border-border bg-background/95 backdrop-blur md:sticky">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <button type="button" onClick={() => setActiveTab("welcome")} aria-label="GridFlex.ai home"
+            className="my-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-bold tracking-tight hover:bg-accent">
+            <img src="/gridflex-mark.png" alt="" width={40} height={27} className="h-auto w-10 rounded object-contain" />
+            <span>GridFlex<span className="text-primary">.ai</span></span>
+          </button>
+          <TabsList aria-label="Dashboard sections" className="flex h-auto w-full flex-wrap justify-start gap-1 border-t border-border bg-transparent px-0 py-2">
+            {TABS.map(([id, label]) => (
+              <TabsTrigger key={id} value={id} className="min-h-9 px-2.5 sm:px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
       </header>
 
