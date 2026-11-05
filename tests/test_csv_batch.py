@@ -62,6 +62,10 @@ def test_portfolio_progress_reports_failed_sites_and_delivers_pdf(monkeypatch):
     start, first, failed, last, report = map(json.loads, response.text.splitlines())
     assert start == {"type": "start", "total": 3}
     assert first["result"]["postcode"] == "1181KJ"
+    assert first["result"]["scenario"]["postcode"] == "1181KJ"
+    assert first["result"]["area"]["postcode"] == "1181KJ"
+    assert len(first["result"]["detail"]["schedule"]["power"]) == 3
+    assert len(first["result"]["detail"]["limit_kw"]) == 96
     assert failed["result"]["error"] == "Solver unavailable for this site"
     assert last["result"]["postcode"] == "1315RA"
     assert report["type"] == "pdf"

@@ -137,18 +137,20 @@ def simulate_sites(sites):
         except FileNotFoundError:
             area_info = None
         site = SiteResult(name, scenario, area_info)
+        detail = None
         try:
-            site.payload = compact_result(optimize_route(scenario))
+            detail = optimize_route(scenario)
+            site.payload = compact_result(detail)
         except HTTPException as exc:
             site.error = str(exc.detail)
         except (ValueError, FileNotFoundError) as exc:
             site.error = str(exc)
-        yield site
+        yield site, detail
 
 
 @app.post("/batch-report", response_class=Response)
 def batch_report(upload: CsvUpload):
-    results = list(simulate_sites(read_scenarios(upload.csv)))
+    results = [site for site, _ in simulate_sites(read_scenarios(upload.csv))]
     return Response(
         render_portfolio(results), media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="gridflex-portfolio.pdf"'},
@@ -162,9 +164,13 @@ def batch_report_progress(upload: CsvUpload):
     def stream():
         yield json.dumps({"type": "start", "total": len(sites)}) + "\n"
         results = []
-        for site in simulate_sites(sites):
+        for site, detail in simulate_sites(sites):
             results.append(site)
-            yield json.dumps({"type": "site", "result": site.summary()}) + "\n"
+            summary = site.summary()
+            if detail is not None:
+                summary.update(scenario=site.scenario.model_dump(), detail=detail,
+                               area=asdict(site.area) if site.area else None)
+            yield json.dumps({"type": "site", "result": summary}, allow_nan=False) + "\n"
         pdf = render_portfolio(results)
         yield json.dumps({"type": "pdf", "content": base64.b64encode(pdf).decode("ascii")}) + "\n"
 

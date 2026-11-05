@@ -33,6 +33,9 @@ async function request(path: string, body?: unknown): Promise<Response> {
   });
   if (!response.ok) {
     const error = await response.json().catch(() => null);
+    if (path === "/batch-report/progress" && response.status === 404 && error?.detail === "Not Found") {
+      throw new Error(`This GridFlex API at ${origin} is missing the multi-depot endpoint. Restart it from the current checkout and try again.`);
+    }
     throw new Error(typeof error?.detail === "string" ? error.detail : `Request failed (${response.status}).`);
   }
   return response;
@@ -45,7 +48,7 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
 export type PortfolioSite = { site: string; postcode: string; province: string | null; vans: number } & (
   { error: string } |
   { full: number; unmet_kwh: number; breach_pct: number; immediate_pct: number; worst_kw: number;
-    verdict: OptimizeResult["report"]["verdict"]; status: string }
+    verdict: OptimizeResult["report"]["verdict"]; status: string; scenario: Scenario; detail: OptimizeResult; area: Area | null }
 );
 type PortfolioEvent = { type: "start"; total: number } | { type: "site"; result: PortfolioSite } | { type: "pdf"; content: string };
 
