@@ -66,3 +66,6 @@ The CSV templates are in `ui/public/`. Use one row per van. Repeat the site sett
 
 - **Upload setup CSV** in Setup expects a single site. Review the imported settings, then press **Optimize**.
 - **Multi-depot simulation** in Setup accepts multiple site IDs. An upload opens the Multi-depot results tab, where you can inspect each site's results. The dashboard shows progress and flags sites that fail to simulate. When the run completes, **Download full PDF report** exports a portfolio overview, per-site charts and per-van charging results. GridFlex does not enforce a CSV file-size cap. Large runs are limited by browser and server memory, network settings, and solver time. Each site supports up to 40 vans.
+
+
+Portfolio questions use the API's local SQLite results and Chroma knowledge index. Install Python requirements, run Ollama, and download the embedding model once with `ollama pull qwen3-embedding:0.6b`. The first question builds the local index. Groq requires its server-side API key; Qwen chat also requires the existing `qwen3.5:9b` model. Portfolio data and the index persist in the git-ignored `.gridflex-local/` directory.

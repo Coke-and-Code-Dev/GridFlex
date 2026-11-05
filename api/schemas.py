@@ -84,3 +84,10 @@ class WhatIfResponse(BaseModel):
     current: ComparisonMetrics
     changed: ComparisonMetrics
     scenario: Scenario
+
+
+class PortfolioQuestion(BaseModel):
+    run_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    question: str = Field(min_length=1, max_length=500)
+    history: list[ConversationTurn] = Field(default_factory=list, max_length=6)
+    provider: Literal["groq", "ollama"] = "groq"

@@ -9,7 +9,7 @@ it("keeps an active run across view changes and warns before unloading", async (
   let finish!: (report: Blob) => void;
   const pending = new Promise<Blob>((resolve) => { finish = resolve; });
   vi.mocked(simulatePortfolio).mockImplementation(async (_csv, progress) => {
-    progress({ type: "start", total: 2 });
+    progress({ type: "start", total: 2, run_id: "a".repeat(32) });
     progress({ type: "site", result: { site: "Depot A", postcode: "2311BD", province: null, vans: 3, error: "No result" } });
     return pending;
   });

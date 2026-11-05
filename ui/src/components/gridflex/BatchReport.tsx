@@ -1,4 +1,5 @@
-import type { PortfolioSite } from "@/types";
+import { useState } from "react";
+import { api, type PortfolioSite, type ExplanationProvider, type ExplanationResponse } from "@/types";
 import type { Portfolio } from "@/hooks/use-portfolio";
 import { Heatmap, LoadChart } from "@/components/gridflex/Charts";
 import { slotClock } from "@/lib/schedule-answer";
@@ -87,6 +88,7 @@ export function PortfolioResults({ portfolio, canOpenSite, onOpenSite }: { portf
           </button>
         </section>
       )}
+      {report && portfolio.serverRunId && <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} />}
       {report && <div className="border-t border-border pt-4">
         <button type="button" onClick={download} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Download full PDF report</button>
       </div>}
@@ -132,4 +134,45 @@ function DepotDetails({ site }: { site: CompletedSite }) {
       <LoadChart title="Battery stored energy (kWh)" series={[{ label: "Stored energy", data: schedule.battery_soc_kwh, cls: "stroke-success" }]} />
       <p className="text-xs text-muted-foreground">Battery replay clips negative net demand without recalculating battery state for each window.</p></>}
   </div>;
+}
+
+
+function PortfolioAssistant({ runId }: { runId: string }) {
+  const [provider, setProvider] = useState<ExplanationProvider>("groq");
+  const [question, setQuestion] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [messages, setMessages] = useState<Array<ExplanationResponse & { question: string; warnings: string[] }>>([]);
+  async function ask(event: React.FormEvent) {
+    event.preventDefault();
+    const text = question.trim();
+    if (!text || busy) return;
+    setBusy(true); setError("");
+    try {
+      const answer = await api<ExplanationResponse & { warnings: string[] }>("/portfolio/ask", {
+        run_id: runId, question: text, provider,
+        history: messages.slice(-6).map(({ question, text }) => ({ question, text: text.slice(0, 3000) })),
+      });
+      setMessages((items) => [...items, { question: text, ...answer }]);
+      setQuestion("");
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not answer this question."); }
+    finally { setBusy(false); }
+  }
+  return <section className="space-y-3 border-t border-border pt-4" aria-labelledby="portfolio-assistant-heading">
+    <h3 id="portfolio-assistant-heading" className="text-lg font-semibold">Ask about your portfolio</h3>
+    <p className="text-sm text-muted-foreground">Ask about a depot, postcode, fleet or the whole simulation.</p>
+    <label className="text-sm">Explanation model <select value={provider} onChange={(e) => setProvider(e.target.value as ExplanationProvider)} className="ml-2 rounded border border-border bg-background p-2">
+      <option value="groq">Groq (cloud)</option><option value="ollama">Qwen 9B (local)</option>
+    </select></label>
+    <div aria-live="polite" className="space-y-3">{messages.map((message, i) => <div key={i}>
+      <p className="font-semibold">{message.question}</p><p className="whitespace-pre-wrap">{message.text}</p>
+      <p className="text-xs text-muted-foreground">{message.source === "ollama" ? "Local Qwen" : message.source === "groq" ? "Groq" : "Unavailable"}</p>
+      {message.warnings.map((warning) => <p key={warning} className="text-xs text-muted-foreground">{warning}</p>)}
+      {!!message.evidence.length && <details className="text-sm text-muted-foreground"><summary>View supporting evidence</summary>{message.evidence.map((item) => <p className="break-words" key={item.id}>{item.id}: {item.text}</p>)}</details>}
+    </div>)}</div>
+    <form onSubmit={ask} className="flex gap-2"><label className="sr-only" htmlFor="portfolio-question">Ask about this portfolio</label>
+      <input id="portfolio-question" className="min-w-0 flex-1 rounded border border-border bg-background p-2" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Which depot has the highest risk?" />
+      <button className="rounded bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50" disabled={busy || !question.trim()}>{busy ? "Thinking…" : "Ask"}</button>
+    </form>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+  </section>;
 }
