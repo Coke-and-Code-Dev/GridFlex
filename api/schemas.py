@@ -46,6 +46,7 @@ class ExplanationRequest(BaseModel):
     previous: Scenario | None = None
     question: str | None = Field(default=None, max_length=500)
     history: list[ConversationTurn] = Field(default_factory=list, max_length=6)
+    provider: Literal["groq", "ollama"] = "groq"
 
 
 class WhatIfRequest(BaseModel):
@@ -60,7 +61,7 @@ class Evidence(BaseModel):
 
 class ExplanationResponse(BaseModel):
     text: str
-    source: Literal["groq", "template"]
+    source: Literal["groq", "ollama", "template"]
     evidence: list[Evidence] = Field(default_factory=list)
 
 

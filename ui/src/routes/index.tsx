@@ -1,7 +1,7 @@
 import { scheduleAnswer, slotClock as time } from "@/lib/schedule-answer";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type WhatIfAction, type WhatIfResponse } from "@/types";
+import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
@@ -116,13 +116,14 @@ function Dashboard() {
   const [vanDriving, setVanDriving] = useState(false);
   const [error, setError] = useState("");
   const [explanation, setExplanation] = useState("");
-  const [explanationSource, setExplanationSource] = useState<"groq" | "template">("template");
+  const [explanationSource, setExplanationSource] = useState<ExplanationProvider | "template">("template");
+  const [provider, setProvider] = useState<ExplanationProvider>("groq");
   const [selectedSlot, setSelectedSlot] = useState(24);
   const [whatIf, setWhatIf] = useState<WhatIfResponse>();
   const [whatIfBusy, setWhatIfBusy] = useState(false);
   const [whatIfError, setWhatIfError] = useState("");
   const [q, setQ] = useState("");
-  const [qa, setQa] = useState<{ question: string; text: string; source?: "groq" | "template" | "schedule"; evidence?: { id: string; text: string }[] }[]>([]);
+  const [qa, setQa] = useState<{ question: string; text: string; source?: ExplanationProvider | "template" | "schedule"; evidence?: { id: string; text: string }[] }[]>([]);
   const [asking, setAsking] = useState(false);
   const [decision, setDecision] = useState("");
 
@@ -173,7 +174,7 @@ function Dashboard() {
       const params = new URLSearchParams({ category: snapshot.category, month: snapshot.month, level: String(snapshot.level) });
       await Promise.allSettled([
         api<Reality[]>(`/reality?${params}`).then(setChecks),
-        api<ExplanationResponse>("/explain", { scenario: snapshot, previous })
+        api<ExplanationResponse>("/explain", { scenario: snapshot, previous, provider })
           .then(({ text, source }) => { setExplanation(text); setExplanationSource(source); })
           .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); }),
       ]);
@@ -195,7 +196,7 @@ function Dashboard() {
     }
     setAsking(true);
     try {
-      const response = await api<ExplanationResponse>("/explain", { scenario: run.cfg, previous: run.previous, question, history: qa.slice(-6).map(({ question, text }) => ({ question, text: text.slice(0, 3000) })) });
+      const response = await api<ExplanationResponse>("/explain", { scenario: run.cfg, previous: run.previous, question, provider, history: qa.slice(-6).map(({ question, text }) => ({ question, text: text.slice(0, 3000) })) });
       setQa((items) => [...items, { question, ...response }]);
     } catch {
       setQa((items) => [...items, { question, text: "The explanation endpoint is unavailable. See the current replay metrics above." }]);
@@ -450,17 +451,23 @@ function Dashboard() {
           <TabsContent value="explanation">
           <Section id="explanation" n={5} title="Explanation">
             <article className="panel space-y-4 p-6">
-              <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq explanation based on computed evidence" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
+              <fieldset className="flex flex-wrap items-center gap-2" disabled={busy || asking}>
+                <legend className="mb-2 text-sm font-semibold">Choose explanation model</legend>
+                {([ ["groq", "Groq (cloud)"], ["ollama", "Qwen 3.5 9B (local)"] ] as const).map(([value, label]) =>
+                  <button type="button" key={value} aria-pressed={provider === value} onClick={() => setProvider(value)} className={provider === value ? btnPrimary : btnGhost}>{label}</button>)}
+                <span className="text-xs text-muted-foreground">Applies to your next question or optimization.</span>
+              </fieldset>
+              <p className="text-sm text-muted-foreground">{explanationSource === "groq" ? "Groq explanation based on computed evidence" : explanationSource === "ollama" ? "Local Qwen explanation based on computed evidence" : "Template explanation from this run’s computed results"} <Hint label="Explanation and follow-up" /></p>
               <p aria-live="polite">{explanation || "Preparing explanation…"}</p>
               <div className="flex flex-wrap gap-2">
                 {["When do all vans finish charging?", "When is risk highest?", "Which vans are short?", "How did the battery help?"].map((question) =>
                   <button key={question} className={btnGhost} disabled={busy || asking} onClick={() => ask(question)}>{question}</button>)}
               </div>
-              <ul aria-live="polite">{qa.map(({ question, text, source, evidence }, i) => <li key={i} className="mt-3"><strong>{question}</strong><p className="whitespace-pre-line">{text}</p><p className="text-xs text-muted-foreground">{source === "schedule" ? "Calculated from this run’s van schedule" : source === "groq" ? "Groq response" : "Local fallback"}</p>{!!evidence?.length && <details className="text-sm text-muted-foreground"><summary>Based on {evidence.length} evidence item{evidence.length === 1 ? "" : "s"}</summary><ul>{evidence.map((item) => <li key={item.id}>{item.text}</li>)}</ul></details>}</li>)}</ul>
+              <ul aria-live="polite">{qa.map(({ question, text, source, evidence }, i) => <li key={i} className="mt-3"><strong>{question}</strong><p className="whitespace-pre-line">{text}</p><p className="text-xs text-muted-foreground">{source === "schedule" ? "Calculated from this run’s van schedule" : source === "groq" ? "Groq response" : source === "ollama" ? "Local Qwen response" : evidence?.length ? "Calculated from simulation evidence" : "Local fallback"}</p>{!!evidence?.length && <details className="text-sm text-muted-foreground"><summary>Based on {evidence.length} evidence item{evidence.length === 1 ? "" : "s"}</summary><ul>{evidence.map((item) => <li key={item.id}>{item.text}</li>)}</ul></details>}</li>)}</ul>
               <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); void ask(q); }}>
                 <label htmlFor="ask" className="sr-only">Ask about this run</label>
                 <input id="ask" className="grow rounded border border-input bg-background p-2" value={q} maxLength={500} onChange={(e) => setQ(e.target.value)} placeholder="Ask about this run" />
-                <button className={btnPrimary} disabled={busy || asking || !q.trim()}>Ask</button>
+                <button className={btnPrimary} disabled={busy || asking || !q.trim()}>{asking ? "Thinking…" : "Ask"}</button>
               </form>
             </article>
           </Section>
