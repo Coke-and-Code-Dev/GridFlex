@@ -1,9 +1,10 @@
 import { scheduleAnswer, slotClock as time } from "@/lib/schedule-answer";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
-import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse } from "@/types";
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse, type PortfolioSite } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PortfolioResults, PortfolioUpload, usePortfolio } from "@/components/gridflex/BatchReport";
+import { PortfolioResults, PortfolioUpload } from "@/components/gridflex/BatchReport";
+import { usePortfolio } from "@/hooks/use-portfolio";
 import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 
@@ -107,6 +108,10 @@ function Dashboard() {
   const py = useParallax();
   const [activeTab, setActiveTab] = useState<DashboardTab>("welcome");
   const portfolio = usePortfolio(() => setActiveTab("portfolio"));
+  const [activeDepot, setActiveDepot] = useState("");
+  const initializedPortfolio = useRef(0);
+  const availableDepots = portfolio.sites.filter((site): site is Exclude<PortfolioSite, { error: string }> => !("error" in site));
+  const firstDepot = availableDepots[0];
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -161,10 +166,10 @@ function Dashboard() {
     setImporting(true);
     setImportError("");
     try {
-      if (file.size > 2_000_000) throw new Error("Choose a CSV under 2 MB.");
       const scenario = await api<Scenario>("/import-setup", { csv: await file.text() });
       setCfg(scenario);
       setRun(undefined);
+      setActiveDepot("");
       setError("");
       setImportedFile(file.name);
     } catch (err) {
@@ -192,6 +197,7 @@ function Dashboard() {
       }
       setVanDriving(false);
       setActiveTab((current) => current === "configure" ? "compare" : current);
+      setActiveDepot("");
       await applyResult(snapshot, result, previous);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Optimization failed.");
@@ -219,6 +225,23 @@ function Dashboard() {
         .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); }),
     ]);
   }
+
+  function openPortfolioDepot(site: Exclude<PortfolioSite, { error: string }>) {
+    setBusy(true);
+    setActiveDepot(site.site);
+    setCfg(site.scenario);
+    setImportedFile(portfolio.filename);
+    setError("");
+    void applyResult(site.scenario, site.detail).finally(() => setBusy(false));
+  }
+
+  const canOpenDepot = !busy && !asking && !sweeping && !whatIfBusy && !importing;
+  const openFirstDepot = useEffectEvent(openPortfolioDepot);
+  useEffect(() => {
+    if (!firstDepot || !canOpenDepot || initializedPortfolio.current === portfolio.runId) return;
+    initializedPortfolio.current = portfolio.runId;
+    openFirstDepot(firstDepot);
+  }, [firstDepot, canOpenDepot, portfolio.runId]);
 
   async function ask(question: string) {
     if (!run || busy || asking || whatIfBusy || !question.trim()) return;
@@ -325,16 +348,33 @@ function Dashboard() {
 
       <main className="relative mx-auto max-w-6xl px-6">
         {portfolio.filename && <TabsContent value="portfolio" className="py-8">
-          <PortfolioResults portfolio={portfolio} canOpenSite={!busy && !asking && !sweeping && !whatIfBusy && !importing}
+          <PortfolioResults portfolio={portfolio} canOpenSite={canOpenDepot}
             onOpenSite={(site) => {
-              setBusy(true);
-              setCfg(site.scenario);
-              setImportedFile(portfolio.filename);
-              setError("");
               setActiveTab("compare");
-              void applyResult(site.scenario, site.detail).finally(() => setBusy(false));
+              openPortfolioDepot(site);
             }} />
         </TabsContent>}
+        {activeTab !== "portfolio" && portfolio.running && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+            <span role="status">{portfolio.total ? `Portfolio simulation · ${portfolio.sites.length} of ${portfolio.total} depots processed` : "Validating portfolio CSV…"}</span>
+            <button type="button" className="text-primary underline" onClick={() => setActiveTab("portfolio")}>View progress</button>
+          </div>
+        )}
+        {availableDepots.length > 0 && (["compare", "schedule", "explanation", "analysis"] as DashboardTab[]).includes(activeTab) && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-border p-3 text-sm">
+            <label className="flex flex-wrap items-center gap-2">Portfolio depot
+              <select className="max-w-full rounded border border-border bg-background p-1.5" value={activeDepot} disabled={!canOpenDepot}
+                onChange={(event) => {
+                  const site = availableDepots.find((depot) => depot.site === event.target.value);
+                  if (site) openPortfolioDepot(site);
+                }}>
+                <option value="" disabled>Select a completed depot</option>
+                {availableDepots.map((site) => <option key={site.site} value={site.site}>{site.site} · {site.postcode}</option>)}
+              </select>
+            </label>
+            <button type="button" className="text-primary underline" onClick={() => setActiveTab("portfolio")}>Multi-depot results</button>
+          </div>
+        )}
         {/* 01 Welcome */}
         <TabsContent value="welcome"><section id="welcome" className="grid min-h-[72vh] items-center gap-8 py-12 lg:grid-cols-2">
           <div>
@@ -612,7 +652,7 @@ function Dashboard() {
           <TabsContent key={id} value={id} className="py-12">
             <div className="panel space-y-4 p-8 text-center">
               <h2 className="text-xl font-semibold">{label}</h2>
-              <p className="text-muted-foreground">{busy ? "Optimize is running." : "Run Optimize in Setup to see results here."}</p>
+              <p className="text-muted-foreground">{portfolio.running ? "This tab will show the first depot as soon as its simulation completes." : busy ? "Optimize is running." : "Run Optimize in Setup to see results here."}</p>
               <button type="button" className={btnPrimary} onClick={() => setActiveTab("configure")}>Go to Setup</button>
             </div>
           </TabsContent>

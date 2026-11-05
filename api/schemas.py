@@ -33,7 +33,7 @@ class Scenario(BaseModel):
 
 
 class CsvUpload(BaseModel):
-    csv: str = Field(min_length=1, max_length=2_000_000)
+    csv: str = Field(min_length=1)
 
 
 class SweepRequest(BaseModel):
