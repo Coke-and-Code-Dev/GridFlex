@@ -40,7 +40,7 @@ The task list per person is in [TODO.md](TODO.md).
 
 ## 1. The problem
 
-The Dutch electricity grid is full. In the grid operators' own capacity map (export downloaded 5 November 2026), **57% of all 6-digit postcodes in the Netherlands, and 79% in Liander's area, are marked red for new demand**: there is a shortage of transport capacity and a waiting list. Businesses there can't get a bigger connection, often for years. Many local areas list an expected fix date between 2029 and 2034.
+The Dutch electricity grid is full. In the grid operators' own capacity map (export downloaded 5 November 2026), **56% of all 6-digit postcodes in the Netherlands, and 79% in Liander's area, are marked red for new demand**: there is a shortage of transport capacity and a waiting list. Businesses there can't get a bigger connection, often for years. Many local areas list an expected fix date between 2029 and 2034.
 
 At the same time, businesses are under pressure to electrify, for example by replacing diesel delivery vans with EVs.
 
@@ -122,7 +122,7 @@ The **capaciteitskaart** from Netbeheer Nederland (all Dutch grid operators). It
 
 | File | Size | What we use |
 |---|---|---|
-| `congestie_pc6.csv` | ~45 MB, 437k rows | Per 6-digit postcode: `afname` (offtake colour code: −1 unknown, 0 transparent, 1 yellow, 2 orange, 3 red), `voedingsgebied_id` / `voedingsgebied_naam` (supply area), `RNB_postcode` (grid operator), municipality, province |
+| `congestie_pc6.csv` | ~47 MB, 462,940 rows | Per 6-digit postcode: `afname` (offtake colour code: −1 unknown, 0 transparent, 1 yellow, 2 orange, 3 red), `voedingsgebied_id` / `voedingsgebied_naam` (supply area), `RNB_postcode` (grid operator), municipality, province |
 | `voedingsgebieden.csv` | ~90 kB, ~600 rows | Per supply area: available vs. needed capacity for offtake (MW), number of waiting requests and waiting-list MW (`unieke_verzoeken_afname`, `wachtrij_afname`), expected year the offtake shortage is resolved (`jaartal_opgelost_afname`), link to the operator's congestion page (`congestie_url`) |
 | `projecten.csv` | ~125 kB, ~930 rows | Planned grid reinforcements per area (`gebied_id`): name, expected delivery year/quarter, phase |
 | `brondata_documentatie.txt` | 4 kB | Field definitions |
@@ -130,6 +130,14 @@ The **capaciteitskaart** from Netbeheer Nederland (all Dutch grid operators). It
 Join keys: postcode → `voedingsgebied_id` → `voedingsgebieden.voedingsgebied_id` and `projecten.gebied_id` (~83% of projects match an area). Downloads come from `https://capaciteitskaart.netbeheernederland.nl/api/download/<file>`; use `curl -L` because they redirect.
 
 How it fits in: the postcode card at the top of the dashboard (§8) explains *why* the business has to work within its current connection, and the off-peak capacity option (§5.5) reflects the map's own wording that in red areas "alternative transport rights" or off-peak flexible contracts may still be possible.
+
+What `scripts/prepare_grid_map.py` found and decided (export of 5 November 2026):
+
+- 36 rows have no postcode (supply-area rows only): dropped. 462,687 postcodes remain; **56.0% are red nationally, 78.7% in Liander's area**.
+- **217 postcodes appear twice** because they straddle two supply areas, usually of two operators, and 116 of those disagree on the colour. We keep the **most severe** row (the cautious choice) and set `ambiguous` so the card can say the postcode spans more than one area.
+- One area (HMZ) gives 2099 as the year its shortage is resolved. That is a placeholder, so it is treated as "no date" (`jaartal_opgelost_afname` above 2050 is ignored). The other fix years run 2026–2038, and 320 of 602 areas have none.
+- Missing or negative values (`-1`) in the area table become `None`. A transparent (green) postcode can still sit in an area with a waiting list: the colour is per postcode and the queue is per supply area, so the card shows both. 159 of 933 projects belong to TenneT congestion areas that are not in `voedingsgebieden.csv` and never match.
+- Only offtake (`afname`) is kept, not feed-in.
 
 Rules:
 - The map is **indicative and a snapshot**. It shows the area a business is in, not a decision about a specific connection. Always say "check with your grid operator".
@@ -458,6 +466,10 @@ class AreaInfo:
     projects: list[Project]          # Project(name, expected: "2032 - Q4", phase)
     info_url: str | None
     data_date: str                   # download date of the map
+    municipality: str | None = None
+    province: str | None = None
+    ambiguous: bool = False          # postcode lies in more than one supply area; the most severe is shown
+    note: str | None = None          # extra remark from the grid operator ("info"), if any
 
 def lookup(postcode: str) -> AreaInfo | None   # normalises "1234 ab" → "1234AB"
 ```
@@ -661,9 +673,20 @@ If time gets tight, protect this order: **GLASS → scheduler → replay → das
 
 While building, everyone uses one shared **development scenario**: category `009`, January 2023, level 1, 100 kW, 10 vans with the §4.4 defaults. The **demo scenario** (sector, month, level, limit, vans, postcode) is chosen once the app works, from what the sweeps show.
 
+**Demo postcode candidates** (map of 5 November 2026; all in a single supply area, none ambiguous):
+
+| Postcode | Place | Colour | Operator | Waiting list | Fix year | Projects |
+|---|---|---|---|---|---|---|
+| `1181KJ` | Amstelveen | red | Liander | 29 requests, 5.8 MW (capacity 56 MW, needed 53 MW) | 2032 | 2 (both 2032 Q4) |
+| `1021EG` | Amsterdam Noord | red | Liander | 87 requests, 27.2 MW | 2027 | 1 (2027 Q2, in progress) |
+| `2311BD` | Leiden | red | Liander | 34 requests, 13.9 MW | 2035 | 1 (2035 Q4) |
+| `2291AA` | Westland | green (transparent) | Westland | 0 requests (capacity 378 MW) | none | none |
+
+`1181KJ` is the main demo and matches the example in §3. Every green postcode in Liander's own area still sits in an area with a waiting list (the tidiest is `1086VA`, Amsterdam IJburg: 6 requests, 3.0 MW against 88 MW), so the clean contrast comes from Westland. Note the card shows the colour and the queue side by side.
+
 ## 10. Four-minute demo
 
-1. **0:00–0:50, Joshua:** "In 57% of Dutch postcodes, the grid operators report a shortage of capacity for new business demand." Type a postcode → red card: 29 requests waiting, grid reinforcement planned for late 2032. Show the band of 100 realistic days for a logistics depot, and the reality check against Liander's real data.
+1. **0:00–0:50, Joshua:** "In 56% of Dutch postcodes, the grid operators report a shortage of capacity for new business demand." Type a postcode → red card: 29 requests waiting, grid reinforcement planned for late 2032. Show the band of 100 realistic days for a logistics depot, and the reality check against Liander's real data.
 2. **0:50–2:10, Sunil:** 10 vans charging on arrival → over the limit on most days. Click **Optimize** → every van full by morning, over the limit on 2% of days. Drag to 15 vans → ❌. Turn on a battery, or add off-peak capacity → ✅ again. Show the battery sweep: "the smallest safe battery is 60 kWh."
 3. **2:10–3:20, Smriti:** The explanation agent explains the plan. In the van table, move two vans' return to 20:00 → rerun → the agent explains what changed. Ask "why is the risk highest at 18:00?". Show when the risk happens.
 4. **3:20–4:00, Team:** The manager approves; nothing is switched automatically. Limitations in one breath. Close: "We don't test your plan on one made-up day. We test it on every realistic day."
