@@ -158,6 +158,14 @@ def explain_route(request: ExplanationRequest):
             except HTTPException as exc:
                 raise ValueError(str(exc.detail)) from None
         a, b = result.current, result.changed
+        if action == 'battery' and request.scenario.battery_kwh:
+            return (f"Exploratory comparison on the same held-out synthetic windows: with the battery, "
+                    f"{a.days_over_pct:.2f}% of windows exceeded the limit and {a.unmet_kwh:.2f} kWh was unmet; "
+                    f"without the battery, {b.days_over_pct:.2f}% exceeded the limit and {b.unmet_kwh:.2f} kWh was unmet. "
+                    f"Worst overshoot: {a.worst_overshoot_kw:.2f} kW with versus {b.worst_overshoot_kw:.2f} kW without. "
+                    f"Solver status: {a.status} with versus {b.status} without. Removing the battery re-optimizes the schedule, "
+                    "so the comparison reflects both battery use and the changed plan. It is not independent validation. "
+                    "Battery replay clips negative net demand without updating battery state per window.")
         return (f"Exploratory comparison: {result.description} Current versus changed: "
                 f"{a.vans_full}/{a.vans_total} versus {b.vans_full}/{b.vans_total} vans fully served; "
                 f"{a.unmet_kwh:.2f} versus {b.unmet_kwh:.2f} kWh unmet; "

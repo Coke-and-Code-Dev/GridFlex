@@ -37,10 +37,10 @@ def test_api_routes_selected_provider_and_exposes_source(monkeypatch):
         return '{"answer":"{{short_vans}}","fact_ids":["short_vans"]}'
     monkeypatch.setattr('gridflex.assistant.call_llm', fake)
     response = TestClient(app).post('/explain', json={'scenario': Scenario(vans=1).model_dump(),
-                                                        'provider': 'ollama', 'question': 'Which vans are short?'})
+                                                        'provider': 'ollama', 'question': 'Explain the project'})
     assert response.status_code == 200
     assert response.json()['source'] == 'ollama'
-    assert calls == ['ollama', 'ollama']
+    assert calls == ['ollama', 'ollama', 'ollama']
     assert response.json()['evidence'][0]['id'] == 'short_vans'
 
 
