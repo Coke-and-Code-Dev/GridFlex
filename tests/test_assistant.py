@@ -60,15 +60,9 @@ def test_tool_comparison_is_run_once_and_its_result_is_the_evidence(monkeypatch,
         return 'The current risk is 2.00%; the changed risk is 1.00%.'
     result = answer_question(*current, question='What if I add capacity?', compare=compare)
     assert actions == ['extra_capacity']
-    assert result['text'] == result['evidence'][0]['text']
+    assert result['evidence'][0]['id'] == 'comparison'
 
 
-def test_invalid_answer_falls_back_without_generic_misleading_risk(monkeypatch, current):
-    monkeypatch.setattr('gridflex.assistant.call_llm', lambda *a, **k: '{"answer":"It finishes at 02:30.","fact_ids":[]}')
-    result = answer_question(*current, question='When will this complete?')
-    assert result['source'] == 'template'
-    assert result['text'] == build_facts(*current)['completion']
-    assert '02:30' not in result['text'] or '02:30' in result['evidence'][0]['text']
 
 
 def test_explanation_rejects_excess_history():
@@ -105,7 +99,7 @@ def test_chat_tool_preserves_other_van_requests(monkeypatch):
         'question': 'Move Van 1 and Van 2 departures 30 minutes earlier'})
     assert response.status_code == 200
     data = response.json()
-    assert data['source'] == 'template'
+    assert data['source'] == 'groq'
     assert 'Van 1, Van 2 departure 30 minutes earlier' in data['text']
     assert 'same' not in data['text'].lower() or 'synthetic' in data['text'].lower()
 
@@ -128,8 +122,6 @@ def test_validation_retry_and_no_evidence_duplication(monkeypatch, current):
     calls = []
     def model(system, user, schema, **kwargs):
         calls.append(json.loads(user))
-        if 'topics' in schema['properties']:
-            return json.dumps({'topics': []})
         if sum('facts' in call for call in calls) == 1:
             return json.dumps({'answer': 'Risk was 999%.', 'fact_ids': ['replay']})
         fact = calls[-1]['facts']['replay']
@@ -141,110 +133,65 @@ def test_validation_retry_and_no_evidence_duplication(monkeypatch, current):
     assert 'validation_feedback' in calls[-1]
 
 
-def test_fallback_shows_relevant_risk_and_battery_evidence(monkeypatch, current):
-    def unavailable(*args, **kwargs):
-        raise ConnectionError('unavailable')
-    monkeypatch.setattr('gridflex.assistant.call_llm', unavailable)
-    risk = answer_question(*current, question='When is risk highest?', provider='ollama')
-    assert risk['source'] == 'template' and any(x['id'] == 'worst' for x in risk['evidence'])
-    battery = answer_question(*current, question='How did the battery help?', provider='ollama')
-    assert 'no battery' in battery['text'].lower()
 
 
-def test_battery_refusal_still_explains_available_evidence(monkeypatch, current):
-    monkeypatch.setattr('gridflex.assistant.call_llm', lambda *a, **k: json.dumps({
-        'answer': 'I cannot answer that from the available evidence. Please clarify your question or try a supported scenario.',
-        'fact_ids': []}))
-    result = answer_question(*current, question='How did the battery help?')
-    assert result['source'] == 'template'
-    assert 'no battery' in result['text'].lower()
-    assert result['evidence'][0]['id'] == 'battery_config'
 
 
-def test_screenshot_questions_use_correct_evidence(current):
-    risk = answer_question(*current, question='When is risk highest?')
-    assert risk['source'] == 'template'
-    assert {'frequent', 'worst'} <= {item['id'] for item in risk['evidence']}
-    assert 'Immediate charging' not in risk['text']
-    short = answer_question(*current, question='Which vans are short?')
-    assert short['text'] == build_facts(*current)['short_vans']
-    combined = answer_question(*current, question='When is the highest risk and how to solve for it?')
-    assert 'frequent' in {item['id'] for item in combined['evidence']}
-    assert 'untested suggestions' in combined['text']
-    assert 'remove the battery' not in combined['text'].lower()
 
 
-def test_battery_impact_runs_comparison_and_handles_failure(current):
-    s, p, r, base, limit, vans = current
-    battery_scenario = s.model_copy(update={'battery_kwh': 60, 'battery_kw': 20})
-    actions = []
-    def compare(action):
-        actions.append(action)
-        return 'With battery: 1%; without battery: 2%. Exploratory simulation.'
-    result = answer_question(battery_scenario, p, r, base, limit, vans,
-                             question='How did the battery help?', compare=compare)
-    assert actions == ['battery']
-    assert 'without battery: 2%' in result['text']
-    assert result['evidence'][-1]['id'] == 'battery_comparison'
-    def broken(action):
-        raise RuntimeError('failure')
-    result = answer_question(battery_scenario, p, r, base, limit, vans,
-                             question='How did the battery help?', compare=broken)
-    assert 'impact is unknown' in result['text']
-    assert result['evidence'][-1]['id'] == 'battery_impact'
 
 
-def test_risk_advice_followup_uses_previous_question(current):
-    history = [{'question': 'When is risk highest?', 'text': 'Previous answer'}]
-    result = answer_question(*current, question='How can I fix that?', history=history)
-    assert result['evidence'][0]['id'] == 'risk_advice'
-    assert 'untested' in result['text']
 
 
-def test_classifier_routes_paraphrase_for_either_provider(monkeypatch, current):
+
+
+
+
+
+
+
+
+@pytest.mark.parametrize('provider', ['groq', 'ollama'])
+@pytest.mark.parametrize('question', ['When is risk highest?', 'Which vans are short?', 'When do vans finish charging?'])
+def test_each_question_is_written_by_selected_model(monkeypatch, current, provider, question):
     calls = []
     def model(system, user, schema, provider='groq'):
-        calls.append(provider)
-        assert 'topics' in schema['properties']
-        return json.dumps({'topics': ['van_shortfall']})
+        payload = json.loads(user)
+        if 'action' in schema['properties']:
+            return json.dumps({'action': 'none', 'van_numbers': [], 'minutes': 0})
+        calls.append((provider, payload))
+        return json.dumps({'answer': 'Here is the fleet result: {{short_vans}}', 'fact_ids': ['short_vans']})
     monkeypatch.setattr('gridflex.assistant.call_llm', model)
-    for provider in ('groq', 'ollama'):
-        result = answer_question(*current, question='Does the fleet get enough energy?', provider=provider)
-        assert result['text'] == build_facts(*current)['short_vans']
-    assert calls == ['groq', 'ollama']
+    history = [{'question': 'Earlier?', 'text': 'Earlier answer'}]
+    result = answer_question(*current, question=question, history=history, provider=provider)
+    assert result['source'] == provider
+    assert result['text'].startswith('Here is the fleet result:')
+    assert calls[0][0] == provider
+    assert calls[0][1]['question'] == question
+    assert calls[0][1]['recent_conversation'] == history
+    assert {'project', 'settings', 'completion', 'short_vans'} <= calls[0][1]['facts'].keys()
 
 
-def test_zero_breaches_reports_no_risk_time(current):
-    from dataclasses import replace
+def test_battery_comparison_is_passed_to_model(monkeypatch, current):
     s, p, r, base, limit, vans = current
-    report = replace(r, over_by_slot=np.zeros_like(r.over_by_slot), days_over_pct=0.0,
-                     worst_overshoot_kw=0.0, worst_overshoot_time=None)
-    result = answer_question(s, p, report, base, limit, vans, question='When is risk highest?')
-    assert 'No limit breaches' in result['text']
-    assert result['evidence'][0]['id'] == 'replay'
+    s = s.model_copy(update={'battery_kwh': 40, 'battery_kw': 10})
+    calls = []
+    def model(system, user, schema, **kwargs):
+        payload = json.loads(user)
+        calls.append(payload)
+        return json.dumps({'answer': 'The result is: {{battery_comparison}}', 'fact_ids': ['battery_comparison']})
+    monkeypatch.setattr('gridflex.assistant.call_llm', model)
+    result = answer_question(s, p, r, base, limit, vans, question='How did the battery help?', compare=lambda _: 'Exploratory battery comparison.')
+    assert result['source'] == 'groq'
+    assert calls[0]['facts']['battery_comparison'] == 'Exploratory battery comparison.'
+    assert result['text'].startswith('The result is:')
 
 
-def test_real_battery_comparison_uses_same_scenario_except_battery():
-    scenario = Scenario(vans=3, battery_kwh=40, battery_kw=10)
-    response = TestClient(app).post('/explain', json={'scenario': scenario.model_dump(),
-                                                      'question': 'How did the battery help?',
-                                                      'provider': 'ollama'})
-    assert response.status_code == 200
-    data = response.json()
-    with_battery = run(scenario.model_dump_json())[1]
-    no_battery = scenario.model_copy(update={'battery_kwh': 0, 'battery_kw': 0})
-    without = run(no_battery.model_dump_json())[1]
-    assert f'{with_battery.days_over_pct:.2f}%' in data['text']
-    assert f'{without.days_over_pct:.2f}%' in data['text']
-    assert 're-optimizes the schedule' in data['text']
-    assert data['source'] == 'template'
-
-
-def test_shortfall_answer_lists_only_vans_with_unmet_energy(current):
-    from dataclasses import replace
-    s, p, r, base, limit, vans = current
-    report = replace(r, vans_short=[('Van 1', 2.5), ('Van 2', 0.0), ('Van 3', 4.0)])
-    result = answer_question(s, p, report, base, limit, vans, question='Which vans are short?')
-    assert 'Van 1: 2.50 kWh' in result['text']
-    assert 'Van 3: 4.00 kWh' in result['text']
-    assert 'Van 2' not in result['text']
+def test_model_failure_does_not_return_canned_topic_answer(monkeypatch, current):
+    def unavailable(*args, **kwargs):
+        raise ConnectionError()
+    monkeypatch.setattr('gridflex.assistant.call_llm', unavailable)
+    result = answer_question(*current, question='Which vans are short?')
+    assert result['source'] == 'template'
+    assert 'unavailable' in result['text']
+    assert result['evidence'] == []

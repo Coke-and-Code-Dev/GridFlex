@@ -89,10 +89,12 @@ def test_fleet_completion_question_returns_end_of_last_charging_slot(monkeypatch
 
     scenario, plan, _ = scenario_result
 
-    def provider_must_not_run(*args, **kwargs):
-        pytest.fail("Direct completion questions should use the schedule.")
+    def provider(system, user, schema, **kwargs):
+        if 'action' in schema['properties']:
+            return '{"action":"none","van_numbers":[],"minutes":0}'
+        return '{"answer":"{{completion}}","fact_ids":["completion"]}'
 
-    monkeypatch.setattr("gridflex.assistant.call_llm", provider_must_not_run)
+    monkeypatch.setattr("gridflex.assistant.call_llm", provider)
     response = TestClient(app).post("/explain", json={
         "scenario": scenario.model_dump(),
         "question": "When will the charging of all the vans complete?",
@@ -101,5 +103,5 @@ def test_fleet_completion_question_returns_end_of_last_charging_slot(monkeypatch
     answer = response.json()
     end = int(np.flatnonzero(plan.power.any(axis=0))[-1]) + 1
     assert slot_time(end) in answer["text"]
-    assert answer["source"] == "template"
+    assert answer["source"] == "groq"
     assert answer["evidence"][0]["id"] == "completion"

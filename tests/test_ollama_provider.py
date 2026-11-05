@@ -40,7 +40,7 @@ def test_api_routes_selected_provider_and_exposes_source(monkeypatch):
                                                         'provider': 'ollama', 'question': 'Explain the project'})
     assert response.status_code == 200
     assert response.json()['source'] == 'ollama'
-    assert calls == ['ollama', 'ollama', 'ollama']
+    assert calls == ['ollama', 'ollama']
     assert response.json()['evidence'][0]['id'] == 'short_vans'
 
 
@@ -52,7 +52,7 @@ def test_ollama_unavailable_uses_existing_fallback(monkeypatch):
                                                         'provider': 'ollama', 'question': 'Which vans are short?'})
     assert response.status_code == 200
     assert response.json()['source'] == 'template'
-    assert 'van' in response.json()['text'].lower()
+    assert 'unavailable' in response.json()['text'].lower()
 
 
 def test_unknown_provider_is_rejected():

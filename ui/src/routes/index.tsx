@@ -1,4 +1,4 @@
-import { scheduleAnswer, slotClock as time } from "@/lib/schedule-answer";
+import { slotClock as time } from "@/lib/schedule-answer";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse } from "@/types";
@@ -223,11 +223,6 @@ function Dashboard() {
   async function ask(question: string) {
     if (!run || busy || asking || whatIfBusy || !question.trim()) return;
     setQ("");
-    const scheduled = scheduleAnswer(question, run.result);
-    if (scheduled !== undefined) {
-      setQa((items) => [...items, { question, text: scheduled, source: "schedule" }]);
-      return;
-    }
     setAsking(true);
     try {
       const response = await api<ExplanationResponse>("/explain", { scenario: run.cfg, previous: run.previous, question, provider, history: qa.slice(-6).map(({ question, text }) => ({ question, text: text.slice(0, 3000) })) });
