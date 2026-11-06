@@ -51,6 +51,7 @@ gridflex/            library code: profiles, grid_area, fleet, naive, scheduler,
 api/                 Python JSON API that calls gridflex/ (idea.md §8.1)
 ui/                  React + TypeScript dashboard (idea.md §8.1)
 video/               Remotion project for the investor pitch video (video/README.md)
+skills-lock.json     the agent skills this repo uses (restore them with `npx skills experimental_install`; see below)
 tests/               pytest tests
 requirements.txt     Python dependencies (filled in as we build)
 ```
@@ -70,6 +71,16 @@ cd ui && npm install && npm run dev   # dashboard, in a second terminal
 ```
 
 The full setup steps and the dataset sources are in README.md; idea.md §13 has the same in short.
+
+## Agent skills
+
+The AI agent skills used here (Remotion and ElevenLabs, for the pitch video) are recorded in `skills-lock.json` and **not** committed: `.agents/` is git-ignored, and `.claude/` is too. After cloning or pulling, restore them from the repo root:
+
+```bash
+npx skills experimental_install              # add --dry-run to preview
+```
+
+It downloads each skill from its GitHub source into `.agents/skills/` and links it for Claude Code, so it needs internet. The command is marked experimental. To add a skill, run `npx skills add <owner/repo@skill> -y` (no `-g`, so it stays in the project) and commit the updated `skills-lock.json`. Nobody needs these skills to run the app or to render the video; they only help an AI agent work on it.
 
 ## Dependencies: fill them in as you build
 

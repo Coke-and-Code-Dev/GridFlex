@@ -43,3 +43,6 @@ desktop.ini
 # Pitch video (Remotion in video/)
 video/out/
 video/audio-gen/cues.json
+
+# Agent skills are restored from skills-lock.json (see AGENTS.md), not committed
+.agents/
