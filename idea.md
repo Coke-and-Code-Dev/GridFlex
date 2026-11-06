@@ -812,7 +812,7 @@ cd ui
 npm install
 ```
 
-**Data downloads** (into `data/raw/`, which is git-ignored):
+**Data downloads** (into `data/raw/`, which is git-ignored). `python scripts/download_data.py` fetches all of the files below (`python scripts/download_data.py glass` only GLASS, the one you need); the manual sources are:
 
 - GLASS: `GLASS_v1.1.parquet` (see [data/README.md](data/README.md)).
 - Capacity map: `brondata_documentatie.txt`, `congestie_pc6.csv`, `voedingsgebieden.csv`, `projecten.csv` into `data/raw/capaciteitskaart/`, e.g.

@@ -64,13 +64,13 @@ def status() -> int:
     print(f"Missing {len(missing)} file(s), for example {missing[0]}.")
     print("Get them with one of:")
     print("  python scripts/setup_data.py unpack <zip from a teammate>")
-    print("  python scripts/setup_data.py build   (needs the 13 GB raw file, see idea.md section 13)")
+    print("  python scripts/setup_data.py build   (needs the 13 GB raw file: python scripts/download_data.py glass)")
     return 1
 
 
 def build() -> int:
     if not RAW.exists():
-        print(f"{RAW} not found.\nDownload the raw GLASS file first (idea.md section 13), "
+        print(f"{RAW} not found.\nDownload the raw GLASS file first: python scripts/download_data.py glass (13.2 GB), "
               "or ask a teammate for the zip and use: python scripts/setup_data.py unpack <zip>")
         return 1
     command = [

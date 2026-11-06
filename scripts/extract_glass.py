@@ -164,7 +164,7 @@ def main() -> None:
         sys.stdout.reconfigure(errors="replace")
 
     if not args.raw.exists():
-        sys.exit(f"{args.raw} not found. See idea.md section 13 for the download.")
+        sys.exit(f"{args.raw} not found. Download it with: python scripts/download_data.py glass")
     if not args.skip_hash:
         verify_sha256(args.raw)
 
