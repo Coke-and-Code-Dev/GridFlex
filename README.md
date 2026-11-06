@@ -38,17 +38,11 @@ EY AI Week Hackathon, 5–6 November 2026, Amsterdam. Original concept: GridFlex
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/images/dashboard-welcome.jpg" alt="Welcome screen of the GridFlex.ai dashboard"><br><sub><b>Welcome.</b> One place to plan a depot, from setup to decision.</sub></td>
     <td width="50%" valign="top"><img src="docs/images/dashboard-setup.jpg" alt="Setup tab with postcode, building electricity use from the bill, connection limit, sliders and an imported fleet table"><br><sub><b>Setup.</b> Postcode, building use from meter data or the energy bill, connection limit, battery, off-peak capacity and the fleet. Single depots and portfolios can be loaded from CSV.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/dashboard-charging-plan.jpg" alt="Charging plan tab: verdict fits, 0.00% of windows over the limit, 8 of 8 vans fully charged, and a demand chart comparing immediate charging with the optimised plan"><br><sub><b>Charging plan.</b> Verdict, held-out risk and the demand chart: immediate charging (dotted) against the optimised plan (yellow) and the connection limit (red).</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/images/dashboard-charging-plan.jpg" alt="Charging plan tab: verdict fits, 0.00% of windows over the limit, 8 of 8 vans fully charged, and a demand chart comparing immediate charging with the optimised plan"><br><sub><b>Charging plan.</b> Verdict, held-out risk and the demand chart: immediate charging (dotted) against the optimised plan (yellow) and the connection limit (red).</sub></td>
-    <td valign="top"><img src="docs/images/dashboard-analysis.jpg" alt="Analysis tab with what-if scenarios, risk and sensitivity, breach timing and the reality check against Liander 2023 profiles"><br><sub><b>Analysis.</b> What-if buttons, risk and sensitivity, breach timing, sweeps and the reality check against Liander’s measured 2023 profiles.</sub></td>
-  </tr>
-  <tr>
-    <td valign="top"><img src="docs/images/dashboard-van-schedule.jpg" alt="Per-van charging schedule heatmap"><br><sub><b>Van schedule.</b> Every van’s charging slots in 15-minute steps, with kWh delivered and short. Exportable as CSV.</sub><br><br>
-    <img src="docs/images/dashboard-explanation.jpg" alt="Explanation tab with model choice, the explanation text and suggested questions"><br><sub><b>Explanation.</b> Groq or a local Qwen model, grounded in computed facts, with a deterministic template as the fallback. Ask follow-up questions about the run.</sub></td>
-    <td valign="top"><img src="docs/images/dashboard-portfolio.jpg" alt="Multi-depot results: five depots with verdicts fits, does not fit and fits with risk, plus a per-depot inspection and a PDF report button"><br><sub><b>Portfolio.</b> Upload many depots at once, compare their verdicts and download a PDF report. Shown: <code>examples/case_5</code>, five depots with one of each verdict.</sub></td>
+    <td colspan="2" valign="top"><img src="docs/images/dashboard-portfolio.jpg" alt="Multi-depot results: five depots with verdicts fits, does not fit and fits with risk, plus a per-depot inspection and a PDF report button"><br><sub><b>Portfolio.</b> Upload many depots at once, compare their verdicts and download a PDF report. Shown: <code>examples/case_5</code>, five depots with one of each verdict.</sub></td>
   </tr>
 </table>
 
