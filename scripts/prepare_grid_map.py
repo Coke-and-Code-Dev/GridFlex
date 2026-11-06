@@ -162,7 +162,7 @@ def main() -> None:
 
     missing = [f for f in FILES[:3] if not (args.raw / f).exists()]
     if missing:
-        sys.exit(f"Missing in {args.raw}: {', '.join(missing)}. See idea.md section 13 for the download.")
+        sys.exit(f"Missing in {args.raw}: {', '.join(missing)}. Download them with: python scripts/download_data.py capacity")
     if args.download_date:
         date.fromisoformat(args.download_date)  # validate
 

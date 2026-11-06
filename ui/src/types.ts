@@ -1,6 +1,9 @@
-export type Condition = { category: string; month: string; level: number; level_value_kwh: number | null };
+export type Condition = { category: string; month: string; level: number; level_value_kwh: number | null; label: string };
+/** Building load: the site's own meter upload or the sector profile scaled to the bill. "profile" (a fixed GLASS level) is only used by the API and batch CSV. */
+export type LoadSource = "meter" | "bill" | "profile";
 export type VanOverride = { name?: string; arrival_slot: number; departure_slot: number; energy_kwh: number; charger_kw: number };
 export type Scenario = Pick<Condition, "category" | "month" | "level"> & {
+  load_source: LoadSource; monthly_kwh?: number | null; meter_id?: string | null;
   postcode: string; vans: number; limit_kw: number; extra_kw: number; off_peak: [string, string];
   arrival: [string, string]; departure: [string, string]; energy_kwh: [number, number];
   charger_kw: number; battery_kwh: number; battery_kw: number; q: number; tolerance: number; seed: number; overrides?: Record<number, VanOverride>;
@@ -18,10 +21,15 @@ export type OptimizeResult = {
     status: string; solve_seconds: number };
   report: Risk & { n_windows: number; over_by_slot: number[]; baseline_alone_over_pct: number;
     mean_overshoot_kwh: number; vans_short: [string, number][];
-    verdict: "fits" | "fits_with_risk" | "does_not_fit"; immediate: Risk | null };
+    verdict: "fits" | "fits_with_risk" | "does_not_fit"; immediate: Risk | null; synthetic: boolean };
+  load: LoadInfo | null;
   vans: (VanOverride & { name: string })[];
   baseline_kw: number[]; limit_kw: number[]; immediate_power_kw: number[]; normal_band_kw: [number[], number[]];
 };
+export type LoadInfo = { source: LoadSource; description: string; synthetic: boolean; n_planning: number; n_test: number;
+  level: number | null; scale: number; warnings: string[] };
+export type MeterUpload = { meter_id: string; days: number; first_date: string; last_date: string; dropped_days: number;
+  monthly_kwh: number; peak_kw: number; planning_days: number; test_days: number; description: string; warnings: string[] };
 export type Reality = { sbi_code: string; summary: string; glass_band: [number[], number[], number[]]; liander_band: [(number | null)[], number[], (number | null)[]] };
 export type Sweep = { n?: number; capacity_kwh?: number; days_over_pct: number | null; kwh_short: number | null;
   status: string; smallest_fit?: boolean };

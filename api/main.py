@@ -9,13 +9,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from api import portfolio_store
+from api import meter_store, portfolio_store
 from gridflex.portfolio_assistant import ask_portfolio
 from api.batch_report import SiteResult, compact_result, render_portfolio
 from api.csv_setup import read_scenarios
-from api.schemas import (PortfolioQuestion, ComparisonMetrics, CsvUpload, ExplanationRequest, ExplanationResponse, Scenario,
+from api.schemas import (PortfolioQuestion, ComparisonMetrics, CsvUpload, ExplanationRequest, ExplanationResponse,
+                         MeterUploadResponse, Scenario,
                          SweepRequest, WhatIfRequest, WhatIfResponse)
 from gridflex.assistant import answer_question
+from gridflex.explain import held_out_phrase
+from gridflex.load_sources import bill_info, meter_summary, nearest_level, profile_info, scale_windows
 from gridflex.fleet import generate_fleet
 from gridflex.grid_area import lookup
 from gridflex.naive import naive_schedule
@@ -40,7 +43,7 @@ async def invalid_scenario(request, exc):
 
 @app.exception_handler(FileNotFoundError)
 async def missing_data(request, exc):
-    return JSONResponse(status_code=404, content={"detail": "No prepared data for this selection."})
+    return JSONResponse(status_code=404, content={"detail": "No prepared data for this selection. If the data is not set up yet, run: python scripts/setup_data.py status"})
 
 
 @lru_cache(maxsize=8)
@@ -48,8 +51,32 @@ def profiles(category, month, level):
     return split_by_sample(build_windows(load_condition(category, month, level)))
 
 
-def inputs(s):
+SUPPORTED_LIMIT_KW = 160
+
+
+def load_for(s):
+    """Planning and test windows for the scenario's building load, and what they are based on."""
+    if s.load_source == "meter":
+        try:
+            stored = meter_store.get(s.meter_id)
+        except KeyError as exc:
+            raise HTTPException(404, exc.args[0]) from None
+        return stored.planning, stored.test, stored.info
+    conditions = available_conditions()
+    if s.load_source == "bill":
+        condition = nearest_level(conditions, s.category, s.month, s.monthly_kwh)
+        planning, test = profiles(condition.category, condition.month, condition.level)
+        factor = s.monthly_kwh / condition.level_value_kwh
+        return (scale_windows(planning, factor), scale_windows(test, factor),
+                bill_info(condition, s.monthly_kwh, len(planning), len(test)))
     planning, test = profiles(s.category, s.month, s.level)
+    condition = next((c for c in conditions if (c.category, c.month, c.level) == (s.category, s.month, s.level)), None)
+    info = (profile_info(condition, len(planning), len(test)) if condition else None)
+    return planning, test, info
+
+
+def inputs(s):
+    planning, test, _ = load_for(s)
     limit = limit_profile(s.limit_kw, s.extra_kw, s.off_peak)
     vans = generate_fleet(s.vans, s.seed, s.arrival, s.departure, s.energy_kwh, s.charger_kw)
     for index, override in s.overrides.items():
@@ -73,6 +100,7 @@ def run(scenario_json):
     except NoScheduleError as exc:
         raise HTTPException(409, f"No usable schedule ({exc.status}).") from exc
     report = replay(test, plan, limit, [v.name for v in vans], s.tolerance, immediate)
+    report = replace(report, synthetic=s.load_source != "meter")
     return plan, report, baseline, limit, immediate, vans, planning
 
 
@@ -99,7 +127,7 @@ def reality(category: str, month: str, level: int = 1):
     selected = next((c for c in available_conditions()
                      if (c.category, c.month, c.level) == (category, month, level)), None)
     if selected is None:
-        raise HTTPException(404, "No prepared data for this selection.")
+        raise HTTPException(404, "No prepared data for this selection. If the data is not set up yet, run: python scripts/setup_data.py status")
     checks = []
     for check in compare_all(category, month, level):
         payload = json_fields(check)
@@ -118,10 +146,28 @@ def import_setup(upload: CsvUpload):
     return next(iter(sites.values()))
 
 
+@app.post("/meter-data", response_model=MeterUploadResponse)
+def meter_data(upload: CsvUpload):
+    """Read a site's own 15-minute meter CSV, keep it in memory and describe it."""
+    meter_id, stored = meter_store.add(upload.csv)
+    summary = meter_summary(stored.meter)
+    warnings = list(stored.info.warnings)
+    if summary["peak_kw"] > SUPPORTED_LIMIT_KW:
+        warnings.append(f"The building alone peaks at {summary['peak_kw']:.0f} kW, above the {SUPPORTED_LIMIT_KW} kW "
+                        "connection limit the dashboard supports, so every plan will show it over the limit.")
+    return MeterUploadResponse(
+        meter_id=meter_id, **{k: v for k, v in summary.items() if k != "warnings"},
+        planning_days=stored.info.n_planning, test_days=stored.info.n_test,
+        description=stored.info.description, warnings=warnings,
+    )
+
+
 @app.post("/optimize")
 def optimize_route(scenario: Scenario):
     plan, report, baseline, limit, immediate, vans, planning = run(scenario.model_dump_json())
+    info = load_for(scenario)[2]
     return {
+        "load": asdict(info) if info else None,
         "schedule": json_fields(plan),
         "report": json_fields(report),
         "baseline_kw": baseline.tolist(),
@@ -198,7 +244,7 @@ def portfolio_ask(request: PortfolioQuestion):
         a, b = comparison.current, comparison.changed
         return (f"Exploratory battery comparison for {site['site']}: {comparison.description} "
                 f"Current versus changed: {a.days_over_pct:.2f}% versus {b.days_over_pct:.2f}% "
-                f"of held-out synthetic windows over limit; {a.unmet_kwh:.2f} versus {b.unmet_kwh:.2f} kWh unmet; "
+                f"of {held_out_phrase(scenario.load_source != 'meter')} over limit; {a.unmet_kwh:.2f} versus {b.unmet_kwh:.2f} kWh unmet; "
                 f"worst overshoot {a.worst_overshoot_kw:.2f} versus {b.worst_overshoot_kw:.2f} kW. "
                 "Changing the battery re-optimizes the schedule. The comparison is not independent validation. "
                 "Battery replay clips negative net demand without updating state per window.")
@@ -248,7 +294,7 @@ def explain_route(request: ExplanationRequest):
                 raise ValueError(str(exc.detail)) from None
         a, b = result.current, result.changed
         if action == 'battery' and request.scenario.battery_kwh:
-            return (f"Exploratory comparison on the same held-out synthetic windows: with the battery, "
+            return (f"Exploratory comparison on the same {held_out_phrase(request.scenario.load_source != 'meter')}: with the battery, "
                     f"{a.days_over_pct:.2f}% of windows exceeded the limit and {a.unmet_kwh:.2f} kWh was unmet; "
                     f"without the battery, {b.days_over_pct:.2f}% exceeded the limit and {b.unmet_kwh:.2f} kWh was unmet. "
                     f"Worst overshoot: {a.worst_overshoot_kw:.2f} kW with versus {b.worst_overshoot_kw:.2f} kW without. "
@@ -258,7 +304,7 @@ def explain_route(request: ExplanationRequest):
         return (f"Exploratory comparison: {result.description} Current versus changed: "
                 f"{a.vans_full}/{a.vans_total} versus {b.vans_full}/{b.vans_total} vans fully served; "
                 f"{a.unmet_kwh:.2f} versus {b.unmet_kwh:.2f} kWh unmet; "
-                f"{a.days_over_pct:.2f}% versus {b.days_over_pct:.2f}% of held-out synthetic windows over limit; "
+                f"{a.days_over_pct:.2f}% versus {b.days_over_pct:.2f}% of {held_out_phrase(request.scenario.load_source != 'meter')} over limit; "
                 f"worst overshoot {a.worst_overshoot_kw:.2f} versus {b.worst_overshoot_kw:.2f} kW; "
                 f"solver status {a.status} versus {b.status}. Equally optimal plans can differ; "
                 "the comparison is not independent validation. Battery replay clips negative net demand without updating battery state per window.")

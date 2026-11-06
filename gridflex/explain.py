@@ -14,12 +14,17 @@ from gridflex.replay import ReplayReport
 from gridflex.scheduler import ScheduleResult
 
 
+def held_out_phrase(synthetic: bool = True) -> str:
+    """How to name the replay windows: synthetic GLASS days or the site's own later days."""
+    return "held-out synthetic windows" if synthetic else "held-out days of the site's own meter data"
+
+
 def template_summary(result: ScheduleResult, report: ReplayReport,
                      previous: ReplayReport | None = None, question: str | None = None) -> str:
     shortfall = float(result.unmet_kwh.sum())
     timing = f" at {report.worst_overshoot_time}" if report.worst_overshoot_time else ""
     risk = (f"The plan exceeded the limit in {report.days_over_pct:.2f}% of "
-            f"{report.n_windows} held-out synthetic windows. Worst overshoot: "
+            f"{report.n_windows} {held_out_phrase(report.synthetic)}. Worst overshoot: "
             f"{report.worst_overshoot_kw:.2f} kW{timing}.")
     charging = f"The planned schedule leaves {shortfall:.2f} kWh of fleet demand unmet."
     if question:
@@ -55,12 +60,15 @@ def evidence_facts(result: ScheduleResult, report: ReplayReport, previous: Repla
     full = sum(short <= 1e-9 for _, short in report.vans_short)
     facts = {
         "charging": f"{full} of {n} vans meet their rounded energy requirement; {float(result.unmet_kwh.sum()):.2f} kWh remains unmet.",
-        "replay": f"The plan exceeds the modeled limit in {report.days_over_pct:.2f}% of {report.n_windows} held-out synthetic windows.",
+        "replay": f"The plan exceeds the modeled limit in {report.days_over_pct:.2f}% of {report.n_windows} {held_out_phrase(report.synthetic)}.",
         "worst": f"Worst replay overshoot: {report.worst_overshoot_kw:.2f} kW" + (f" at {report.worst_overshoot_time}." if report.worst_overshoot_time else "."),
         "base": f"Building demand alone exceeds the limit in {report.baseline_alone_over_pct:.2f}% of held-out windows.",
         "solver": f"Solver status: {result.status}; planned peak against the conservative rounded baseline: {result.peak_kw:.2f} kW.",
         "battery": f"The planned battery discharge is {float(result.battery_discharge.sum()) / 4:.2f} kWh; replay clips negative net load without updating battery state.",
-        "limits": "This is a synthetic simulation with a fixed schedule, not a grid-operator approval or a real-world guarantee.",
+        "limits": ("This is a synthetic simulation with a fixed schedule, not a grid-operator approval or a real-world guarantee."
+                   if report.synthetic else
+                   "This simulation replays a fixed schedule on the site's own past meter data; past days do not guarantee "
+                   "future load, and it is not a grid-operator approval or a real-world guarantee."),
     }
     if report.immediate:
         facts["immediate"] = f"Immediate charging exceeds the limit in {report.immediate.days_over_pct:.2f}% of the same held-out windows."

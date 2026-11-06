@@ -7,6 +7,9 @@ from fastapi.testclient import TestClient
 from api.main import app
 from api.schemas import Scenario
 from gridflex.explain import call_llm
+import pytest
+
+pytestmark = pytest.mark.needs_glass  # loads the GLASS extracts
 
 
 def test_ollama_uses_local_model_and_structured_output(monkeypatch):

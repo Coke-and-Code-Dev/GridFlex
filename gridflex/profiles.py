@@ -9,7 +9,7 @@ See idea.md sections 5.2-5.4 and 7.3. Rules that matter (AGENTS.md):
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -23,12 +23,46 @@ _TIME_RE = re.compile(r"^\d{2}:\d{2}:\d{2}$")
 _FILE_RE = re.compile(r"^glass_(?P<category>[A-Za-z0-9]+)_(?P<month>\d{4}-\d{2})_L(?P<level>\d)\.parquet$")
 
 
+# GLASS consumption categories (data/README.md): the business sector of the connection.
+SECTOR_LABELS = {
+    "001": "Standard branches",
+    "002": "Agriculture, forestry and fishing",
+    "003": "Mining and quarrying",
+    "004": "Manufacturing",
+    "005": "Electricity, gas and steam supply",
+    "006": "Water supply and waste management",
+    "007": "Construction",
+    "008": "Wholesale and retail",
+    "009": "Transport and storage",
+    "010": "Accommodation and food service",
+    "011": "Information and communication",
+    "012": "Financial and insurance",
+    "013": "Real estate",
+    "014": "Professional, scientific and technical",
+    "015": "Administrative and support services",
+    "016": "Public administration",
+    "017": "Education",
+    "018": "Health and social work",
+    "019": "Arts, entertainment and recreation",
+    "020": "Other services",
+    "E3A": "Any sector: up to 2,000 operating hours a year",
+    "E3B": "Any sector: 2,000-3,000 operating hours a year",
+    "E3C": "Any sector: 3,000-5,000 operating hours a year",
+    "E3D": "Any sector: 5,000+ operating hours a year",
+}
+
+
+def sector_label(category: str) -> str:
+    return SECTOR_LABELS.get(category, f"Category {category}")
+
+
 @dataclass(frozen=True)
 class Condition:
     category: str
     month: str  # "YYYY-MM"
     level: int  # level_id 0-3
     level_value_kwh: float | None = None  # target kWh for the month ("≈ X MWh/month")
+    label: str = field(default="", compare=False)  # readable sector name
 
 
 @dataclass
@@ -64,16 +98,29 @@ def load_condition(category: str, month: str, level: int, data_dir: Path | None 
     if not path.exists():
         raise FileNotFoundError(
             f"{path.name} not found in {path.parent}. "
-            f"Run: python scripts/extract_glass.py --categories {category} --months {month} --levels {level}"
+            f"Run: python scripts/extract_glass.py --categories {category} --months {month} --levels {level} "
+            "(or python scripts/setup_data.py status, to see how to get the whole set)"
         )
     return pl.read_parquet(path)
 
 
+_conditions_cache: dict[Path, tuple[tuple, list[Condition]]] = {}
+
+
 def available_conditions(data_dir: Path | None = None) -> list[Condition]:
-    """Conditions that have an extract in data/processed/."""
+    """Conditions that have an extract in data/processed/.
+
+    Reading `level_value` opens every file, so the list is remembered until a file is
+    added, removed or changed (hundreds of files are extracted for the dashboard).
+    """
     folder = data_dir or DEFAULT_DATA_DIR
+    paths = sorted(folder.glob("glass_*.parquet"))
+    signature = tuple((p.name, p.stat().st_mtime_ns, p.stat().st_size) for p in paths)
+    cached = _conditions_cache.get(folder)
+    if cached and cached[0] == signature:
+        return list(cached[1])
     found: list[Condition] = []
-    for path in sorted(folder.glob("glass_*.parquet")):
+    for path in paths:
         m = _FILE_RE.match(path.name)
         if not m:
             continue
@@ -82,17 +129,24 @@ def available_conditions(data_dir: Path | None = None) -> list[Condition]:
             level_value = float(value)
         except Exception:
             level_value = None
-        found.append(Condition(m["category"], m["month"], int(m["level"]), level_value))
-    return found
+        found.append(Condition(m["category"], m["month"], int(m["level"]), level_value,
+                               sector_label(m["category"])))
+    _conditions_cache[folder] = (signature, found)
+    return list(found)
 
 
-def build_windows(df: pl.DataFrame, start_hour: int = 12, working_days_only: bool = True) -> Windows:
+def build_windows(df: pl.DataFrame, start_hour: int = 12, working_days_only: bool = True,
+                  across_months: bool = False) -> Windows:
     """Cut a condition into 24-hour windows starting at `start_hour`.
 
     A window joins day d (from `start_hour`) to day d+1 (up to `start_hour`) of the SAME
     sample and month, so it needs day d+1 to exist. Days missing from the data drop the
     windows that would span the gap. With `working_days_only`, windows are kept when the
     day they START on is Monday-Friday.
+
+    GLASS samples are one month long, so its windows never cross a month. A site's own meter
+    data is one continuous series; `across_months=True` lets its windows run from the last
+    day of a month into the next.
     """
     if not 0 <= start_hour < 24:
         raise ValueError("start_hour must be 0-23")
@@ -104,7 +158,9 @@ def build_windows(df: pl.DataFrame, start_hour: int = 12, working_days_only: boo
     df = df.with_columns(date.alias("_date"))
     df = df.with_columns(pl.col("_date").dt.strftime("%Y-%m").alias("_month"))
 
-    keys = [c for c in ("scenario", "category", "level_id", "sample_id") if c in df.columns] + ["_month"]
+    keys = [c for c in ("scenario", "category", "level_id", "sample_id") if c in df.columns]
+    if not across_months:
+        keys.append("_month")
     df = df.sort(keys + ["_date"])
     n = df.height
     if n == 0:

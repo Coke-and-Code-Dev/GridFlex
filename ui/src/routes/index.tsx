@@ -7,6 +7,7 @@ import { PortfolioAssistant, PortfolioResults, PortfolioUpload } from "@/compone
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
+import { BuildingLoad } from "@/components/gridflex/BuildingLoad";
 
 import { Help, helpText } from "@/components/gridflex/Help";
 
@@ -47,17 +48,17 @@ function useParallax() {
   return y;
 }
 
-function Synthetic() {
-  return <span className="rounded-full border border-primary/50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-primary">Synthetic data</span>;
+function Synthetic({ synthetic = true }: { synthetic?: boolean }) {
+  return <span className="rounded-full border border-primary/50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-primary">{synthetic ? "Synthetic data" : "Own meter data · simulation"}</span>;
 }
 
-function Section({ id, n, title, children }: { id: string; n: number; title: string; children: ReactNode }) {
+function Section({ id, n, title, children, synthetic = true }: { id: string; n: number; title: string; children: ReactNode; synthetic?: boolean }) {
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="animate-rise scroll-mt-20 py-14">
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <span className="font-mono text-sm text-primary">0{n}</span>
         <h2 id={`${id}-h`} className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h2>
-        <Synthetic />
+        <Synthetic synthetic={synthetic} />
       </div>
       {children}
     </section>
@@ -92,7 +93,7 @@ const btnPrimary = `${btn} bg-primary text-primary-foreground hover:shadow-glow`
 const btnGhost = `${btn} border border-border hover:bg-accent`;
 
 const initial: Scenario = {
-  category: "009", month: "2023-01", level: 1, postcode: "2311BD", vans: 10, limit_kw: 100,
+  load_source: "bill", monthly_kwh: 8000, category: "009", month: "2024-01", level: 1, postcode: "2311BD", vans: 10, limit_kw: 100,
   extra_kw: 0, off_peak: ["22:00", "06:00"], arrival: ["17:00", "19:00"], departure: ["06:00", "07:00"],
   energy_kwh: [30, 40], charger_kw: 11, battery_kwh: 0, battery_kw: 0, q: .9, tolerance: .05, seed: 42,
 };
@@ -218,9 +219,11 @@ function Dashboard() {
     setQa([]);
     setChecks([]);
     setSweeps([]);
-    const params = new URLSearchParams({ category: snapshot.category, month: snapshot.month, level: String(snapshot.level) });
+    // The reality check compares GLASS with Liander; it has nothing to say about a site's own meter data.
+    const level = result.load?.level ?? snapshot.level;
+    const params = new URLSearchParams({ category: snapshot.category, month: snapshot.month, level: String(level) });
     await Promise.allSettled([
-      api<Reality[]>(`/reality?${params}`).then(setChecks),
+      snapshot.load_source === "meter" ? Promise.resolve() : api<Reality[]>(`/reality?${params}`).then(setChecks),
       ...(!portfolioDepot ? [api<ExplanationResponse>("/explain", { scenario: snapshot, previous, provider })
         .then(({ text, source }) => { setExplanation(text); setExplanationSource(source); })
         .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); })] : []),
@@ -415,17 +418,7 @@ function Dashboard() {
           <PortfolioUpload portfolio={portfolio} />
           <div className="panel grid gap-5 p-6 sm:grid-cols-2">
             <div><label>Postcode<input className="ml-3 rounded border border-input bg-background p-2" value={cfg.postcode} onChange={(e) => set("postcode", e.target.value)} /></label><Hint label="Postcode" /></div>
-            <div><label>Business profile <select className="rounded border border-input bg-background p-2" value={`${cfg.category}/${cfg.month}/${cfg.level}`}
-              onChange={(e) => {
-                const c = conditions.find((item) => `${item.category}/${item.month}/${item.level}` === e.target.value);
-                if (c) setCfg((old) => ({ ...old, category: c.category, month: c.month, level: c.level }));
-              }}>
-              {(conditions.length ? conditions : [{ ...initial, level_value_kwh: null }]).map((c) => (
-                <option key={`${c.category}/${c.month}/${c.level}`} value={`${c.category}/${c.month}/${c.level}`}>
-                  {c.category === "009" ? "Transport and storage" : c.category === "008" ? "Wholesale and retail" : c.category} · {c.month} · {c.level_value_kwh == null ? `Level ${c.level}` : `≈ ${(c.level_value_kwh / 1000).toFixed(1)} MWh/month`}
-                </option>
-              ))}
-            </select></label><Hint label="Business profile" /></div>
+            <BuildingLoad cfg={cfg} setCfg={setCfg} conditions={conditions} disabled={importing || busy || asking || sweeping || whatIfBusy} />
             {fields.filter(([, key]) => !imported || (key !== "vans" && key !== "charger_kw")).map(([label, key, min, max, step, unit]) =>
               <Field key={key} label={label} value={cfg[key]} min={min} max={max} step={step} unit={unit} onChange={(value) => {
                 if (key === "vans") setCfg((old) => ({
@@ -493,8 +486,10 @@ function Dashboard() {
 
         {r && s && report && run ? <>
           <TabsContent value="compare">
-          <Section id="compare" n={3} title="Compare charging plans">
-            <p className="mb-4" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans · {run.cfg.month} <Hint label="Verdict and solver" /></p>
+          <Section id="compare" n={3} title="Compare charging plans" synthetic={report.synthetic}>
+            <p className="mb-2" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans{run.cfg.load_source === "meter" ? "" : ` · ${new Date(`${run.cfg.month}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long" })}`} <Hint label="Verdict and solver" /></p>
+            {r.load && <div className="mb-4 text-sm"><p className="text-muted-foreground"><strong>Building load:</strong> {r.load.description}</p>
+              {r.load.warnings.map((warning) => <p key={warning} className="text-primary">{warning}</p>)}</div>}
             <div className="grid gap-4 sm:grid-cols-4">
               <Stat label="Windows over limit" value={`${report.days_over_pct.toFixed(2)}%`} tone={report.days_over_pct ? "bad" : "good"} />
               <Stat label="Worst overshoot" value={`${report.worst_overshoot_kw.toFixed(2)} kW`} />
@@ -547,7 +542,7 @@ function Dashboard() {
           </Section>
           </TabsContent>
           <TabsContent value="schedule">
-            <Section id="schedule" n={4} title="Per-van charging schedule">
+            <Section id="schedule" n={4} title="Per-van charging schedule" synthetic={report.synthetic}>
               <div className="panel mt-4 p-4">
               <h3 className="font-semibold">Van schedule <Hint label="Van schedule" /></h3>
               <Heatmap schedule={s.power} needs={r.vans.map((van) => Math.ceil(van.energy_kwh * 4) / 4)} chargerKw={run.cfg.charger_kw} />
@@ -558,7 +553,7 @@ function Dashboard() {
             </Section>
           </TabsContent>
           <TabsContent value="explanation">
-          <Section id="explanation" n={5} title="Explanation">
+          <Section id="explanation" n={5} title="Explanation" synthetic={report.synthetic}>
             {portfolio.serverRunId && activeDepot ? <article className="panel space-y-4 p-6">
               <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} currentDepot={activeDepot}
                 provider={portfolioProvider} onProviderChange={setPortfolioProvider} />
@@ -585,15 +580,15 @@ function Dashboard() {
           </Section>
           </TabsContent>
           <TabsContent value="analysis">
-            <Section id="analysis" n={6} title="Analysis">
+            <Section id="analysis" n={6} title="Analysis" synthetic={report.synthetic}>
               <div className="grid items-start gap-4 lg:grid-cols-2">
                 <section className="panel min-w-0 space-y-4 p-5" aria-labelledby="decision-evidence">
                   <h3 id="decision-evidence" className="text-xl font-semibold">What-if scenarios</h3>
                   <p><strong>Decision:</strong> {report.verdict.replaceAll("_", " ")} · {report.vans_short.filter(([, short]) => short <= 1e-9).length} of {run.cfg.vans} vans meet their rounded request · {sum(s.unmet_kwh).toFixed(2)} kWh unmet.</p>
-                  <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} held-out synthetic windows exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
-                  <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against synthetic windows. This is not a real-site guarantee or grid-operator approval.</p>
+                  <p><strong>Evidence:</strong> {report.days_over_pct.toFixed(2)}% of {report.n_windows} {report.synthetic ? "held-out synthetic windows" : "held-out days of your meter data"} exceed the modeled limit. The worst overshoot is {report.worst_overshoot_kw.toFixed(2)} kW{report.worst_overshoot_time ? ` at ${report.worst_overshoot_time}` : ""}; building demand alone exceeds it in {report.baseline_alone_over_pct.toFixed(2)}% of windows.</p>
+                  <p><strong>Limits:</strong> Solver status {s.status}; one fixed schedule is replayed against {report.synthetic ? "synthetic windows" : "your later meter days; past days do not guarantee future load"}. This is not a real-site guarantee or grid-operator approval.</p>
                   <h3 className="pt-2 font-semibold">What would change the outcome?</h3>
-                  <p className="text-sm text-muted-foreground">Change one setting and compare both plans on the same synthetic windows. Equally optimal schedules can differ.</p>
+                  <p className="text-sm text-muted-foreground">Change one setting and compare both plans on the same {report.synthetic ? "synthetic windows" : "held-out meter days"}. Equally optimal schedules can differ.</p>
                   <div className="flex flex-wrap gap-2">
                     <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("extra_capacity")}>Add 10 kW of capacity</button>
                     <button className={btnGhost} disabled={whatIfBusy || busy} onClick={() => compareWhatIf("later_departure")}>Depart one hour later</button>
@@ -605,7 +600,7 @@ function Dashboard() {
                     <table className="w-full text-left text-sm"><thead><tr><th>Metric</th><th>Current</th><th>Changed</th></tr></thead><tbody>
                       <tr><th>Vans fully charged</th><td>{whatIf.current.vans_full}/{whatIf.current.vans_total}</td><td>{whatIf.changed.vans_full}/{whatIf.changed.vans_total}</td></tr>
                       <tr><th>Unmet energy</th><td>{whatIf.current.unmet_kwh.toFixed(2)} kWh</td><td>{whatIf.changed.unmet_kwh.toFixed(2)} kWh</td></tr>
-                      <tr><th>Synthetic windows over limit</th><td>{whatIf.current.days_over_pct.toFixed(2)}%</td><td>{whatIf.changed.days_over_pct.toFixed(2)}%</td></tr>
+                      <tr><th>{report.synthetic ? "Synthetic windows" : "Meter days"} over limit</th><td>{whatIf.current.days_over_pct.toFixed(2)}%</td><td>{whatIf.changed.days_over_pct.toFixed(2)}%</td></tr>
                       <tr><th>Worst overshoot</th><td>{whatIf.current.worst_overshoot_kw.toFixed(2)} kW</td><td>{whatIf.changed.worst_overshoot_kw.toFixed(2)} kW</td></tr>
                       <tr><th>Solver status</th><td>{whatIf.current.status}</td><td>{whatIf.changed.status}</td></tr>
                     </tbody></table>
@@ -644,7 +639,7 @@ function Dashboard() {
                 </div>
                 <section className="panel min-w-0 space-y-4 p-5 lg:col-span-2" aria-labelledby="reality-heading">
                     <h3 id="reality-heading" className="text-xl font-semibold">Reality check · GLASS and Liander (2023) <Hint label="Reality check" /></h3>
-                    {!checks.length && <p>No comparison available for this run.</p>}
+                    {!checks.length && <p>{run.cfg.load_source === "meter" ? "Not needed for this run: the building load is your own meter data, not GLASS." : "No comparison available for this run."}</p>}
                     <div className="grid gap-4 xl:grid-cols-3">
                     {checks.map((check) => <div className="min-w-0" key={check.sbi_code}><p>{check.summary}</p>
                       <LoadChart title={`Typical working day ${check.sbi_code}, midnight to midnight (relative load)`} startHour={0} band={[check.glass_band[0], check.glass_band[2]]}

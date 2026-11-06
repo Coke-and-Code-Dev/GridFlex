@@ -10,7 +10,7 @@ from typing import Callable
 
 import numpy as np
 
-from gridflex.explain import call_llm, evidence_facts, template_summary
+from gridflex.explain import call_llm, evidence_facts, held_out_phrase, template_summary
 from gridflex.replay import slot_time
 
 KNOWLEDGE = {
@@ -26,6 +26,16 @@ KNOWLEDGE = {
 }
 
 
+def _data_setting(scenario):
+    source = getattr(scenario, 'load_source', 'profile')
+    if source == 'meter':
+        return "the site's own uploaded meter data"
+    if source == 'bill':
+        return (f"category {scenario.category} profiles for month {scenario.month}, "
+                f"scaled to {scenario.monthly_kwh:.2f} kWh per month from the bill")
+    return f"category {scenario.category}, month {scenario.month}, level {scenario.level}"
+
+
 def build_facts(scenario, plan, report, baseline, limit, vans, previous=None, question=""):
     facts = {**KNOWLEDGE, **evidence_facts(plan, report, previous)}
     shorts = [(name, float(short)) for name, short in report.vans_short if short > 1e-9]
@@ -33,8 +43,18 @@ def build_facts(scenario, plan, report, baseline, limit, vans, previous=None, qu
     facts['settings'] = (f"Scenario settings: {scenario.vans} vans, {scenario.limit_kw:.2f} kW firm connection limit, "
                          f"{scenario.extra_kw:.2f} kW off-peak uplift, {scenario.battery_kwh:.2f} kWh battery "
                          f"with {scenario.battery_kw} kW power, caution quantile {scenario.q:.2f}, "
-                         f"and risk tolerance {scenario.tolerance * 100:.2f}%. Data: category {scenario.category}, "
-                         f"month {scenario.month}, level {scenario.level}.")
+                         f"and risk tolerance {scenario.tolerance * 100:.2f}%. Data: {_data_setting(scenario)}.")
+    source = getattr(scenario, 'load_source', 'profile')
+    if source == 'bill':
+        facts['data'] = ('The building load is estimated from similar businesses, not measured at this site: synthetic GLASS '
+                         'profiles of the chosen sector, scaled to the monthly energy use entered from the bill. '
+                         'Fleet requests are generated assumptions unless edited. The postcode capacity map is indicative, not an approval.')
+    elif source == 'meter':
+        facts['data'] = ("The building load is the site's own 15-minute meter data, uploaded by the user. "
+                         'Fleet requests are generated assumptions unless edited. The postcode capacity map is indicative, not an approval.')
+        facts['replay_method'] = ("The plan is made from the earlier working days of the meter data and replayed on the later days, "
+                                  'which were held out of planning. A breach means simulated net demand exceeds the modeled limit. '
+                                  'Past days do not guarantee future load.')
     facts['battery_impact'] = ('Battery discharge describes operation, not its effect on risk. '
                                'A comparable simulation without the battery is needed to measure its impact. '
                                'Use the what-if controls to run that comparison.')
@@ -160,7 +180,7 @@ def evidence_answer(topics, facts, scenario, compare):
             parts.append(facts['frequent'] + ' ' + facts['worst'])
         else:
             keys.append('replay')
-            parts.append('No limit breaches occurred in the held-out synthetic windows, so there is no breach time to report. ' + facts['replay'])
+            parts.append(f'No limit breaches occurred in the {held_out_phrase(getattr(scenario, "load_source", "profile") != "meter")}, so there is no breach time to report. ' + facts['replay'])
     if 'van_shortfall' in topics:
         keys.append('short_vans')
         parts.append(facts['short_vans'])
@@ -271,7 +291,7 @@ def answer_question(scenario, plan, report, baseline, limit, vans, question=None
                   'Write numerical amounts using digits, not number words. Do not repeat evidence verbatim unnecessarily. '
                   'Never claim the battery caused an improvement or reduced risk without a computed comparison. '
                   'Battery discharge alone does not establish impact. If no comparison exists, say so and suggest the what-if controls. '
-                  'Do not infer real-world safety from synthetic results. '
+                  'Do not infer real-world safety from simulated results. '
                   'For ambiguous, unsupported or out-of-scope questions, return no fact_ids and exactly: '
                   'I cannot answer that from the available evidence. Please clarify your question or try a supported scenario.')
         payload = {**request, 'facts': facts}

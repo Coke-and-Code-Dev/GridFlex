@@ -37,14 +37,16 @@ The GLASS dataset is described in [data/README.md](data/README.md); the other da
 ## Repository layout
 
 ```
+README.md            what GridFlex is, how to set it up and where the data comes from
 idea.md              idea + implementation plan (source of truth)
 TODO.md              tasks per person
 HANDOFF.md           handoff notes between teammates (what exists, how to call it, gotchas)
 AGENTS.md            this file
 data/README.md       GLASS dataset card
 data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, never commit
-data/processed/      small extracts: committed
-scripts/             one-off data scripts (extract_glass, prepare_grid_map, prepare_liander_sbi)
+data/processed/      small files the app reads, made from data/raw by scripts/setup_data.py (git-ignored)
+examples/            six ready-made scenarios (case_1 to case_6: bill, own meter data, portfolios); see examples/README.md
+scripts/             data scripts (download_data, setup_data, extract_glass, prepare_grid_map, prepare_liander_sbi)
 gridflex/            library code: profiles, grid_area, fleet, naive, scheduler, replay, reality, explain
 api/                 Python JSON API that calls gridflex/ (idea.md §8.1)
 ui/                  React + TypeScript dashboard (idea.md §8.1)
@@ -58,15 +60,15 @@ requirements.txt     Python dependencies (filled in as we build)
 python -m venv .venv
 .venv\Scripts\activate          # Windows; use `source .venv/bin/activate` on macOS/Linux
 pip install -r requirements.txt
-python scripts/extract_glass.py --categories 009 --months 2023-01 --levels 0 1 2 3
-python scripts/prepare_grid_map.py
-python scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01
+python scripts/download_data.py         # the raw datasets (13.6 GB) into data/raw/; resumes if interrupted
+python scripts/setup_data.py build      # makes data/processed/ from them (GLASS, grid map, Liander); or: unpack <zip>
+python scripts/setup_data.py status     # says what is missing
 pytest
 uvicorn api.main:app --reload   # API
 cd ui && npm install && npm run dev   # dashboard, in a second terminal
 ```
 
-Data download steps are in idea.md §13.
+The full setup steps and the dataset sources are in README.md; idea.md §13 has the same in short.
 
 ## Dependencies: fill them in as you build
 
@@ -91,16 +93,18 @@ There is no fixed dependency list up front. Whoever adds a new package records i
 
 ## Data rules
 
-- **Never commit anything in `data/raw/`** (GLASS parquet, capacity-map CSVs, Liander zips). Only small extracts in `data/processed/` (aim for < 5 MB each).
+- **Never commit anything under `data/` except `data/README.md`.** `data/raw/` (GLASS parquet, capacity-map CSVs, Liander zips) and `data/processed/` are both git-ignored.
+- **`data/processed/` is made, not committed.** Everyone downloads the raw files with `scripts/download_data.py` and runs `scripts/setup_data.py build` once (or `unpack`s a zip made with `pack`). It holds the GLASS extracts (480 files, 211 MB), the grid map and Liander's 2023 profiles. The GLASS set is slim on purpose (`--samples 40`, the sectors in idea.md section 4.5, one year: 2024); if you change what is built, edit the constants at the top of `setup_data.py` in the same PR. Tests that need the data carry the `needs_glass` marker or skip themselves without it. A new processed file must be added to `setup_data.py`, or `status`, `build` and `pack` will not know about it.
 - Never load the full 43M-row GLASS file into memory. Use `pl.scan_parquet` with filters.
 - GLASS rows join into a continuous series **only within the same `scenario`, `category`, year-month, `level_id` and `sample_id`**. Never join days across months or across samples.
 - Split GLASS into planning and test groups **by `sample_id`**, never by day. Test windows are only used for replay.
+- A site's own meter upload has one sample, so it is split **by date** instead (earliest 70% plan, latest 30% test; idea.md §5.2a–5.3). Meter uploads stay in memory; never write them to disk or commit them.
 - Capacity-map CSVs are semicolon-separated with comma decimals. Treat the map as indicative and always show its download date.
 - Keep the attributions in idea.md §14: GLASS (CDLA-Permissive-2.0), Netbeheer Nederland capaciteitskaart, Liander open data.
 
 ## Honesty rules (product)
 
-- Label everything in the app as **synthetic data / simulation**, and fleet values as assumptions.
+- Label everything in the app as **synthetic data / simulation**, and fleet values as assumptions. Only results built on the site's own meter data may drop "synthetic"; they are still a simulation.
 - Never hide infeasibility: always show kWh short and days over the limit, even when they are bad.
 - The app only recommends. It never claims to control equipment or to be a grid-operator approval.
 - The explanation agent may only describe numbers already computed by the code. It must not calculate or invent figures, and there must be a non-LLM fallback.

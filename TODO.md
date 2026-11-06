@@ -57,7 +57,7 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 7. **Is the pretend data believable?** We compare the pretend January working day with real measurements of Liander's real customers. The two curves rise and fall together: a similarity of 0.97 out of 1.00 against warehouses (SBI 52). Honest footnote: the pretend data was learned from Liander's data, so this shows the copy is good, not that it is an independent test.
 8. **Safety net.** 65 automatic tests pass, and re-running my three data scripts gives identical files, so anyone can rebuild them.
 
-**Not finished yet:** only January 2023 is extracted (in the remaining todo below). `replay()` now runs on Sunil's real schedules in the app.
+**Not finished yet:** more sectors are extracted only on request (in the remaining todo below). `replay()` now runs on Sunil's real schedules in the app.
 
 ---
 
@@ -160,14 +160,19 @@ Tasks for the 18-hour build, split across three people. Section numbers (§) ref
 
 Moved here from Joshua's section above. Nothing else of Joshua's is open.
 
-- [x] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**). Done by Sunil in PR #11: [examples/replay_report_dev.json](examples/replay_report_dev.json) (regenerated in the QC fixes after the solver was made deterministic).
+- [x] Hand Smriti a real `ReplayReport` for the development scenario (**checkpoint**). Done by Sunil in PR #11 (the saved JSON was removed later because it described the old January 2023 data; HANDOFF.md shows how to regenerate one).
 - [ ] Prepare and rehearse demo part 1 (problem, postcode card, GLASS band, reality check). Real numbers to use: 56% of postcodes red (78.7% in Liander's area); postcode `1181KJ` (29 requests, 5.8 MW, fix year 2032); reality check correlation 0.97 against SBI 52, with the "not independent" footnote.
 - [x] With Sunil: review the replay side of `charger_sweep()` and `battery_sweep()` (done in the QC of 5 November 2026).
 - [x] QC of everything on `main` (6 November 2026): 130 Python and 10 UI tests pass, the UI builds, every API endpoint works, Optimize runs end to end in the browser. Fixed here: solver determinism, outdated HANDOFF.md, ui/README.md and TODO.md. Open findings are listed per person below.
 - [ ] Grid map placeholder postcodes: 2,142 rows in `grid_pc6.parquet` have no municipality, including placeholders such as `9999ZZ` (Liander, "OS EDAM"), which the card shows as a confident red area. Decide in `scripts/prepare_grid_map.py` whether to drop them or mark them with a note, and add a test.
 - [ ] Smriti, on request: helpers to serialise `ReplayReport` and `RealityCheck` for the API (NumPy to lists, NaN to null) and a p10–p90 band function for the demand chart. Not needed unless she asks.
-- [ ] After the demo scenario is picked (see "Before the demo"): extract that condition and a few contrast conditions from GLASS in one separate PR. Only January 2023 is extracted now; the demo sector, month and level must come from what the sweeps show.
+- [ ] After the demo scenario is picked (see "Before the demo"): extract that condition and a few contrast conditions from GLASS in one separate PR. All of 2024 is extracted for the fleet-depot sectors now; the demo sector, month and level must still come from what the sweeps show.
 - [ ] The shared "Before the demo" items above are everyone's, including Joshua's: the demo postcode list is done (idea.md §9), the rest waits for the working app.
+- [x] General building load (idea.md §5.2a): own meter CSV upload (split by date), sector + monthly bill (closest GLASS level, scaled), or the demo profile. Optional `monthly_kwh` column in the setup CSV. 141 Python tests pass; checked in the browser for all three sources.
+- [x] Real month coverage for the bill source: GLASS **2024** (latest year in the dataset), all 12 months, 40 samples per condition (~0.45 MB each), git-ignored and set up with `scripts/setup_data.py` (`build`, `pack`, `unpack`), for the fleet-depot sectors 009, 008, 006, 007, 015, 004 and the operating-hours classes E3A–E3D (480 files, ~210 MB); the Liander 2023 reality check matches by calendar month. The demo profile is gone from the dashboard.
+- [ ] More sectors for the bill source only if the team knows depot customers there (016 public administration, 018 health and social work, 005 utilities, 002 agriculture): about 22 MB each with `--samples 40`; the dropdown grows by itself. Liander has real profiles for logistics only, so other sectors show no reality check.
+- [ ] Real sites can be bigger than the dashboard allows: `limit_kw` is capped at 60–160 kW (schema, what-if and UI slider). Widen it once meter uploads are used for real sites; `/meter-data` already warns when the building alone peaks above 160 kW.
+- [ ] Daytime fleets: `Scenario` has no `start_hour`, so windows are always noon to noon although the library supports other start hours. Needed for fleets that charge during the day (for example office cars from 09:00 to 17:00).
 
 ---
 
@@ -190,6 +195,6 @@ Moved here from Smriti's section above, plus what Joshua's QC (6 November 2026) 
 - [ ] Record a fallback video of the full demo
 - [ ] Prepare and rehearse demo part 3 (agent explanation, change two vans and explain what changed, follow-up question, risk timing)
 - [ ] Delete `ui/src/lib/sim.ts` and `ui/src/test/sim.test.ts`: the old Lovable fake simulator (made-up loads and presets). The app no longer uses it, so nobody should demo its numbers.
-- [ ] Settle `wireframe/` (80 tracked files, a second app next to `ui/`): delete it or say in AGENTS.md what it is for.
+- [x] Settle `wireframe/` (it was a second app next to `ui/`): deleted.
 - [ ] `npx eslint .` in `ui/` reports 649 Prettier formatting errors (all fixable with `npx eslint . --fix`) and 8 warnings; run the fix in its own PR so the diff is formatting only.
 - [ ] Small: the "Windows over limit" tile turns red for any value above 0%, even when the verdict is "fits" (for example 1.16% under a 5% tolerance); colour it by the verdict instead.

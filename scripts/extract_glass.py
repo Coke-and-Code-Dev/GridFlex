@@ -1,10 +1,14 @@
 """Extract GLASS conditions into small per-condition parquet files.
 
 Usage:
-    python scripts/extract_glass.py --categories 009 --months 2023-01 --levels 0 1 2 3
+    python scripts/extract_glass.py --categories 009 --months 2024-01 --levels 0 1 2 3
+    python scripts/extract_glass.py --categories 009 008 --months 2024-01 2024-02 --samples 40 --quiet
 
-Writes data/processed/glass_{category}_{yyyy-mm}_L{level}.parquet (committed, so
-teammates and the demo work without the 13 GB raw file) and prints a summary per
+Writes data/processed/glass_{category}_{yyyy-mm}_L{level}.parquet (git-ignored: 211 MB for the
+dashboard's set; `scripts/setup_data.py build` runs this for the whole set). `--samples N` keeps only
+the first N samples of each condition (GLASS has about 150): the samples are independent
+synthetic customers, so a smaller set is the same kind of data, in a file a third the size.
+Prints a summary per
 condition: samples, daily-peak statistics, spread across samples, kW range, and
 monthly energy against the target `level_value` (idea.md section 4.5).
 
@@ -111,6 +115,16 @@ def summarise(df: pl.DataFrame, cols: list[str]) -> dict:
     }
 
 
+def keep_first_samples(df: pl.DataFrame, n: int | None) -> pl.DataFrame:
+    """The n lowest sample ids of one condition (all of them when n is None)."""
+    if n is None:
+        return df
+    if n < 2:
+        sys.exit("--samples must be at least 2: the planning/test split is by sample")
+    keep = df["sample_id"].unique().sort().head(n)
+    return df.filter(pl.col("sample_id").is_in(keep.implode()))
+
+
 def print_summary(category: str, month: str, level: int, s: dict, path: Path) -> None:
     print(f"\n== category {category} | {month} | level {level} -> {path.name}")
     print(f"  samples: {s['samples']}   days per sample: {s['days_min']}-{s['days_max']}")
@@ -138,6 +152,9 @@ def main() -> None:
     p.add_argument("--categories", nargs="+", required=True, help="GLASS categories, e.g. 009 008")
     p.add_argument("--months", nargs="+", required=True, help="Year-months, e.g. 2023-01 2023-07")
     p.add_argument("--levels", nargs="+", type=int, default=[0, 1, 2, 3], help="level_id values (0-3)")
+    p.add_argument("--samples", type=int, default=None,
+                   help="keep only the first N samples of each condition (slimmer files); default: all")
+    p.add_argument("--quiet", action="store_true", help="one line per file instead of the full summary")
     p.add_argument("--scenario", default="consumption_only")
     p.add_argument("--raw", type=Path, default=DEFAULT_RAW)
     p.add_argument("--out", type=Path, default=DEFAULT_OUT)
@@ -147,42 +164,40 @@ def main() -> None:
         sys.stdout.reconfigure(errors="replace")
 
     if not args.raw.exists():
-        sys.exit(f"{args.raw} not found. See idea.md section 13 for the download.")
+        sys.exit(f"{args.raw} not found. Download it with: python scripts/download_data.py glass")
     if not args.skip_hash:
         verify_sha256(args.raw)
 
     lf = pl.scan_parquet(args.raw)
     cols = time_columns(lf.collect_schema().names())
 
-    df = (
-        lf.filter(
-            (pl.col("scenario") == args.scenario)
-            & pl.col("category").is_in(args.categories)
-            & pl.col("date").str.slice(0, 7).is_in(args.months)
-            & pl.col("level_id").is_in(args.levels)
-        )
-        .select(META_COLUMNS + cols)
-        .collect()
-    )
-    print(f"\nRead {df.height:,} rows for scenario={args.scenario}")
-
     args.out.mkdir(parents=True, exist_ok=True)
-    df = df.with_columns(pl.col("date").str.slice(0, 7).alias("_month"))
     written = 0
-    for category in args.categories:
-        for month in args.months:
+    for month in args.months:  # one month at a time keeps memory small when extracting many conditions
+        df = (
+            lf.filter(
+                (pl.col("scenario") == args.scenario)
+                & pl.col("category").is_in(args.categories)
+                & (pl.col("date").str.slice(0, 7) == month)
+                & pl.col("level_id").is_in(args.levels)
+            )
+            .select(META_COLUMNS + cols)
+            .collect()
+        )
+        for category in args.categories:
             for level in args.levels:
-                part = df.filter(
-                    (pl.col("category") == category) & (pl.col("_month") == month) & (pl.col("level_id") == level)
-                )
+                part = df.filter((pl.col("category") == category) & (pl.col("level_id") == level))
                 if part.is_empty():
-                    print(f"\n-- no rows for category {category} | {month} | level {level}")
+                    print(f"-- no rows for category {category} | {month} | level {level}")
                     continue
-                part = part.drop("_month").sort(["sample_id", "date"])
+                part = keep_first_samples(part, args.samples).sort(["sample_id", "date"])
                 path = args.out / f"glass_{category}_{month}_L{level}.parquet"
-                part.write_parquet(path, compression="zstd")
-                print_summary(category, month, level, summarise(part, cols), path)
-                print(f"  file size: {path.stat().st_size / 1e6:.2f} MB")
+                part.write_parquet(path, compression="zstd", compression_level=19)
+                if args.quiet:
+                    print(f"{path.name}: {part['sample_id'].n_unique()} samples, {path.stat().st_size / 1e6:.2f} MB")
+                else:
+                    print_summary(category, month, level, summarise(part, cols), path)
+                    print(f"  file size: {path.stat().st_size / 1e6:.2f} MB")
                 written += 1
     print(f"\nWrote {written} file(s) to {args.out}")
 

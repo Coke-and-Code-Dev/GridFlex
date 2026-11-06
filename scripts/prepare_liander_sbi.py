@@ -155,7 +155,7 @@ def main() -> None:
 
     for name in (SBI_ZIP, KO_ZIP, OVERVIEW):
         if not (args.raw / name).exists():
-            sys.exit(f"Missing {args.raw / name}. See idea.md section 13 for the download.")
+            sys.exit(f"Missing {args.raw / name}. Download it with: python scripts/download_data.py liander")
     for month in args.months:
         if not re.match(r"^2023-(0[1-9]|1[0-2])$", month):
             sys.exit(f"{month}: Liander's profiles cover 2023 only")

@@ -141,7 +141,9 @@ def _site_page(pdf, site):
         year = area.expected_fix_year or "unavailable"
         y = _paragraph(pdf, MARGIN, y, f"Area waiting list: {queue} | Expected fix year: {year}")
     y = _paragraph(pdf, MARGIN, y - 6, f"{scenario.vans} vans | Firm limit {scenario.limit_kw:g} kW | Off-peak uplift {scenario.extra_kw:g} kW ({scenario.off_peak[0]} to {scenario.off_peak[1]}) | Battery {scenario.battery_kwh:g} kWh / {scenario.battery_kw} kW")
-    y = _paragraph(pdf, MARGIN, y, f"Profile {scenario.category}, {scenario.month}, level {scenario.level} | Caution {scenario.q:.2f} | Risk tolerance {scenario.tolerance:.0%}")
+    profile = (f"Profile {scenario.category}, {scenario.month}, scaled to {scenario.monthly_kwh:,.0f} kWh/month from the bill"
+               if scenario.load_source == "bill" else f"Profile {scenario.category}, {scenario.month}, level {scenario.level}")
+    y = _paragraph(pdf, MARGIN, y, f"{profile} | Caution {scenario.q:.2f} | Risk tolerance {scenario.tolerance:.0%}")
     if site.payload is None:
         _paragraph(pdf, MARGIN, y - 20, f"No simulation result: {site.error}", 12)
         pdf.showPage()
