@@ -134,6 +134,7 @@
 
 /* GridFlex dark theme */
 :root {
+  color-scheme: dark;
   --background: oklch(0.16 0.008 285); /* #101014 */
   --foreground: oklch(0.96 0.005 285);
   --card: oklch(0.31 0.015 285); /* #2E2E38 */
@@ -157,6 +158,30 @@
   --font-mono-ui: "JetBrains Mono", ui-monospace, monospace;
   --glow: 0 0 40px -8px color-mix(in oklab, var(--primary) 55%, transparent);
 }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: oklch(0.975 0.004 285);
+  --foreground: oklch(0.23 0.015 285);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.49 0.102 93);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.93 0.008 285);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--secondary);
+  --muted-foreground: oklch(0.44 0.015 285);
+  --accent: oklch(0.95 0.055 100);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.49 0.17 25);
+  --success: oklch(0.46 0.12 155);
+  --border: oklch(0.83 0.012 285);
+  --input: oklch(0.66 0.014 285);
+  --ring: var(--primary);
+  --glow: 0 0 36px -12px oklch(0.92 0.19 103 / 45%);
+}
+
 @theme inline {
   --color-success: var(--success);
   --font-sans: var(--font-display);
