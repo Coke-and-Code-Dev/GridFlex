@@ -1,5 +1,5 @@
 export type Condition = { category: string; month: string; level: number; level_value_kwh: number | null; label: string };
-/** Building load: the site's own meter upload, the sector profile scaled to the bill, or a demo profile. */
+/** Building load: the site's own meter upload or the sector profile scaled to the bill. "profile" (a fixed GLASS level) is only used by the API and batch CSV. */
 export type LoadSource = "meter" | "bill" | "profile";
 export type VanOverride = { name?: string; arrival_slot: number; departure_slot: number; energy_kwh: number; charger_kw: number };
 export type Scenario = Pick<Condition, "category" | "month" | "level"> & {

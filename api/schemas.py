@@ -16,7 +16,7 @@ class Scenario(BaseModel):
     # GLASS profile scaled to monthly_kwh, "profile" = a GLASS profile as-is (demo default).
     load_source: Literal["profile", "bill", "meter"] = "profile"
     category: str = Field(default="009", pattern=r"^(\d{3}|E3[A-D])$")
-    month: str = Field(default="2023-01", pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    month: str = Field(default="2024-01", pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     level: int = Field(default=1, ge=0, le=3)
     monthly_kwh: float | None = Field(default=None, ge=100, le=200_000)
     meter_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{16}$")

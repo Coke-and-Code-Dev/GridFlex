@@ -5,6 +5,9 @@ CLAUDE.md
 # Data: raw GLASS parquet is multi-GB, never commit
 data/raw/
 data/*.parquet
+# GLASS extracts (211 MB): not in git. Set up with scripts/setup_data.py; a shared zip stays out too
+data/processed/glass_*.parquet
+data/*.zip
 
 # Python
 __pycache__/

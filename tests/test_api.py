@@ -4,6 +4,9 @@ from api.main import optimize_route
 from api.schemas import Scenario
 from gridflex.fleet import generate_fleet
 from gridflex.naive import naive_schedule
+import pytest
+
+pytestmark = pytest.mark.needs_glass  # loads the GLASS extracts
 
 
 def test_optimize_returns_total_immediate_power_per_slot():

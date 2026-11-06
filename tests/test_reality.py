@@ -129,10 +129,12 @@ def test_summary_words_follow_the_number(corr, word):
 REAL = DEFAULT_DATA_DIR / "liander_sbi_52_2023-01.parquet"
 
 
-@pytest.mark.skipif(not REAL.exists(), reason="Liander extract not present")
+@pytest.mark.skipif(not (REAL.exists() and (DEFAULT_DATA_DIR / "glass_009_2024-01_L1.parquet").exists()),
+                    reason="Liander or GLASS extract not present")
 def test_real_development_condition_against_sbi_52():
-    r = compare("009", "2023-01", "52")
-    assert r.n_glass_samples >= 100 and r.n_glass_days == r.n_liander_days == WORKING_DAYS_JAN_2023
+    r = compare("009", "2024-01", "52")
+    # GLASS January 2024 has 23 working days; Liander's real January 2023 has 22 (matched by calendar month).
+    assert r.n_glass_samples == 40 and (r.n_glass_days, r.n_liander_days) == (23, WORKING_DAYS_JAN_2023)
     assert 0.8 < r.correlation <= 1.0
     assert r.mean_abs_diff < 0.5
 
@@ -219,3 +221,20 @@ def test_incomplete_month_and_unknown_codes_are_refused(tmp_path):
         prepare.read_series(tmp_path, "46")  # no such file: points to the fallback
     with pytest.raises(SystemExit):
         prepare.read_series(tmp_path, "../../etc/passwd")
+
+
+def test_liander_file_is_matched_by_calendar_month_not_year():
+    from gridflex.reality import liander_path
+    assert liander_path("52", "2024-03").name == "liander_sbi_52_2023-03.parquet"
+    assert liander_path("52", "2023-03").name == "liander_sbi_52_2023-03.parquet"
+
+
+def test_extract_script_keeps_the_first_samples_of_a_condition():
+    spec = importlib.util.spec_from_file_location("extract_glass", Path(SCRIPT).with_name("extract_glass.py"))
+    extract = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(extract)
+    df = pl.DataFrame({"sample_id": [5, 3, 3, 9, 1, 1], "date": ["d"] * 6})
+    assert sorted(extract.keep_first_samples(df, 2)["sample_id"].unique().to_list()) == [1, 3]
+    assert extract.keep_first_samples(df, None).height == 6
+    with pytest.raises(SystemExit):
+        extract.keep_first_samples(df, 1)

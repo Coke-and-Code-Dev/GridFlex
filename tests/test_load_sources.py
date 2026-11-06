@@ -9,7 +9,7 @@ from gridflex.load_sources import (MIN_METER_WINDOWS, meter_windows, nearest_lev
                                    scale_windows, split_by_date)
 from gridflex.profiles import Condition, DEFAULT_DATA_DIR, Windows, build_windows, split_by_sample
 
-DEV = DEFAULT_DATA_DIR / "glass_009_2023-01_L1.parquet"
+DEV = DEFAULT_DATA_DIR / "glass_009_2024-01_L1.parquet"
 
 
 def meter_csv(start="2024-01-01", days=60, header="timestamp,kw", fmt="{t:%Y-%m-%d %H:%M},{v}", value=None):
@@ -26,14 +26,14 @@ def meter_csv(start="2024-01-01", days=60, header="timestamp,kw", fmt="{t:%Y-%m-
 # --- bill: sector + monthly kWh ---
 
 def test_nearest_level_is_closest_by_ratio():
-    levels = [Condition("009", "2023-01", i, kwh) for i, kwh in enumerate((3450, 8000, 13700, 29100))]
-    assert nearest_level(levels, "009", "2023-01", 9000).level == 1
-    assert nearest_level(levels, "009", "2023-01", 18000).level == 2  # 18000/13700 < 29100/18000
-    assert nearest_level(levels, "009", "2023-01", 100).level == 0
+    levels = [Condition("009", "2024-01", i, kwh) for i, kwh in enumerate((3450, 8000, 13700, 29100))]
+    assert nearest_level(levels, "009", "2024-01", 9000).level == 1
+    assert nearest_level(levels, "009", "2024-01", 18000).level == 2  # 18000/13700 < 29100/18000
+    assert nearest_level(levels, "009", "2024-01", 100).level == 0
     with pytest.raises(FileNotFoundError):
-        nearest_level(levels, "008", "2023-01", 9000)
+        nearest_level(levels, "008", "2024-01", 9000)
     with pytest.raises(ValueError):
-        nearest_level(levels, "009", "2023-01", 0)
+        nearest_level(levels, "009", "2024-01", 0)
 
 
 def test_scaling_keeps_the_shape_and_sets_the_size():

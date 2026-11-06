@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Wait until the API prints "Application startup complete" (about 20 seconds). Open the URL printed by Vite, go to **Setup** and press **Optimize**: the default inputs are the development scenario (category 009, January 2023, level 1, 10 vans, 100 kW). Increase the fleet from 10 to 12 and rerun to see the previous result in the explanation. The default API URL is http://127.0.0.1:8000. Set VITE_GRIDFLEX_API_URL for a different local API address.
+Wait until the API prints "Application startup complete" (about 20 seconds). Open the URL printed by Vite, go to **Setup** and press **Optimize**: the default inputs are the development scenario (sector transport and storage, the current month, 8,000 kWh a month, 10 vans, 100 kW). Increase the fleet from 10 to 12 and rerun to see the previous result in the explanation. The default API URL is http://127.0.0.1:8000. Set VITE_GRIDFLEX_API_URL for a different local API address.
 
 Explanations come from Groq or a local Qwen model, grounded in computed facts, with deterministic templates as the fallback (see below). Replay metrics describe held-out synthetic load windows. The local Approve and Reject controls record the decision for the current session.
 

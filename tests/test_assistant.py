@@ -7,6 +7,8 @@ from api.main import app, run
 from api.schemas import Scenario
 from gridflex.assistant import answer_question, build_facts, render_answer
 
+pytestmark = pytest.mark.needs_glass  # loads the GLASS extracts
+
 
 @pytest.fixture(scope='module')
 def current():

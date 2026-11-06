@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 from gridflex.fleet import Van, generate_fleet
 from gridflex.naive import naive_schedule
+from gridflex.profiles import DEFAULT_DATA_DIR
 from gridflex.scheduler import NoScheduleError, limit_profile, optimize
 
 
@@ -100,19 +101,21 @@ def test_battery_invalid_parameters():
         optimize(np.full(96,40.), np.full(96,100.), [], Battery(10, 2, efficiency=1.5))
 
 
+@pytest.mark.skipif(not (DEFAULT_DATA_DIR / 'glass_009_2024-01_L1.parquet').exists(),
+                    reason='GLASS extracts not set up (python scripts/setup_data.py status)')
 def test_real_development_scenario_integrates_with_replay():
     from gridflex.profiles import load_condition, build_windows, split_by_sample, cautious_baseline
     from gridflex.replay import replay
-    windows = build_windows(load_condition('009', '2023-01', 1))
+    windows = build_windows(load_condition('009', '2024-01', 1))
     planning, test = split_by_sample(windows)
     vans = generate_fleet(10)
     limit = limit_profile(100)
     r = optimize(cautious_baseline(planning), limit, vans)
     report = replay(test, r, limit, [v.name for v in vans], immediate_power=naive_schedule(vans))
-    assert report.n_windows == 945
+    assert report.n_windows == 264  # 12 test samples x 22 working-day windows (January 2024)
     assert r.unmet_kwh.sum() == 0 and report.immediate.days_over_pct == 100
     assert report.days_over_pct < report.immediate.days_over_pct
-    assert report.baseline_alone_over_pct == pytest.approx(100 * 7 / 945)
+    assert report.baseline_alone_over_pct == pytest.approx(100 * 4 / 264)  # 4 of the 264 test windows go over 100 kW with no vans
 
 
 def test_scheduler_matches_brute_force_for_a_small_case():
