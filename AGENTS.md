@@ -95,12 +95,13 @@ There is no fixed dependency list up front. Whoever adds a new package records i
 - Never load the full 43M-row GLASS file into memory. Use `pl.scan_parquet` with filters.
 - GLASS rows join into a continuous series **only within the same `scenario`, `category`, year-month, `level_id` and `sample_id`**. Never join days across months or across samples.
 - Split GLASS into planning and test groups **by `sample_id`**, never by day. Test windows are only used for replay.
+- A site's own meter upload has one sample, so it is split **by date** instead (earliest 70% plan, latest 30% test; idea.md §5.2a–5.3). Meter uploads stay in memory; never write them to disk or commit them.
 - Capacity-map CSVs are semicolon-separated with comma decimals. Treat the map as indicative and always show its download date.
 - Keep the attributions in idea.md §14: GLASS (CDLA-Permissive-2.0), Netbeheer Nederland capaciteitskaart, Liander open data.
 
 ## Honesty rules (product)
 
-- Label everything in the app as **synthetic data / simulation**, and fleet values as assumptions.
+- Label everything in the app as **synthetic data / simulation**, and fleet values as assumptions. Only results built on the site's own meter data may drop "synthetic"; they are still a simulation.
 - Never hide infeasibility: always show kWh short and days over the limit, even when they are bad.
 - The app only recommends. It never claims to control equipment or to be a grid-operator approval.
 - The explanation agent may only describe numbers already computed by the code. It must not calculate or invent figures, and there must be a non-LLM fallback.

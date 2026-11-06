@@ -53,6 +53,9 @@ export function Help({ label, text }: { label: string; text: string }) {
 
 export const helpText: Record<string, string> = {
   "Postcode": "Looks up local grid congestion. The area card is for context. The connection limit you enter controls the scheduling calculation.",
+  "Building electricity use": "The building's own use before any van charging. Best: upload your meter data. Without history, pick your sector and enter the monthly kWh from your energy bill for an estimate from similar businesses. The demo profile is for trying the app.",
+  "Meter data": "A CSV of 15-minute readings from your meter or energy supplier portal. GridFlex plans on the earlier working days and tests the plan on the latest 30%, which it did not see. At least four weeks are needed; more history gives a steadier answer.",
+  "Monthly bill": "The monthly kWh from your energy bill. GridFlex takes the closest-sized synthetic profile for your sector and scales it to this use, so the day's shape is borrowed and the size is yours.",
   "Business profile": "Chooses a synthetic building electricity profile by business sector, month, and approximate monthly use. It represents the building before any van charging is added.",
   "Fleet size": "How many vans need to charge. More vans generally require more energy and may leave some vans short.",
   "Connection limit": "The site's contracted power cap in kW. Building demand, van charging, and battery charging share this cap.",
@@ -68,11 +71,11 @@ export const helpText: Record<string, string> = {
   "Energy per van": "The maximum energy a generated van needs, in kWh. The demo varies each request between this value and up to 10 kWh below it.",
   "Individual vans": "Run Optimize to generate the fleet, then override a van's arrival, departure, energy or charger power and rerun. Slot 0 is noon, slot 24 is 18:00, and slot 96 is noon the next day.",
   "Scenario presets": "Load example inputs for the baseline demo, a tighter connection, or a tighter connection with battery support. Press Optimize to run the selected inputs.",
-  "Optimize": "Plans charging for the current inputs, then checks that schedule on separate synthetic building profiles. Edit the inputs and run again to compare.",
+  "Optimize": "Plans charging for the current inputs, then checks that schedule on building days it did not plan on: separate synthetic profiles, or your later meter days. Edit the inputs and run again to compare.",
   "Your area": "Shows the grid operator's dated congestion map and any area-wide waiting list. A postcode's status and the area's queue are separate pieces of information.",
   "Windows over limit": "Percentage of held-out noon-to-noon test windows in which site demand exceeded the connection limit at least once.",
   "Worst overshoot": "The largest amount, in kW, by which demand exceeded the limit in any test slot. A value of zero means no breach was observed.",
-  "Held-out windows": "Synthetic noon-to-noon load windows that were reserved for testing and excluded from planning.",
+  "Held-out windows": "Noon-to-noon load windows reserved for testing and excluded from planning: other synthetic samples, or the latest days of your own meter data.",
   "Vans fully charged": "How many vans receive all the energy they asked for in the planned schedule.",
   "kWh short": "Total requested energy the schedule could not deliver before vans depart. Zero means all planned charging needs are met.",
   "Verdict and solver": "The verdict considers both replay risk and charging shortfalls. OPTIMAL means the solver proved its objectives. FEASIBLE means it found a usable schedule without proving optimality.",

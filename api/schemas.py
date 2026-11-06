@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class VanOverride(BaseModel):
@@ -12,9 +12,14 @@ class VanOverride(BaseModel):
 
 
 class Scenario(BaseModel):
-    category: str = Field(default="009", pattern=r"^\d{3}$")
+    # Building load (idea.md 5.2a): "meter" = the site's own upload, "bill" = the sector's
+    # GLASS profile scaled to monthly_kwh, "profile" = a GLASS profile as-is (demo default).
+    load_source: Literal["profile", "bill", "meter"] = "profile"
+    category: str = Field(default="009", pattern=r"^(\d{3}|E3[A-D])$")
     month: str = Field(default="2023-01", pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     level: int = Field(default=1, ge=0, le=3)
+    monthly_kwh: float | None = Field(default=None, ge=100, le=200_000)
+    meter_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{16}$")
     postcode: str = Field(default="1181KJ", max_length=12)
     vans: int = Field(default=10, ge=1, le=40)
     limit_kw: float = Field(default=100, ge=60, le=160)
@@ -31,9 +36,31 @@ class Scenario(BaseModel):
     seed: int = Field(default=42, ge=0)
     overrides: dict[int, VanOverride] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def _load_source_inputs(self):
+        if self.load_source == "bill" and self.monthly_kwh is None:
+            raise ValueError("Enter the monthly kWh from the energy bill.")
+        if self.load_source == "meter" and self.meter_id is None:
+            raise ValueError("Upload meter data first.")
+        return self
+
 
 class CsvUpload(BaseModel):
     csv: str = Field(min_length=1)
+
+
+class MeterUploadResponse(BaseModel):
+    meter_id: str
+    days: int
+    first_date: str
+    last_date: str
+    dropped_days: int
+    monthly_kwh: float
+    peak_kw: float
+    planning_days: int
+    test_days: int
+    description: str
+    warnings: list[str]
 
 
 class SweepRequest(BaseModel):

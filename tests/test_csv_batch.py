@@ -79,3 +79,13 @@ def test_setup_accepts_csv_larger_than_two_megabytes():
     response = TestClient(app).post("/import-setup", json={"csv": large_source})
     assert response.status_code == 200
     assert response.json()["vans"] == 3
+
+
+def test_setup_csv_monthly_kwh_column_uses_the_bill_source():
+    source = (PUBLIC / "gridflex-setup-example.csv").read_text(encoding="utf-8-sig")
+    lines = source.strip().split("\n")
+    lines[0] += ",monthly_kwh"
+    lines[1:] = [line + ",12000" for line in lines[1:]]
+    scenario = next(iter(read_scenarios("\n".join(lines)).values()))
+    assert scenario.load_source == "bill" and scenario.monthly_kwh == 12000
+    assert next(iter(read_scenarios(source).values())).load_source == "profile"

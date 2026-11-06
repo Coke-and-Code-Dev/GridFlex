@@ -248,9 +248,19 @@ Vans return in the evening and leave early in the morning, so charging crosses m
 
 A **baseline window** is the second half of day *d* (slots 48–95) joined to the first half of day *d+1* (slots 0–47), **within the same monthly sample**. That's allowed because a sample is one continuous month. Each sample gives ~29–30 windows. By default we keep only windows that start on a working day (Mon–Fri).
 
+### 5.2a Where the building's load comes from
+
+Everything after this step (baseline, scheduler, replay, sweeps, explanations) only needs planning and test windows, so the building load has three interchangeable sources (`gridflex/load_sources.py`, `Scenario.load_source`), from best to fallback:
+
+- **`meter`: the site's own 15-minute meter data.** Uploaded as CSV (`timestamp` + `kw`, or `kwh` per 15 minutes; semicolons and decimal commas also work). Clock times are read as written. Days with a missing or repeated reading (including clock-change days) are left out; readings below zero (export) count as 0 kW. Windows may run across a month boundary because it is one continuous series. The API keeps uploads in memory only, never on disk. Results are labelled as the site's own data, not synthetic.
+- **`bill`: no meter history.** The user picks a sector and month and enters the monthly kWh from the energy bill. We take the GLASS level of that sector and month whose monthly use is closest by ratio, and scale every value by `monthly_kwh / level_value_kwh`. The day shape is borrowed, the size is theirs. Results say "estimated from similar businesses"; a warning appears when the scale factor is outside 0.5–2. Each GLASS sample's month total equals its `level_value`, so the factor sets the size exactly.
+- **`profile`: a GLASS profile as-is.** The demo default.
+
 ### 5.3 Planning and test split
 
-Split **by customer (`sample_id`)**, never by day, because days from the same customer are too alike:
+For the site's own meter data (`meter`), there is only one sample, so the split is **by date**: the plan uses the earliest 70% of working-day windows and the latest 30% are held out for replay. That is what using the plan would look like: it is made before those days happen. At least 20 working days are required, and the app warns when there are fewer than 20 test days (each one then moves the result by more than 5 percentage points) or when the data spans several seasons.
+
+For GLASS (`profile` and `bill`), split **by customer (`sample_id`)**, never by day, because days from the same customer are too alike:
 
 - **Planning group (70% of samples):** used to build the cautious baseline.
 - **Test group (30% of samples):** used only to replay the finished plan.
@@ -695,7 +705,7 @@ React + TypeScript (ui/)  ──JSON──►  Python API (api/)  ──►  gri
 
 ### 8.2 CSV setup and portfolio reporting
 
-Setup accepts a UTF-8 CSV with one row per van. Repeat the depot settings on each row and use one `site_id` per depot. The single-site upload validates the CSV, fills Setup with the exact van requests for review before the user runs Optimize. Multi-site uploads run each depot independently and return a PDF with an overview and analysis and fleet detail for each site, including capacity-map context, fleet and replay metrics, demand and breach charts, per-van charging end times and any solver errors. The Setup upload opens a Multi-depot results tab with progress and inspectable site results. Its PDF download uses the same run. The bundled example contains three synthetic depot fleets. The simulation does not pool grid limits across locations.
+Setup accepts a UTF-8 CSV with one row per van. Repeat the depot settings on each row and use one `site_id` per depot. An optional `monthly_kwh` column switches that site to the `bill` load source (§5.2a); meter uploads are single-site only. The single-site upload validates the CSV, fills Setup with the exact van requests for review before the user runs Optimize. Multi-site uploads run each depot independently and return a PDF with an overview and analysis and fleet detail for each site, including capacity-map context, fleet and replay metrics, demand and breach charts, per-van charging end times and any solver errors. The Setup upload opens a Multi-depot results tab with progress and inspectable site results. Its PDF download uses the same run. The bundled example contains three synthetic depot fleets. The simulation does not pool grid limits across locations.
 
 ## 9. Team and build plan
 
@@ -753,7 +763,8 @@ Only after the full flow works end to end:
 
 Say these out loud in the pitch and show them in the app:
 
-- **Business electricity use is synthetic** (GLASS) and **fleet requests are assumptions**. No real site is modelled.
+- **Business electricity use is synthetic** (GLASS) unless the user uploads their own meter data, and **fleet requests are assumptions**. With the sector + bill source, only the size is the site's own; the day shape is borrowed from similar businesses.
+- **Own meter data is tested on its own later days.** A few weeks of history give a coarse answer, and past days do not guarantee future load.
 - **The capacity map is indicative** and per area, not per connection. Always say "check with your grid operator".
 - **Extra off-peak capacity is a what-if.** Real contract terms come from the grid operator.
 - **A feasible plan is not a grid-operator approval**, contract compliance or a guarantee.
