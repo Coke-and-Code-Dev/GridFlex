@@ -1,4 +1,5 @@
 """Local document retrieval using Ollama embeddings and Chroma."""
+from functools import lru_cache
 import hashlib
 import json
 import re
@@ -49,3 +50,19 @@ def retrieve(question):
     found = collection.query(query_embeddings=embed([question]), n_results=min(3, len(ids)),
                              include=['documents', 'metadatas'])
     return [{'source': meta['source'], 'text': doc} for doc, meta in zip(found['documents'][0], found['metadatas'][0])]
+
+
+@lru_cache(maxsize=1)
+def local_index():
+    stopwords = {"the", "and", "for", "what", "how", "does", "with", "about", "from", "this", "that"}
+    def terms(text):
+        return set(re.findall(r"[a-z]{3,}", text.casefold())) - stopwords
+    return terms, [(name, body, terms(body)) for name, body in chunks()]
+
+
+def retrieve_local(question):
+    """Retrieve project text locally without starting an embedding model."""
+    terms, index = local_index()
+    query = terms(question)
+    scored = sorted(index, key=lambda item: len(query & item[2]), reverse=True)
+    return [{"source": name, "text": body} for name, body, words in scored[:2] if query & words]

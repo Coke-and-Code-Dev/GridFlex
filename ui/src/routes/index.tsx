@@ -130,6 +130,7 @@ function Dashboard() {
   const [explanation, setExplanation] = useState("");
   const [explanationSource, setExplanationSource] = useState<ExplanationProvider | "template">("template");
   const [provider, setProvider] = useState<ExplanationProvider>("groq");
+  const [portfolioProvider, setPortfolioProvider] = useState<ExplanationProvider>("ollama");
   const [selectedSlot, setSelectedSlot] = useState(24);
   const [whatIf, setWhatIf] = useState<WhatIfResponse>();
   const [whatIfBusy, setWhatIfBusy] = useState(false);
@@ -348,6 +349,10 @@ function Dashboard() {
 
       <main className="relative mx-auto max-w-6xl px-6">
         {portfolio.filename && <TabsContent value="portfolio" className="py-8">
+          {portfolio.serverRunId && <article className="panel mb-4 space-y-4 p-6">
+            <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} currentDepot={activeDepot}
+                provider={portfolioProvider} onProviderChange={setPortfolioProvider} />
+          </article>}
           <PortfolioResults portfolio={portfolio} canOpenSite={canOpenDepot}
             onOpenSite={(site) => {
               setActiveTab("compare");
@@ -554,8 +559,9 @@ function Dashboard() {
           </TabsContent>
           <TabsContent value="explanation">
           <Section id="explanation" n={5} title="Explanation">
-            {portfolio.report && portfolio.serverRunId && activeDepot ? <article className="panel space-y-4 p-6">
-              <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} currentDepot={activeDepot} />
+            {portfolio.serverRunId && activeDepot ? <article className="panel space-y-4 p-6">
+              <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} currentDepot={activeDepot}
+                provider={portfolioProvider} onProviderChange={setPortfolioProvider} />
             </article> : <article className="panel space-y-4 p-6">
               <fieldset className="flex flex-wrap items-center gap-2" disabled={busy || asking}>
                 <legend className="mb-2 text-sm font-semibold">Choose explanation model</legend>

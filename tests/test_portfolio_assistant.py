@@ -33,9 +33,9 @@ def test_runs_are_isolated_and_failed_sites_are_retained(store):
     with pytest.raises(KeyError): store.get_run('missing')
 
 
-def test_model_receives_complete_rank_and_project_context(monkeypatch):
+def test_model_receives_compact_ranking_and_project_context(monkeypatch):
     calls = []
-    def llm(system, user, schema, provider):
+    def llm(system, user, schema, provider, **kwargs):
         payload = json.loads(user); calls.append(payload)
         if 'site_ids' in schema['properties']:
             return json.dumps({'site_ids': [], 'compare_battery': False})
@@ -45,6 +45,7 @@ def test_model_receives_complete_rank_and_project_context(monkeypatch):
     result = ask_portfolio({'total': 2, 'complete': True, 'sites': [site('Depot A','1181KJ',3), site('Depot B','2311BD',20)]},
                            'Which depot has the highest risk?', [], 'ollama')
     assert result['source'] == 'ollama' and 'Depot B' in result['text']
+    assert len(calls) == 1
     evidence = calls[-1]['facts']['portfolio']
     assert evidence.index('Depot B') < evidence.index('Depot A')
     assert calls[-1]['facts']['document_0'].startswith('idea.md:')
@@ -52,7 +53,7 @@ def test_model_receives_complete_rank_and_project_context(monkeypatch):
 
 def test_duplicate_postcode_keeps_both_sites_and_never_runs_comparison(monkeypatch):
     calls = []; comparisons = []
-    def llm(system, user, schema, provider):
+    def llm(system, user, schema, provider, **kwargs):
         payload = json.loads(user); calls.append(payload)
         if 'site_ids' in schema['properties']:
             return json.dumps({'site_ids': ['Depot A'], 'compare_battery': True})
@@ -67,7 +68,7 @@ def test_duplicate_postcode_keeps_both_sites_and_never_runs_comparison(monkeypat
 
 
 def test_retrieval_failure_is_visible_and_does_not_block_data(monkeypatch):
-    def llm(system, user, schema, provider):
+    def llm(system, user, schema, provider, **kwargs):
         return json.dumps({'site_ids': [], 'compare_battery': False}) if 'site_ids' in schema['properties'] else json.dumps({'answer': 'Depot A has 3.00% risk.', 'fact_ids': ['portfolio']})
     def unavailable(q): raise OSError('offline')
     monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', llm)
@@ -93,7 +94,7 @@ def test_incomplete_run_is_not_answered(store):
 
 def test_custom_battery_request_never_uses_fixed_toggle(monkeypatch):
     calls = []
-    def llm(system, user, schema, provider):
+    def llm(system, user, schema, provider, **kwargs):
         if 'site_ids' in schema['properties']:
             return json.dumps({'site_ids': ['Depot A'], 'compare_battery': True})
         return json.dumps({'answer': 'I cannot determine the impact of a bigger battery from the available evidence.', 'fact_ids': []})
@@ -122,7 +123,7 @@ def test_verdict_lists_use_stored_results_even_when_risk_order_disagrees(monkeyp
 
 def test_selected_depot_and_verdict_are_in_model_context(monkeypatch):
     calls = []
-    def llm(system, user, schema, provider):
+    def llm(system, user, schema, provider, **kwargs):
         data = json.loads(user); calls.append(data)
         if 'site_ids' in schema['properties']:
             return json.dumps({'site_ids': [], 'compare_battery': False})
@@ -170,3 +171,98 @@ def test_portfolio_counts_only_the_requested_verdict(monkeypatch):
         result = ask_portfolio(run, question, [], provider)
         assert result["text"] == '1 of 4 depots are marked "Fits with risk".'
         assert result["warnings"] == []
+
+
+def test_manifest_answers_upload_counts_before_simulation_finishes(store, monkeypatch):
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("Manifest answers require no model or retrieval")
+
+    monkeypatch.setattr("gridflex.portfolio_assistant.call_llm", unexpected)
+    monkeypatch.setattr("gridflex.portfolio_assistant.retrieve", unexpected)
+    run_id = store.create_run(2, [
+        {"site": "Depot A", "postcode": "1181KJ", "vans": 12},
+        {"site": "Depot B", "postcode": "2311BD", "vans": 8},
+    ])
+    client = TestClient(app)
+    for question, expected in (
+        ("How many depots are there in total?", "2 depots"),
+        ("How many vans are there in each depot?", "Depot B (2311BD): 8 vans"),
+        ("How many vans in total?", "20 vans across 2 depots"),
+        ("How many depots fit with risk?", "Based on 0 of 2 processed depots."),
+    ):
+        response = client.post("/portfolio/ask", json={"run_id": run_id, "question": question})
+        assert response.status_code == 200
+        assert expected in response.json()["text"]
+
+
+def test_saved_summaries_exclude_full_schedules(store):
+    run_id = store.create_run(1)
+    store.save_site(run_id, site("Depot A", "1181KJ", 3))
+    summary = store.get_run(run_id, summaries_only=True)["sites"][0]
+    assert "detail" not in summary and "scenario" not in summary
+    assert "detail" in store.get_site(run_id, "Depot A")
+
+
+def test_unavailable_qwen_reports_timeout_without_fallback(monkeypatch):
+    def unavailable(*args, **kwargs):
+        raise TimeoutError("model timed out")
+
+    monkeypatch.setattr("gridflex.portfolio_assistant.call_llm", unavailable)
+    monkeypatch.setattr("gridflex.portfolio_assistant.retrieve", lambda _: [])
+    selected = {**site("D013", "7705PB", 74.18), "vans": 40, "full": 3,
+                "unmet_kwh": 1814.50, "verdict": "does_not_fit"}
+    result = ask_portfolio({"complete": True, "sites": [selected]},
+                           "Explain like I am a child what the current depot is doing",
+                           [], "ollama", current_depot="D013")
+    assert "Local Qwen did not respond" in result["text"]
+    assert "74.18%" not in result["text"]
+    assert result["evidence"] == []
+
+
+@pytest.mark.parametrize("depot, rate", [("D005", 39.58), ("D007", 81.69)])
+def test_qwen_depot_summary_orders_saved_facts(monkeypatch, depot, rate):
+    monkeypatch.delenv("GRIDFLEX_PORTFOLIO_OLLAMA_MODEL", raising=False)
+    def qwen(system, user, schema, provider, timeout, max_tokens, ollama_model):
+        assert provider == "ollama" and timeout == 60 and max_tokens == 48
+        assert ollama_model == "qwen3:4b-instruct"
+        payload = json.loads(user)
+        assert list(payload["facts"]) == ["fleet", "shortfall", "risk", "verdict"]
+        assert schema["properties"]["lead"]["enum"] == ["fleet", "shortfall", "risk", "verdict"]
+        return json.dumps({"lead": "risk"})
+
+    monkeypatch.setattr("gridflex.portfolio_assistant.call_llm", qwen)
+    monkeypatch.setattr("gridflex.portfolio_assistant.retrieve", lambda _: [])
+    selected = {**site(depot, "7705PB", rate), "vans": 40, "full": 3,
+                "unmet_kwh": 1814.50, "verdict": "does_not_fit"}
+    answer = ask_portfolio({"complete": True, "sites": [selected]},
+                           "Explain like I am a child what the current depot is doing",
+                           [], "ollama", current_depot=depot)
+    assert answer["source"] == "ollama"
+    assert "3 of 40 vans" in answer["text"]
+    assert f"{rate:.2f}%" in answer["text"].split("\n\n")[0]
+
+
+@pytest.mark.parametrize("question, plan, expected", [
+    ("Which province had the most unmet charging energy?",
+     {"operation": "group", "metric": "unmet_kwh"}, "Utrecht: 50.00 kWh"),
+    ("Among depots with at least 30 vans, which had the lowest breach rate?",
+     {"operation": "rank", "metric": "breach_pct", "min_vans": 30, "order": "asc"}, "D002 (2311BD): 8.00%"),
+])
+def test_qwen_plans_aggregate_queries_without_receiving_portfolio_rows(monkeypatch, question, plan, expected):
+    def planner(system, user, **kwargs):
+        payload = json.loads(user)
+        assert set(payload) == {"question", "provinces"}
+        return json.dumps({**plan, "operation": "rank", "province": "Drenthe", "verdict": "does_not_fit"})
+
+    monkeypatch.setattr("gridflex.portfolio_assistant.call_llm", planner)
+    sites = [
+        {**site("D001", "1181KJ", 1), "province": "Utrecht", "vans": 10, "unmet_kwh": 50},
+        {**site("D002", "2311BD", 8), "province": "Zuid-Holland", "vans": 35, "unmet_kwh": 30},
+        {**site("D003", "1315RA", 30), "province": "Flevoland", "vans": 40, "unmet_kwh": 20},
+    ]
+    reply = ask_portfolio({"complete": True, "sites": sites}, question, [], "ollama", current_depot="D003")
+    assert reply["source"] == "ollama"
+    assert expected in reply["text"]

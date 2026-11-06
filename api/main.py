@@ -162,7 +162,10 @@ def batch_report(upload: CsvUpload):
 @app.post("/batch-report/progress", response_class=StreamingResponse)
 def batch_report_progress(upload: CsvUpload):
     sites = read_scenarios(upload.csv)
-    run_id = portfolio_store.create_run(len(sites))
+    run_id = portfolio_store.create_run(len(sites), [
+        {"site": name, "postcode": scenario.postcode, "vans": scenario.vans}
+        for name, scenario in sites.items()
+    ])
 
     def stream():
         yield json.dumps({"type": "start", "total": len(sites), "run_id": run_id}) + "\n"
@@ -185,7 +188,7 @@ def batch_report_progress(upload: CsvUpload):
 @app.post("/portfolio/ask")
 def portfolio_ask(request: PortfolioQuestion):
     try:
-        portfolio = portfolio_store.get_run(request.run_id)
+        portfolio = portfolio_store.get_run(request.run_id, summaries_only=True)
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from None
 
@@ -200,7 +203,8 @@ def portfolio_ask(request: PortfolioQuestion):
                 "Changing the battery re-optimizes the schedule. The comparison is not independent validation. "
                 "Battery replay clips negative net demand without updating state per window.")
     return ask_portfolio(portfolio, request.question, [x.model_dump() for x in request.history],
-                         request.provider, compare_battery, request.current_depot)
+                         request.provider, compare_battery, request.current_depot,
+                         load_site=lambda name: portfolio_store.get_site(request.run_id, name))
 
 
 @app.post("/sweep")
