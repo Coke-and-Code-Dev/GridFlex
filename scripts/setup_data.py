@@ -1,95 +1,154 @@
-"""Set up the GLASS extracts in data/processed/ (they are not in git: 211 MB).
+"""Set up everything in data/processed/ (the folder is not in git). Standard library only.
 
-The dashboard needs 480 small files, glass_{category}_{yyyy-mm}_L{level}.parquet: 10 categories
-x the 12 months of 2024 x levels 0-3, 40 samples each (idea.md section 4.5). Two ways to get them:
+The dashboard reads three small datasets that are made from the raw downloads:
 
-    python scripts/setup_data.py unpack glass_2024_extract.zip   # from a zip a teammate shares (211 MB)
-    python scripts/setup_data.py build                           # from the 13 GB raw GLASS file
+    GLASS          480 files (glass_*.parquet, 211 MB): 10 sectors x the 12 months of 2024 x 4 levels, 40 samples each
+    grid map       4 files (grid_*.parquet, grid_map_meta.json): the capacity map, per postcode
+    Liander        37 files (liander_sbi_*.parquet and a meta file): real 2023 profiles for the reality check
 
-The person who has the files makes the zip for the others:
+The usual way, from the repository root:
 
-    python scripts/setup_data.py pack                            # writes data/glass_2024_extract.zip
+    python scripts/download_data.py        # the raw files into data/raw/ (13.6 GB, resumes if interrupted)
+    python scripts/setup_data.py build     # makes everything in data/processed/ from them (about a minute)
+    python scripts/setup_data.py status    # says what is missing
 
-And to see whether everything is in place:
+Or, if a teammate who has the finished folder shares a zip:
 
-    python scripts/setup_data.py status
-
-Everything else the app needs (grid map, Liander profiles) is small and already in git.
-Standard library only.
+    python scripts/setup_data.py pack                              # (them) writes data/processed_data.zip
+    python scripts/setup_data.py unpack path/to/processed_data.zip # (you) restores it, checksums verified
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
-import re
 import subprocess
 import sys
 import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = REPO_ROOT / "scripts"
 PROCESSED = REPO_ROOT / "data" / "processed"
 RAW = REPO_ROOT / "data" / "raw" / "GLASS_v1.1.parquet"
-DEFAULT_ZIP = REPO_ROOT / "data" / "glass_2024_extract.zip"
+RAW_CAPACITY = REPO_ROOT / "data" / "raw" / "capaciteitskaart"
+RAW_LIANDER = REPO_ROOT / "data" / "raw" / "liander_sbi"
+DEFAULT_ZIP = REPO_ROOT / "data" / "processed_data.zip"
 MANIFEST = "MANIFEST.sha256"
 
-# Fleet-depot sectors plus the operating-hours classes (a generic fallback), see idea.md section 4.5.
+# GLASS: fleet-depot sectors plus the operating-hours classes (a generic fallback), see idea.md section 4.5.
 CATEGORIES = ["009", "008", "006", "007", "015", "004", "E3A", "E3B", "E3C", "E3D"]
 MONTHS = [f"2024-{month:02d}" for month in range(1, 13)]
 LEVELS = [0, 1, 2, 3]
 SAMPLES = 40
+# Capacity map: the files prepare_grid_map.py writes.
+GRID_FILES = ["grid_pc6.parquet", "grid_areas.parquet", "grid_projects.parquet", "grid_map_meta.json"]
+# Liander: the SBI profiles of the logistics sectors (idea.md section 4.3), every month of 2023.
+LIANDER_CODES = ["49", "52", "KO_LOGISTIEK"]
+LIANDER_MONTHS = [f"2023-{month:02d}" for month in range(1, 13)]
+LIANDER_META = "liander_sbi_meta.json"
 
-FILE_RE = re.compile(r"^glass_[0-9A-Z]{3}_\d{4}-(0[1-9]|1[0-2])_L[0-3]\.parquet$")
 
-
-def expected_names() -> set[str]:
+def glass_names() -> set[str]:
     return {f"glass_{c}_{m}_L{level}.parquet" for c in CATEGORIES for m in MONTHS for level in LEVELS}
 
 
+def grid_names() -> set[str]:
+    return set(GRID_FILES)
+
+
+def liander_names() -> set[str]:
+    return {f"liander_sbi_{c}_{m}.parquet" for c in LIANDER_CODES for m in LIANDER_MONTHS} | {LIANDER_META}
+
+
+def groups() -> dict[str, set[str]]:
+    return {"GLASS": glass_names(), "grid map": grid_names(), "Liander": liander_names()}
+
+
+def all_names() -> set[str]:
+    return set().union(*groups().values())
+
+
 def present_names() -> set[str]:
-    return {p.name for p in PROCESSED.glob("glass_*.parquet")}
+    return {p.name for p in PROCESSED.iterdir() if p.is_file()} if PROCESSED.exists() else set()
 
 
 def sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def missing_groups() -> dict[str, list[str]]:
+    present = present_names()
+    return {name: sorted(names - present) for name, names in groups().items() if names - present}
+
+
 def status() -> int:
-    expected, present = expected_names(), present_names()
-    missing = sorted(expected - present)
-    print(f"GLASS extracts in {PROCESSED}: {len(expected & present)} of {len(expected)}")
-    if not missing:
+    present = present_names()
+    print(f"Processed data in {PROCESSED}:")
+    for name, names in groups().items():
+        have = len(names & present)
+        print(f"  {name:9} {have:>3} of {len(names)}" + ("" if have == len(names) else "   <- incomplete"))
+    if not missing_groups():
         print("Complete. Nothing to do.")
         return 0
-    print(f"Missing {len(missing)} file(s), for example {missing[0]}.")
-    print("Get them with one of:")
-    print("  python scripts/setup_data.py unpack <zip from a teammate>")
-    print("  python scripts/setup_data.py build   (needs the 13 GB raw file: python scripts/download_data.py glass)")
+    print("To make it:")
+    print("  python scripts/download_data.py      # the raw files (skips what you already have)")
+    print("  python scripts/setup_data.py build   # processes them")
+    print("or: python scripts/setup_data.py unpack <zip from a teammate>")
     return 1
 
 
-def build() -> int:
-    if not RAW.exists():
-        print(f"{RAW} not found.\nDownload the raw GLASS file first: python scripts/download_data.py glass (13.2 GB), "
-              "or ask a teammate for the zip and use: python scripts/setup_data.py unpack <zip>")
+# --- build: raw downloads -> data/processed/ -------------------------------------------------
+
+def _steps() -> dict[str, tuple[list[str], list[tuple[Path, str]]]]:
+    """For each group: the command that makes it, and the raw files it needs (path, download command)."""
+    return {
+        "GLASS": (
+            [sys.executable, str(SCRIPTS / "extract_glass.py"), "--categories", *CATEGORIES, "--months", *MONTHS,
+             "--levels", *map(str, LEVELS), "--samples", str(SAMPLES), "--quiet"],
+            [(RAW, "python scripts/download_data.py glass")],
+        ),
+        "grid map": (
+            [sys.executable, str(SCRIPTS / "prepare_grid_map.py")],
+            [(RAW_CAPACITY / "congestie_pc6.csv", "python scripts/download_data.py capacity")],
+        ),
+        "Liander": (
+            [sys.executable, str(SCRIPTS / "prepare_liander_sbi.py"), "--sbi", *LIANDER_CODES,
+             "--months", *LIANDER_MONTHS],
+            [(RAW_LIANDER / "Geaggregeerde SBI-profielen.zip", "python scripts/download_data.py liander")],
+        ),
+    }
+
+
+def build(force: bool = False) -> int:
+    todo = {name: step for name, step in _steps().items() if force or name in missing_groups()}
+    if not todo:
+        print("Everything is already built.")
+        return status()
+    absent = [(path, how) for _, needs in todo.values() for path, how in needs if not path.exists()]
+    if absent:
+        print("Some raw files are missing, so not everything can be built yet:")
+        for path, how in absent:
+            print(f"  {path} is not there: {how}")
+        print("Download everything with `python scripts/download_data.py`, then run build again."
+              "\nOr ask a teammate for their zip and use: python scripts/setup_data.py unpack <zip>")
         return 1
-    command = [
-        sys.executable, str(REPO_ROOT / "scripts" / "extract_glass.py"),
-        "--categories", *CATEGORIES, "--months", *MONTHS, "--levels", *map(str, LEVELS),
-        "--samples", str(SAMPLES), "--quiet",
-    ]
-    print("Running:", " ".join(command))
-    if subprocess.run(command, cwd=REPO_ROOT).returncode:
-        return 1
+    for name, (command, _) in todo.items():
+        print(f"\n== {name}")
+        if subprocess.run(command, cwd=REPO_ROOT).returncode:
+            print(f"\nThe {name} step failed; see the messages above.")
+            return 1
+    print()
     return status()
 
 
+# --- pack / unpack: share the finished folder ------------------------------------------------
+
 def pack(target: Path) -> int:
-    names = sorted(expected_names() & present_names())
-    if len(names) != len(expected_names()):
-        print("The extract is incomplete; fix that before sharing it.")
+    if missing_groups():
+        print("The processed data is incomplete; fix that before sharing it.")
         status()
         return 1
+    names = sorted(all_names())
     lines = []
     # Parquet is already compressed, so the zip only bundles the files.
     with zipfile.ZipFile(target, "w", zipfile.ZIP_STORED) as z:
@@ -107,6 +166,7 @@ def unpack(source: Path) -> int:
         print(f"{source} not found.")
         return 1
     PROCESSED.mkdir(parents=True, exist_ok=True)
+    allowed = all_names()
     with zipfile.ZipFile(source) as z:
         if MANIFEST not in z.namelist():
             print(f"{source.name} has no {MANIFEST}; it was not made with `setup_data.py pack`.")
@@ -116,14 +176,14 @@ def unpack(source: Path) -> int:
             digest, _, name = line.partition("  ")
             hashes[name] = digest
         names = [n for n in z.namelist() if n != MANIFEST]
-        bad = [n for n in names if not FILE_RE.match(n) or n not in hashes]
-        if bad:  # also rejects any path with a folder in it, so nothing can be written outside data/processed
+        bad = [n for n in names if n not in allowed or n not in hashes]
+        if bad:  # only the exact expected file names: nothing can be written outside data/processed
             print(f"Unexpected entries in the zip, nothing was extracted: {bad[:3]}")
             return 1
         for name in names:
             data = z.read(name)
             if hashlib.sha256(data).hexdigest() != hashes[name]:
-                print(f"{name} is damaged (checksum mismatch). Download the zip again; nothing more was extracted.")
+                print(f"{name} is damaged (checksum mismatch). Get the zip again; nothing more was extracted.")
                 return 1
             (PROCESSED / name).write_bytes(data)
     print(f"Unpacked {len(names)} file(s) into {PROCESSED}.")
@@ -133,14 +193,15 @@ def unpack(source: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("status", help="count the extracts and say what is missing")
-    sub.add_parser("build", help="extract them from the raw GLASS file")
-    p = sub.add_parser("pack", help="zip the extracts to share")
+    sub.add_parser("status", help="count the processed files and say what is missing")
+    b = sub.add_parser("build", help="make the processed data from the raw downloads")
+    b.add_argument("--force", action="store_true", help="rebuild even the parts that are complete")
+    p = sub.add_parser("pack", help="zip the processed data to share")
     p.add_argument("--out", type=Path, default=DEFAULT_ZIP)
-    u = sub.add_parser("unpack", help="restore the extracts from a zip")
+    u = sub.add_parser("unpack", help="restore the processed data from a zip")
     u.add_argument("zip", type=Path)
     args = parser.parse_args()
-    return {"status": status, "build": build, "pack": lambda: pack(args.out),
+    return {"status": status, "build": lambda: build(args.force), "pack": lambda: pack(args.out),
             "unpack": lambda: unpack(args.zip)}[args.command]()
 
 

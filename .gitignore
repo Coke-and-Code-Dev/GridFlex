@@ -2,11 +2,11 @@
 CLAUDE.md
 .claude/
 
-# Data: raw GLASS parquet is multi-GB, never commit
+# Data: nothing under data/ is committed except data/README.md. Raw downloads are multi-GB and the
+# processed files are made from them: python scripts/download_data.py, then python scripts/setup_data.py build
 data/raw/
+data/processed/
 data/*.parquet
-# GLASS extracts (211 MB): not in git. Set up with scripts/setup_data.py; a shared zip stays out too
-data/processed/glass_*.parquet
 data/*.zip
 
 # Python

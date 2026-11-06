@@ -44,7 +44,8 @@ HANDOFF.md           handoff notes between teammates (what exists, how to call i
 AGENTS.md            this file
 data/README.md       GLASS dataset card
 data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, never commit
-data/processed/      small extracts: committed, except the GLASS ones (git-ignored, see scripts/setup_data.py)
+data/processed/      small files the app reads, made from data/raw by scripts/setup_data.py (git-ignored)
+examples/            six ready-made scenarios (case_1 to case_6: bill, own meter data, portfolios); see examples/README.md
 scripts/             data scripts (download_data, setup_data, extract_glass, prepare_grid_map, prepare_liander_sbi)
 gridflex/            library code: profiles, grid_area, fleet, naive, scheduler, replay, reality, explain
 api/                 Python JSON API that calls gridflex/ (idea.md §8.1)
@@ -59,11 +60,9 @@ requirements.txt     Python dependencies (filled in as we build)
 python -m venv .venv
 .venv\Scripts\activate          # Windows; use `source .venv/bin/activate` on macOS/Linux
 pip install -r requirements.txt
-python scripts/download_data.py glass   # the raw GLASS file (13.2 GB) into data/raw/; resumes if interrupted
-python scripts/setup_data.py build      # the 480 GLASS extracts (211 MB, not in git) from it; or: unpack <zip from a teammate>
+python scripts/download_data.py         # the raw datasets (13.6 GB) into data/raw/; resumes if interrupted
+python scripts/setup_data.py build      # makes data/processed/ from them (GLASS, grid map, Liander); or: unpack <zip>
 python scripts/setup_data.py status     # says what is missing
-python scripts/prepare_grid_map.py
-python scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01
 pytest
 uvicorn api.main:app --reload   # API
 cd ui && npm install && npm run dev   # dashboard, in a second terminal
@@ -94,8 +93,8 @@ There is no fixed dependency list up front. Whoever adds a new package records i
 
 ## Data rules
 
-- **Never commit anything in `data/raw/`** (GLASS parquet, capacity-map CSVs, Liander zips). Only small extracts in `data/processed/` (aim for < 5 MB each).
-- **The GLASS extracts (`data/processed/glass_*.parquet`, 480 files, 211 MB) are git-ignored.** Everyone sets them up once with `scripts/setup_data.py`: `unpack` a zip that the person who has them made with `pack`, or `build` them from the raw file. The set is slim on purpose (`--samples 40`, the sectors in idea.md section 4.5, one year: 2024); if you change it, edit `CATEGORIES`, `MONTHS` and `SAMPLES` in `setup_data.py` in the same PR. Tests that need the data skip themselves without it.
+- **Never commit anything under `data/` except `data/README.md`.** `data/raw/` (GLASS parquet, capacity-map CSVs, Liander zips) and `data/processed/` are both git-ignored.
+- **`data/processed/` is made, not committed.** Everyone downloads the raw files with `scripts/download_data.py` and runs `scripts/setup_data.py build` once (or `unpack`s a zip made with `pack`). It holds the GLASS extracts (480 files, 211 MB), the grid map and Liander's 2023 profiles. The GLASS set is slim on purpose (`--samples 40`, the sectors in idea.md section 4.5, one year: 2024); if you change what is built, edit the constants at the top of `setup_data.py` in the same PR. Tests that need the data carry the `needs_glass` marker or skip themselves without it. A new processed file must be added to `setup_data.py`, or `status`, `build` and `pack` will not know about it.
 - Never load the full 43M-row GLASS file into memory. Use `pl.scan_parquet` with filters.
 - GLASS rows join into a continuous series **only within the same `scenario`, `category`, year-month, `level_id` and `sample_id`**. Never join days across months or across samples.
 - Split GLASS into planning and test groups **by `sample_id`**, never by day. Test windows are only used for replay.
