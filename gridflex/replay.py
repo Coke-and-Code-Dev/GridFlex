@@ -57,6 +57,7 @@ class ReplayReport:
     verdict: Verdict
     n_windows: int = 0  # number of test windows replayed
     immediate: ImmediateReplay | None = None  # set when immediate_power is given
+    synthetic: bool = True  # False when the test windows are the site's own meter data
 
 
 def slot_time(slot: int, start_hour: int = 12) -> str:

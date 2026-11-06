@@ -117,7 +117,8 @@ All endpoints below are implemented in `api/main.py` on `main` and call the libr
 | `GET /conditions` | `available_conditions()` | `list[Condition]`: `category`, `month`, `level`, `level_value_kwh` |
 | `GET /area/{postcode}` | `lookup(postcode)` | `AreaInfo`, or 404 for an unknown or malformed postcode |
 | `GET /reality` | `compare_all(category, month, level)` → list of `RealityCheck`; `summary(check)` for the sentence | see §4 below |
-| `POST /optimize` | `build_windows` / `split_by_sample` / `cautious_baseline`, then `optimize()`, then `replay()` | schedule, report, baseline, limit, immediate power, p10–p90 band, vans |
+| `POST /meter-data` | `parse_meter_csv()` / `meter_windows()` / `split_by_date()` in `gridflex/load_sources.py`, kept by `api/meter_store.py` | `meter_id`, days, date range, ≈ kWh/month, peak, planning/test days, warnings; 422 with a line number for a bad file |
+| `POST /optimize` | `load_for()` (meter, bill or profile windows), `cautious_baseline`, then `optimize()`, then `replay()` | schedule, report, baseline, limit, immediate power, p10–p90 band, vans, `load` (source, description, warnings, level, scale) |
 | `POST /sweep` | `charger_sweep()` or `battery_sweep()` | sweep tables; see integration example below |
 | `POST /explain` | `answer_question()` in `gridflex/assistant.py` | grounded answer from Groq or local Qwen (`provider`), with cited evidence; template fallback |
 | `POST /what-if` | one-change optimization + replay | exploratory comparison of current vs. changed scenario |
@@ -194,10 +195,11 @@ Create a battery with `Battery(capacity_kwh=20, power_kw=10, efficiency=0.90, st
 
 ### 2. Field lists for `api/schemas.py` and `ui/src/types.ts` (mirror them in the same PR)
 
-- `Condition`: `category: str`, `month: str` ("YYYY-MM"), `level: int`, `level_value_kwh: float | None`
+- `Condition`: `category: str`, `month: str` ("YYYY-MM"), `level: int`, `level_value_kwh: float | None`, `label: str` (sector name)
+- `Scenario` load fields: `load_source` (`"profile" | "bill" | "meter"`, default `"profile"`), `monthly_kwh` (required for `bill`), `meter_id` (required for `meter`; a 404 means the API restarted and the file must be uploaded again)
 - `Project`: `name`, `expected` ("2032 - Q4" or "2032"), `phase`, all `str | None`
 - `AreaInfo`: `postcode`, `status` (`"unknown" | "available" | "limited" | "under_study" | "shortage"`), `area_name`, `operator`, `capacity_mw`, `needed_mw`, `queue_requests`, `queue_mw`, `expected_fix_year`, `projects: list[Project]`, `info_url`, `data_date`, `municipality`, `province`, `ambiguous: bool`, `note`; everything except `postcode`, `status`, `projects`, `data_date`, `ambiguous` can be `None`
-- `ReplayReport`: `days_over_pct`, `worst_overshoot_kw`, `worst_overshoot_time` (`"HH:MM"`, or `""` if the limit is never exceeded), `over_by_slot` (96 ints), `mean_overshoot_kwh`, `baseline_alone_over_pct`, `vans_short: list[(name, kWh)]`, `verdict` (`"fits" | "fits_with_risk" | "does_not_fit"`), `n_windows`, `immediate: ImmediateReplay | None` (`days_over_pct`, `worst_overshoot_kw`, `worst_overshoot_time`)
+- `ReplayReport`: `days_over_pct`, `worst_overshoot_kw`, `worst_overshoot_time` (`"HH:MM"`, or `""` if the limit is never exceeded), `over_by_slot` (96 ints), `mean_overshoot_kwh`, `baseline_alone_over_pct`, `vans_short: list[(name, kWh)]`, `verdict` (`"fits" | "fits_with_risk" | "does_not_fit"`), `n_windows`, `immediate: ImmediateReplay | None` (`days_over_pct`, `worst_overshoot_kw`, `worst_overshoot_time`), `synthetic` (False only for the site's own meter data)
 - `RealityCheck`: `sbi_code`, `correlation`, `mean_abs_diff`, `glass_band` and `liander_band` (each 3 rows × 96: p10, median, p90), `liander_has_band`, `category`, `month`, `level`, `n_glass_samples`, `n_glass_days`, `n_liander_days`
 
 ### 3. JSON gotchas
@@ -243,7 +245,7 @@ Demo postcodes (idea.md §9): `1181KJ` Amstelveen (red, 29 requests, 5.8 MW, fix
 
 ### 7. Dropdowns and labels
 
-`available_conditions()` returns only four conditions today: category `009`, `2023-01`, levels 0–3, with `level_value_kwh` 3,450 / 8,000 / 13,700 / 29,100 (show "≈ 3.5 / 8.0 / 13.7 / 29.1 MWh/month"). Level names: low, mid_low, mid_high, high. Sector names are not in the code (only a sentence label in `reality.py`): use `009` = Transport and storage, `008` = Wholesale and retail trade (data/README.md has all of them). More months or sectors need an extract from Joshua; keep the dropdowns driven by `available_conditions()` so they grow by themselves.
+`available_conditions()` returns only four conditions today: category `009`, `2023-01`, levels 0–3, with `level_value_kwh` 3,450 / 8,000 / 13,700 / 29,100 (show "≈ 3.5 / 8.0 / 13.7 / 29.1 MWh/month"). Level names: low, mid_low, mid_high, high. Sector names come from `SECTOR_LABELS` in `gridflex/profiles.py` and arrive as `Condition.label`. More months or sectors need an extract from Joshua; keep the dropdowns driven by `available_conditions()` so they grow by themselves.
 
 ### 8. Reality check panel
 

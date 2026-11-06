@@ -168,6 +168,10 @@ Moved here from Joshua's section above. Nothing else of Joshua's is open.
 - [ ] Smriti, on request: helpers to serialise `ReplayReport` and `RealityCheck` for the API (NumPy to lists, NaN to null) and a p10–p90 band function for the demand chart. Not needed unless she asks.
 - [ ] After the demo scenario is picked (see "Before the demo"): extract that condition and a few contrast conditions from GLASS in one separate PR. Only January 2023 is extracted now; the demo sector, month and level must come from what the sweeps show.
 - [ ] The shared "Before the demo" items above are everyone's, including Joshua's: the demo postcode list is done (idea.md §9), the rest waits for the working app.
+- [x] General building load (idea.md §5.2a): own meter CSV upload (split by date), sector + monthly bill (closest GLASS level, scaled), or the demo profile. Optional `monthly_kwh` column in the setup CSV. 141 Python tests pass; checked in the browser for all three sources.
+- [ ] More sectors for the bill source: only category 009 is extracted, so "Sector + monthly bill" only offers Transport and storage. Extract more categories (at least 008, 004, 014) for the demo month with `scripts/extract_glass.py`; the dropdown grows by itself.
+- [ ] Real sites can be bigger than the dashboard allows: `limit_kw` is capped at 60–160 kW (schema, what-if and UI slider). Widen it once meter uploads are used for real sites; `/meter-data` already warns when the building alone peaks above 160 kW.
+- [ ] Daytime fleets: `Scenario` has no `start_hour`, so windows are always noon to noon although the library supports other start hours. Needed for fleets that charge during the day (for example office cars from 09:00 to 17:00).
 
 ---
 
