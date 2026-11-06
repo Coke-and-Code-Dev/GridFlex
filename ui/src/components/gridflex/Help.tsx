@@ -56,7 +56,6 @@ export const helpText: Record<string, string> = {
   "Building electricity use": "The building's own use before any van charging. Best: upload your meter data. Without history, pick your sector and enter the monthly kWh from your energy bill for an estimate from similar businesses. The demo profile is for trying the app.",
   "Meter data": "A CSV of 15-minute readings from your meter or energy supplier portal. GridFlex plans on the earlier working days and tests the plan on the latest 30%, which it did not see. At least four weeks are needed; more history gives a steadier answer.",
   "Monthly bill": "The monthly kWh from your energy bill. GridFlex takes the closest-sized synthetic profile for your sector and scales it to this use, so the day's shape is borrowed and the size is yours.",
-  "Business profile": "Chooses a synthetic building electricity profile by business sector, month, and approximate monthly use. It represents the building before any van charging is added.",
   "Fleet size": "How many vans need to charge. More vans generally require more energy and may leave some vans short.",
   "Connection limit": "The site's contracted power cap in kW. Building demand, van charging, and battery charging share this cap.",
   "Off-peak uplift": "Extra contracted power, in kW, available only during the off-peak window. Use zero if the contract has a single limit.",

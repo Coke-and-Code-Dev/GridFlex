@@ -76,6 +76,11 @@ def scale_windows(windows: Windows, factor: float) -> Windows:
     return replace(windows, values=windows.values * factor)
 
 
+def month_name(month: str) -> str:
+    """"2024-01" -> "January". The GLASS year means nothing to a user; the month sets the season."""
+    return datetime.strptime(month, "%Y-%m").strftime("%B")
+
+
 def bill_info(condition: Condition, monthly_kwh: float, n_planning: int, n_test: int) -> LoadInfo:
     factor = monthly_kwh / condition.level_value_kwh
     warnings = []
@@ -85,17 +90,17 @@ def bill_info(condition: Condition, monthly_kwh: float, n_planning: int, n_test:
             f"({condition.level_value_kwh:,.0f} kWh). The day shape may fit a business of your size less well."
         )
     description = (
-        f"Estimated from similar businesses, not your own data: synthetic GLASS profiles of "
-        f"{sector_label(condition.category).lower()} sites in {condition.month} "
-        f"(≈ {condition.level_value_kwh:,.0f} kWh/month), scaled to your {monthly_kwh:,.0f} kWh/month."
+        f"Estimated from similar businesses, not your own data: synthetic GLASS profiles "
+        f"({sector_label(condition.category)}, {month_name(condition.month)}, "
+        f"≈ {condition.level_value_kwh:,.0f} kWh/month), scaled to your {monthly_kwh:,.0f} kWh/month."
     )
     return LoadInfo("bill", description, True, n_planning, n_test, condition.level, factor, tuple(warnings))
 
 
 def profile_info(condition: Condition, n_planning: int, n_test: int) -> LoadInfo:
     size = f"≈ {condition.level_value_kwh:,.0f} kWh/month" if condition.level_value_kwh else f"level {condition.level}"
-    description = (f"Synthetic GLASS profiles of {sector_label(condition.category).lower()} sites in "
-                   f"{condition.month} ({size}).")
+    description = (f"Synthetic GLASS profiles ({sector_label(condition.category)}, "
+                   f"{month_name(condition.month)}, {size}).")
     return LoadInfo("profile", description, True, n_planning, n_test, condition.level)
 
 

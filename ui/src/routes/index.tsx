@@ -93,7 +93,7 @@ const btnPrimary = `${btn} bg-primary text-primary-foreground hover:shadow-glow`
 const btnGhost = `${btn} border border-border hover:bg-accent`;
 
 const initial: Scenario = {
-  load_source: "profile", category: "009", month: "2023-01", level: 1, postcode: "2311BD", vans: 10, limit_kw: 100,
+  load_source: "bill", monthly_kwh: 8000, category: "009", month: "2024-01", level: 1, postcode: "2311BD", vans: 10, limit_kw: 100,
   extra_kw: 0, off_peak: ["22:00", "06:00"], arrival: ["17:00", "19:00"], departure: ["06:00", "07:00"],
   energy_kwh: [30, 40], charger_kw: 11, battery_kwh: 0, battery_kw: 0, q: .9, tolerance: .05, seed: 42,
 };
@@ -482,7 +482,7 @@ function Dashboard() {
         {r && s && report && run ? <>
           <TabsContent value="compare">
           <Section id="compare" n={3} title="Compare charging plans" synthetic={report.synthetic}>
-            <p className="mb-2" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans{run.cfg.load_source === "meter" ? "" : ` · ${run.cfg.month}`} <Hint label="Verdict and solver" /></p>
+            <p className="mb-2" role="status">Verdict: {report.verdict.replaceAll("_", " ")} · Solver: {s.status} · {run.cfg.vans} vans{run.cfg.load_source === "meter" ? "" : ` · ${new Date(`${run.cfg.month}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long" })}`} <Hint label="Verdict and solver" /></p>
             {r.load && <div className="mb-4 text-sm"><p className="text-muted-foreground"><strong>Building load:</strong> {r.load.description}</p>
               {r.load.warnings.map((warning) => <p key={warning} className="text-primary">{warning}</p>)}</div>}
             <div className="grid gap-4 sm:grid-cols-4">

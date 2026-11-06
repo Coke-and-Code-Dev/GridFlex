@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from api.csv_setup import read_scenarios
 from api.main import app
 
+pytestmark = pytest.mark.needs_glass  # loads the GLASS extracts
+
 PUBLIC = Path(__file__).resolve().parents[1] / "ui" / "public"
 
 

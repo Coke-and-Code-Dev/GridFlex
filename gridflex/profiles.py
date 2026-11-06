@@ -45,10 +45,10 @@ SECTOR_LABELS = {
     "018": "Health and social work",
     "019": "Arts, entertainment and recreation",
     "020": "Other services",
-    "E3A": "Active up to 2,000 hours a year",
-    "E3B": "Active 2,000-3,000 hours a year",
-    "E3C": "Active 3,000-5,000 hours a year",
-    "E3D": "Active 5,000+ hours a year",
+    "E3A": "Any sector: up to 2,000 operating hours a year",
+    "E3B": "Any sector: 2,000-3,000 operating hours a year",
+    "E3C": "Any sector: 3,000-5,000 operating hours a year",
+    "E3D": "Any sector: 5,000+ operating hours a year",
 }
 
 
@@ -98,16 +98,29 @@ def load_condition(category: str, month: str, level: int, data_dir: Path | None 
     if not path.exists():
         raise FileNotFoundError(
             f"{path.name} not found in {path.parent}. "
-            f"Run: python scripts/extract_glass.py --categories {category} --months {month} --levels {level}"
+            f"Run: python scripts/extract_glass.py --categories {category} --months {month} --levels {level} "
+            "(or python scripts/setup_data.py status, to see how to get the whole set)"
         )
     return pl.read_parquet(path)
 
 
+_conditions_cache: dict[Path, tuple[tuple, list[Condition]]] = {}
+
+
 def available_conditions(data_dir: Path | None = None) -> list[Condition]:
-    """Conditions that have an extract in data/processed/."""
+    """Conditions that have an extract in data/processed/.
+
+    Reading `level_value` opens every file, so the list is remembered until a file is
+    added, removed or changed (hundreds of files are extracted for the dashboard).
+    """
     folder = data_dir or DEFAULT_DATA_DIR
+    paths = sorted(folder.glob("glass_*.parquet"))
+    signature = tuple((p.name, p.stat().st_mtime_ns, p.stat().st_size) for p in paths)
+    cached = _conditions_cache.get(folder)
+    if cached and cached[0] == signature:
+        return list(cached[1])
     found: list[Condition] = []
-    for path in sorted(folder.glob("glass_*.parquet")):
+    for path in paths:
         m = _FILE_RE.match(path.name)
         if not m:
             continue
@@ -118,7 +131,8 @@ def available_conditions(data_dir: Path | None = None) -> list[Condition]:
             level_value = None
         found.append(Condition(m["category"], m["month"], int(m["level"]), level_value,
                                sector_label(m["category"])))
-    return found
+    _conditions_cache[folder] = (signature, found)
+    return list(found)
 
 
 def build_windows(df: pl.DataFrame, start_hour: int = 12, working_days_only: bool = True,

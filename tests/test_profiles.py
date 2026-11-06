@@ -159,18 +159,28 @@ def test_load_condition_and_available_conditions(tmp_path):
         load_condition("009", "2023-02", 1, data_dir=tmp_path)
 
 
-REAL = DEFAULT_DATA_DIR / "glass_009_2023-01_L1.parquet"
+REAL = DEFAULT_DATA_DIR / "glass_009_2024-01_L1.parquet"
 
 
 @pytest.mark.skipif(not REAL.exists(), reason="development extract not present")
 def test_real_development_condition():
-    df = load_condition("009", "2023-01", 1)
+    df = load_condition("009", "2024-01", 1)
     w = build_windows(df)
     planning, test = split_by_sample(w)
 
     n_samples = df["sample_id"].n_unique()
-    assert n_samples >= 100
+    assert n_samples == 40  # slim extract (extract_glass.py --samples 40)
     assert 0 < len(w) <= n_samples * 30  # at most (31 - 1) windows per sample in January
     assert set(planning.sample_ids).isdisjoint(set(test.sample_ids))
-    assert all(d.astype("datetime64[M]") == np.datetime64("2023-01") for d in w.dates)
+    assert all(d.astype("datetime64[M]") == np.datetime64("2024-01") for d in w.dates)
     assert cautious_baseline(planning).shape == (96,)
+
+
+def test_available_conditions_notices_new_and_removed_files(tmp_path):
+    make_df([0, 1], n_days=3).write_parquet(condition_path("009", "2024-01", 1, tmp_path))
+    assert len(available_conditions(tmp_path)) == 1
+    make_df([0, 1], n_days=3).write_parquet(condition_path("008", "2024-02", 2, tmp_path))
+    assert [(c.category, c.month, c.level) for c in available_conditions(tmp_path)] == [
+        ("008", "2024-02", 2), ("009", "2024-01", 1)]
+    condition_path("009", "2024-01", 1, tmp_path).unlink()
+    assert [c.category for c in available_conditions(tmp_path)] == ["008"]

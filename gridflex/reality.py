@@ -53,8 +53,12 @@ class RealityCheck:
     n_liander_days: int = 0
 
 
+LIANDER_YEAR = "2023"  # the one year Liander publishes; the GLASS month is matched by calendar month
+
+
 def liander_path(sbi_code: str, month: str, data_dir: Path | None = None) -> Path:
-    return (data_dir or DEFAULT_DATA_DIR) / f"liander_sbi_{sbi_code}_{month}.parquet"
+    """Liander's file for the calendar month of `month` ("2024-03" and "2023-03" both give March 2023)."""
+    return (data_dir or DEFAULT_DATA_DIR) / f"liander_sbi_{sbi_code}_{LIANDER_YEAR}-{month[5:7]}.parquet"
 
 
 def _glass_typical_day(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarray, int, int]:
@@ -101,13 +105,13 @@ def _liander_typical_day(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarray, bool
 def compare(
     category: str, month: str, sbi_code: str, level: int = 1, data_dir: Path | None = None
 ) -> RealityCheck:
-    """Compare GLASS (category, month, level) with Liander's 2023 profile `sbi_code` for the same month."""
+    """Compare GLASS (category, month, level) with Liander's 2023 profile `sbi_code` for the same calendar month."""
     glass = load_condition(category, month, level, data_dir)
     path = liander_path(sbi_code, month, data_dir)
     if not path.exists():
         raise FileNotFoundError(
             f"{path.name} not found in {path.parent}. "
-            f"Run: python scripts/prepare_liander_sbi.py --sbi {sbi_code} --months {month}"
+            f"Run: python scripts/prepare_liander_sbi.py --sbi {sbi_code} --months {LIANDER_YEAR}-{month[5:7]}"
         )
     g_band, g_mean, n_days, n_samples = _glass_typical_day(glass)
     l_band, l_mean, has_band, l_days = _liander_typical_day(pl.read_parquet(path))

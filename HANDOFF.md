@@ -19,7 +19,7 @@ Conventions that everything shares (AGENTS.md and idea.md §7.3):
 - **96 slots of 15 minutes per window**, power in **kW**, energy in **kWh**. Windows run **noon to noon**: slot 0 is 12:00, slot 95 is 11:45 the next day.
 - The connection limit is always a `(96,)` array `C[t]`, never one number.
 - Every profile or schedule is a NumPy array of shape `(n, 96)`; Polars (not pandas) for tables.
-- Data in `data/processed/` is committed, so you do not need the 13 GB raw file. Only the development scenario is extracted: **category `009`, January 2023, levels 0–3** (level 1 is the development level).
+- Small data in `data/processed/` (grid map, Liander profiles) is committed. The GLASS extracts (211 MB) are **not in git**: run `python scripts/setup_data.py status` and follow it (`unpack` a zip from Joshua, or `build` from the raw file). The set is: **GLASS 2024, all 12 months, levels 0–3, 40 samples per condition, for 10 categories**: 009, 008, 006, 007, 015, 004 and the operating-hours classes E3A–E3D (480 files, about 210 MB). The development scenario is **category `009`, January 2024, level 1**.
 
 ### Slot arithmetic (noon start)
 
@@ -43,7 +43,7 @@ Conventions that everything shares (AGENTS.md and idea.md §7.3):
 ```python
 from gridflex.profiles import load_condition, build_windows, split_by_sample, cautious_baseline
 
-windows = build_windows(load_condition("009", "2023-01", 1))   # noon-to-noon, working days only
+windows = build_windows(load_condition("009", "2024-01", 1))   # noon-to-noon, working days only
 planning, test = split_by_sample(windows)                      # 70/30 by sample_id, seed 42
 B = cautious_baseline(planning, q=0.90)                        # (96,) kW, plan against this
 ```
@@ -92,7 +92,7 @@ The development scenario uses 10 vans with the §4.4 defaults, 100 kW and level 
 - **Immediate charging breaks the limit.** With a throwaway fleet of 10 vans (11 kW, 30–40 kWh, arriving 17:00–19:00), the fleet alone peaks at 110 kW and goes over 100 kW on **100%** of test days. 5 vans did that on 1.8% of days. Your `generate_fleet` will differ in the details; check that your own immediate-charging run breaks the limit too (a test in idea.md §7.4).
 - **There is a floor under "days over limit".** The building alone is above 100 kW on **0.74%** of test windows (rare spikes in GLASS), so a plan without battery support cannot reduce baseline-only violations to zero. This is reported separately as `baseline_alone_over_pct`; the 5% default tolerance leaves room for it. Do not read this floor as a scheduler bug.
 - **Level 1 at 100 kW has a lot of room.** Rough upper bound on energy between 19:00 and 06:00: about 918 kWh, i.e. at most ~26 vans of 35 kWh before energy runs out (ignoring the 11 kW charger limit and arrival times). So "drag to 15 vans → ❌" will probably **not** happen at level 1 and 100 kW. To make the break appear at a believable fleet size, consider a tighter limit (about 60 kW gives a bound of ~14 vans) or another level (level 2 at 100 kW: ~23 vans; level 3 at 100 kW: ~15 vans but its baseline alone is over the limit on 21.5% of test windows, so it needs a higher limit). This is a hint for choosing the demo scenario; your sweeps decide.
-- Every level exists for January 2023 only. Other months need an extract from Joshua (one command, separate PR).
+- Every level exists for every month of 2024 for the 10 extracted categories. Other categories need an extract from Joshua (one command, separate PR).
 
 ### 5. Sweeps (`charger_sweep`, `battery_sweep` in `replay.py`)
 
@@ -142,7 +142,7 @@ from gridflex.naive import naive_schedule
 from gridflex.scheduler import NoScheduleError, limit_profile, optimize
 from gridflex.replay import replay, charger_sweep, battery_sweep
 
-windows = build_windows(load_condition('009', '2023-01', 1))
+windows = build_windows(load_condition('009', '2024-01', 1))
 planning, test = split_by_sample(windows)
 baseline = cautious_baseline(planning, q=0.90)
 limit = limit_profile(100.0)
@@ -245,11 +245,11 @@ Demo postcodes (idea.md §9): `1181KJ` Amstelveen (red, 29 requests, 5.8 MW, fix
 
 ### 7. Dropdowns and labels
 
-`available_conditions()` returns only four conditions today: category `009`, `2023-01`, levels 0–3, with `level_value_kwh` 3,450 / 8,000 / 13,700 / 29,100 (show "≈ 3.5 / 8.0 / 13.7 / 29.1 MWh/month"). Level names: low, mid_low, mid_high, high. Sector names come from `SECTOR_LABELS` in `gridflex/profiles.py` and arrive as `Condition.label`. More months or sectors need an extract from Joshua; keep the dropdowns driven by `available_conditions()` so they grow by themselves.
+`available_conditions()` returns 480 conditions today: 10 categories × the 12 months of 2024 × levels 0–3 (the list is cached until a file changes). `level_value_kwh` for 009 in January is 3,450 / 8,000 / 13,700 / 29,100 and varies by month. Level names: low, mid_low, mid_high, high. Sector names come from `SECTOR_LABELS` in `gridflex/profiles.py` and arrive as `Condition.label`. The dashboard only shows the month name (the year is not meaningful to a user) and defaults to the current calendar month. Keep the dropdowns driven by `available_conditions()` so they grow by themselves.
 
 ### 8. Reality check panel
 
-`compare_all("009", "2023-01", 1)` returns three checks (SBI 52, SBI 49, the standard logistics profile `KO_LOGISTIEK`). Real numbers: correlation 0.97, 0.93 and 0.97. `summary(check)` gives the one sentence. Attribution text: "Liander (2023)". Add the footnote that GLASS was trained on Liander data, so the match is **not an independent test** (idea.md §5.10 and §12).
+`compare_all("009", "2024-01", 1)` returns three checks (SBI 52, SBI 49, the standard logistics profile `KO_LOGISTIEK`). Liander only publishes 2023, so a GLASS month is matched with the same calendar month of 2023 (`liander_path()`). Real numbers for January: correlation 0.94, 0.94 and 0.96. Only logistics sectors (009, 008) have Liander sources; other sectors say no comparison is available. `summary(check)` gives the one sentence. Attribution text: "Liander (2023)". Add the footnote that GLASS was trained on Liander data, so the match is **not an independent test** (idea.md §5.10 and §12).
 
 ### 9. Housekeeping
 

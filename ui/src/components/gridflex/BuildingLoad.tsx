@@ -1,18 +1,23 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { api, type Condition, type LoadSource, type MeterUpload, type Scenario } from "@/types";
 import { Help, helpText } from "@/components/gridflex/Help";
 
 const SOURCES: [LoadSource, string][] = [
   ["meter", "My meter data"],
   ["bill", "Sector + monthly bill"],
-  ["profile", "Demo profile"],
 ];
 
 const select = "rounded border border-input bg-background p-2";
 const key = (c: Pick<Condition, "category" | "month" | "level">) =>
   `${c.category}/${c.month}/${c.level}`;
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+/** "January" when the list has one year of data (a year means nothing to the user), "January 2024" when it has several. */
+const monthName = (month: string, all: string[] = []) =>
+  new Date(`${month}-01T00:00:00`).toLocaleDateString(
+    "en-GB",
+    new Set(all.map((m) => m.slice(0, 4))).size > 1
+      ? { month: "long", year: "numeric" }
+      : { month: "long" },
+  );
 
 function Hint({ label }: { label: string }) {
   return <Help label={label} text={helpText[label] ?? ""} />;
@@ -42,6 +47,22 @@ export function BuildingLoad({
     ...new Set(conditions.filter((c) => c.category === cfg.category).map((c) => c.month)),
   ];
   const update = (values: Partial<Scenario>) => setCfg((old) => ({ ...old, ...values }));
+  // A fixed GLASS level (batch CSV rows without a monthly use) is shown as the bill form.
+  const shown: LoadSource = cfg.load_source === "profile" ? "bill" : cfg.load_source;
+
+  // Once the available data is known: use the current calendar month if there is data for it.
+  const monthChosen = useRef(false);
+  useEffect(() => {
+    if (monthChosen.current || !conditions.length) return;
+    monthChosen.current = true;
+    const mine = conditions.filter((c) => c.category === cfg.category);
+    const now = String(new Date().getMonth() + 1).padStart(2, "0");
+    const month =
+      mine.find((c) => c.month.endsWith(`-${now}`))?.month ??
+      mine.find((c) => c.month === cfg.month)?.month ??
+      mine[0]?.month;
+    if (month && month !== cfg.month) setCfg((old) => ({ ...old, month }));
+  }, [conditions, cfg.category, cfg.month, setCfg]);
 
   async function upload(file: File) {
     setUploading(true);
@@ -80,10 +101,10 @@ export function BuildingLoad({
           <button
             type="button"
             key={value}
-            aria-pressed={cfg.load_source === value}
+            aria-pressed={shown === value}
             disabled={disabled}
             onClick={() => choose(value)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${cfg.load_source === value ? "bg-primary text-primary-foreground" : "border border-border hover:bg-accent"}`}
+            className={`rounded-lg px-3 py-1.5 text-sm ${shown === value ? "bg-primary text-primary-foreground" : "border border-border hover:bg-accent"}`}
           >
             {label}
           </button>
@@ -148,7 +169,7 @@ export function BuildingLoad({
         </div>
       )}
 
-      {cfg.load_source === "bill" && (
+      {shown === "bill" && (
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1">
             Sector
@@ -182,7 +203,7 @@ export function BuildingLoad({
             >
               {(months.length ? months : [cfg.month]).map((month) => (
                 <option key={month} value={month}>
-                  {monthName(month)}
+                  {monthName(month, months)}
                 </option>
               ))}
             </select>
@@ -199,7 +220,10 @@ export function BuildingLoad({
                 disabled={disabled}
                 value={cfg.monthly_kwh ?? ""}
                 onChange={(e) =>
-                  update({ monthly_kwh: e.target.value === "" ? null : Number(e.target.value) })
+                  update({
+                    load_source: "bill",
+                    monthly_kwh: e.target.value === "" ? null : Number(e.target.value),
+                  })
                 }
               />
               kWh
@@ -211,34 +235,6 @@ export function BuildingLoad({
             monthly use. Upload meter data for a site-specific answer.
           </p>
         </div>
-      )}
-
-      {cfg.load_source === "profile" && (
-        <label>
-          Demo profile{" "}
-          <select
-            className={select}
-            value={key(cfg)}
-            disabled={disabled}
-            onChange={(e) => {
-              const c = conditions.find((item) => key(item) === e.target.value);
-              if (c) update({ category: c.category, month: c.month, level: c.level });
-            }}
-          >
-            {(conditions.length
-              ? conditions
-              : [{ ...cfg, level_value_kwh: null, label: cfg.category }]
-            ).map((c) => (
-              <option key={key(c)} value={key(c)}>
-                {c.label || c.category} · {monthName(c.month)} ·{" "}
-                {c.level_value_kwh == null
-                  ? `Level ${c.level}`
-                  : `≈ ${(c.level_value_kwh / 1000).toFixed(1)} MWh/month`}
-              </option>
-            ))}
-          </select>{" "}
-          <Hint label="Business profile" />
-        </label>
       )}
     </div>
   );

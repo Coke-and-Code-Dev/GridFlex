@@ -5,6 +5,8 @@ from api.main import app, inputs, run
 from api.schemas import Scenario
 from gridflex.explain import explain_with_source
 
+pytestmark = pytest.mark.needs_glass  # loads the GLASS extracts
+
 
 @pytest.fixture(scope='module')
 def scenario_result():
