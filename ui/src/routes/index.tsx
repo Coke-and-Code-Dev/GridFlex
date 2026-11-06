@@ -1,3 +1,4 @@
+import { Sun } from "lucide-react";
 import { scheduleAnswer, slotClock as time } from "@/lib/schedule-answer";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
@@ -10,6 +11,40 @@ import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
 import { BuildingLoad } from "@/components/gridflex/BuildingLoad";
 
 import { Help, helpText } from "@/components/gridflex/Help";
+
+function ThemeToggle() {
+  const [light, setLight] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("gridflex-theme") === "light") {
+        document.documentElement.dataset.theme = "light";
+        setLight(true);
+      }
+    } catch {
+      // Theme switching still works when browser storage is blocked.
+    }
+  }, []);
+
+  function toggleTheme() {
+    const next = light ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    setLight(!light);
+    try {
+      localStorage.setItem("gridflex-theme", next);
+    } catch {
+      // Keep the selected theme for this page.
+    }
+  }
+
+  return (
+    <button type="button" aria-pressed={light} onClick={toggleTheme}
+      className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-accent">
+      <Sun aria-hidden="true" className="size-4" />
+      Light mode
+    </button>
+  );
+}
 
 function Hint({ label }: { label: string }) {
   return <Help label={label} text={helpText[label] ?? ""} />;
@@ -335,11 +370,14 @@ function Dashboard() {
 
       <header className="top-0 z-20 border-b border-border bg-background/95 backdrop-blur md:sticky">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <button type="button" onClick={() => setActiveTab("welcome")} aria-label="GridFlex.ai home"
-            className="my-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-bold tracking-tight hover:bg-accent">
-            <img src="/gridflex-mark.png" alt="" width={40} height={27} className="h-auto w-10 rounded object-contain" />
-            <span>GridFlex<span className="text-primary">.ai</span></span>
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <button type="button" onClick={() => setActiveTab("welcome")} aria-label="GridFlex.ai home"
+              className="my-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-bold tracking-tight hover:bg-accent">
+              <img src="/gridflex-mark.png" alt="" width={40} height={27} className="h-auto w-10 rounded object-contain" />
+              <span>GridFlex<span className="text-primary">.ai</span></span>
+            </button>
+            <ThemeToggle />
+          </div>
           <TabsList aria-label="Dashboard sections" className="flex h-auto w-full flex-wrap justify-start gap-1 border-t border-border bg-transparent px-0 py-2">
             {TABS.map(([id, label]) => (
               <TabsTrigger key={id} value={id} className="min-h-9 px-2.5 sm:px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
