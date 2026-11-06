@@ -134,3 +134,20 @@ def test_selected_depot_and_verdict_are_in_model_context(monkeypatch):
     assert calls[0]['current_depot'] == 'Depot A'
     assert 'verdict fits_with_risk' in calls[-1]['facts']['site_0']
     assert result['source'] == 'ollama'
+
+
+def test_portfolio_depot_count_uses_uploaded_total_without_model_or_retrieval(monkeypatch):
+    def unexpected(*args, **kwargs):
+        raise AssertionError("Counting uploaded depots requires no model or document retrieval")
+
+    monkeypatch.setattr("gridflex.portfolio_assistant.call_llm", unexpected)
+    monkeypatch.setattr("gridflex.portfolio_assistant.retrieve", unexpected)
+    run = {"complete": True, "total": 2, "sites": [
+        site("Depot A", "1181KJ", 3),
+        {"site": "Depot B", "postcode": "2311BD", "vans": 4, "error": "Solver unavailable"},
+    ]}
+    for provider in ("groq", "ollama"):
+        result = ask_portfolio(run, "How many depots are there in total?", [], provider)
+        assert result["text"] == "This portfolio contains 2 depots in total."
+        assert result["source"] == "template"
+        assert result["warnings"] == []

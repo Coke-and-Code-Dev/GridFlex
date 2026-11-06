@@ -19,6 +19,18 @@ def ask_portfolio(run, question, history, provider, compare_battery=None, curren
         raise ValueError('Wait until the portfolio has finished processing before asking questions.')
     if not sites:
         raise ValueError('This portfolio contains no completed site results.')
+    query = question.casefold()
+    if re.fullmatch(
+        r'(?:how many (?:depots|sites)(?: (?:are there|are included|did we upload))?'
+        r'|(?:what is the )?total (?:number of )?(?:depots|sites))'
+        r'(?: (?:in total|in (?:this|the) portfolio))*[?.!]*',
+        query.strip(),
+    ):
+        total = run.get('total', len(sites))
+        text = f'This portfolio contains {total:,} {"depot" if total == 1 else "depots"} in total.'
+        return {'text': text, 'source': 'template',
+                'evidence': [{'id': 'portfolio_count', 'text': text}], 'warnings': []}
+
     successful = [s for s in sites if 'error' not in s]
     ranking = sorted(successful, key=lambda s: (-s['breach_pct'], s['site'].casefold()))
     overview = [{'site': s['site'], 'postcode': s['postcode'], 'vans': s['vans'],
@@ -30,7 +42,6 @@ def ask_portfolio(run, question, history, provider, compare_battery=None, curren
         len(sites), len(successful), len(sites) - len(successful),
         json.dumps([{'site': s['site'], 'breach_rate': f"{s['breach_pct']:.2f}%"} for s in ranking]), json.dumps(overview))}
     # Exact verdict lists come from the stored solver/replay result, never an LLM inference.
-    query = question.casefold()
     is_list = bool(re.search(r'\b(which|list|show|identify|name)\b', query))
     verdict = None
     if re.search(r'\b(?:does\s+not|do\s+not|don.t|doesn.t|cannot|can.t|not)\s+fit\b|\bnot\s+fitting\b', query):
