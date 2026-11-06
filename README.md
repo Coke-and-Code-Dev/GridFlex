@@ -1,3 +1,15 @@
+<p align="center">
+  <img src="docs/images/banner.jpg" alt="GridFlex.ai: charge more vans on the connection you already have" width="100%">
+</p>
+
+<p align="center">
+  <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-2E2E38?logo=python&logoColor=FFE600">
+  <img alt="FastAPI" src="https://img.shields.io/badge/API-FastAPI-2E2E38?logo=fastapi&logoColor=FFE600">
+  <img alt="OR-Tools CP-SAT" src="https://img.shields.io/badge/Planner-OR--Tools%20CP--SAT-2E2E38">
+  <img alt="React and TypeScript" src="https://img.shields.io/badge/UI-React%20%2B%20TypeScript-2E2E38?logo=react&logoColor=FFE600">
+  <img alt="Synthetic data and simulation" src="https://img.shields.io/badge/data-synthetic%20%C2%B7%20simulation-FFE600?labelColor=2E2E38">
+</p>
+
 # GridFlex AI: Plan. Stress-test. Explain.
 
 **Can my business add EV chargers without a bigger grid connection?**
@@ -14,6 +26,61 @@ The building's own electricity use comes from the site's own **meter data** (CSV
 > *"We don't test your plan on one made-up day. We test it on every realistic day."*
 
 EY AI Week Hackathon, 5–6 November 2026, Amsterdam. Original concept: GridFlex AI by Smriti Sridhar (Leiden University).
+
+## See it in action
+
+<p align="center">
+  <img src="docs/images/ten-trucks-demo.gif" alt="Animation: ten trucks plug in at once and the site meter jumps to 178 kW, over the 100 kW limit; then the scheduled run charges two trucks at a time at 90 kW, Truck 01 pauses at 5.5 of 11 kWh while staying plugged in and resumes later, and all ten finish by 23:00." width="860">
+</p>
+<p align="center"><sub><b>Ten trucks, one grid connection.</b> Charging on arrival would draw 178 kW on a 100 kW connection. Staggered two at a time, the site stays at 90 kW and every truck is full by 23:00. Illustrative charging schedule · synthetic data.</sub></p>
+
+## The dashboard
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/dashboard-welcome.jpg" alt="Welcome screen of the GridFlex.ai dashboard"><br><sub><b>Welcome.</b> One place to plan a depot, from setup to decision.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/dashboard-setup.jpg" alt="Setup tab with postcode, building electricity use from the bill, connection limit, sliders and an imported fleet table"><br><sub><b>Setup.</b> Postcode, building use from meter data or the energy bill, connection limit, battery, off-peak capacity and the fleet. Single depots and portfolios can be loaded from CSV.</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/dashboard-charging-plan.jpg" alt="Charging plan tab: verdict fits, 0.00% of windows over the limit, 8 of 8 vans fully charged, and a demand chart comparing immediate charging with the optimised plan"><br><sub><b>Charging plan.</b> Verdict, held-out risk and the demand chart: immediate charging (dotted) against the optimised plan (yellow) and the connection limit (red).</sub></td>
+    <td valign="top"><img src="docs/images/dashboard-analysis.jpg" alt="Analysis tab with what-if scenarios, risk and sensitivity, breach timing and the reality check against Liander 2023 profiles"><br><sub><b>Analysis.</b> What-if buttons, risk and sensitivity, breach timing, sweeps and the reality check against Liander’s measured 2023 profiles.</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/dashboard-van-schedule.jpg" alt="Per-van charging schedule heatmap"><br><sub><b>Van schedule.</b> Every van’s charging slots in 15-minute steps, with kWh delivered and short. Exportable as CSV.</sub><br><br>
+    <img src="docs/images/dashboard-explanation.jpg" alt="Explanation tab with model choice, the explanation text and suggested questions"><br><sub><b>Explanation.</b> Groq or a local Qwen model, grounded in computed facts, with a deterministic template as the fallback. Ask follow-up questions about the run.</sub></td>
+    <td valign="top"><img src="docs/images/dashboard-portfolio.jpg" alt="Multi-depot results: five depots with verdicts fits, does not fit and fits with risk, plus a per-depot inspection and a PDF report button"><br><sub><b>Portfolio.</b> Upload many depots at once, compare their verdicts and download a PDF report. Shown: <code>examples/case_5</code>, five depots with one of each verdict.</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots from a local run on the example files in <a href="examples/">examples/</a>. All load profiles are synthetic (GLASS) unless a site uploads its own meter data; results are simulations, not grid-operator approvals.</sub>
+
+## How it works
+
+```mermaid
+flowchart LR
+    PC[Postcode] --> MAP[Capacity map<br/>congestion · queue · fix year]
+    LOAD[Building load<br/>meter CSV, or sector + monthly bill] --> SPLIT[Split by customer<br/>70% planning · 30% test]
+    SPLIT -->|planning days| BASE[Cautious baseline<br/>p90 per 15 min]
+    FLEET[Fleet<br/>arrivals · departures · kWh] --> CPSAT
+    LIMIT[Connection limit<br/>battery · off-peak capacity] --> CPSAT
+    BASE --> CPSAT[CP-SAT scheduler]
+    CPSAT --> PLAN[One fixed timetable]
+    SPLIT -->|held-out days| REPLAY[Replay]
+    PLAN --> REPLAY
+    REPLAY --> FLAGS[Verdict · breaches · vans short · sweeps]
+    MAP --> EXPLAIN
+    FLAGS --> EXPLAIN[Explanation agent<br/>LLM or template]
+    EXPLAIN --> HUMAN{{Person approves or rejects}}
+```
+
+| Step | What happens |
+|---|---|
+| **Locate** | The postcode card shows the local congestion colour, waiting list, expected fix year and planned grid projects from the operators’ capacity map. |
+| **Plan** | A constraint-programming model (Google OR-Tools CP-SAT) gives every van a charging timetable, with an optional battery, that never plans above the limit on a cautious day. |
+| **Stress-test** | The same fixed timetable is replayed on days it was never planned on: how often the site goes over, when, by how much, and which vans end up short. |
+| **Explain** | An explanation agent describes only numbers the code computed. A person approves or rejects; nothing is switched automatically. |
+
+---
 
 The full idea, architecture and module interfaces are in [idea.md](idea.md). Rules for contributors (including AI agents) are in [AGENTS.md](AGENTS.md).
 
