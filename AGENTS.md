@@ -50,6 +50,7 @@ scripts/             data scripts (download_data, setup_data, extract_glass, pre
 gridflex/            library code: profiles, grid_area, fleet, naive, scheduler, replay, reality, explain
 api/                 Python JSON API that calls gridflex/ (idea.md §8.1)
 ui/                  React + TypeScript dashboard (idea.md §8.1)
+video/               Remotion project for the investor pitch video (video/README.md)
 tests/               pytest tests
 requirements.txt     Python dependencies (filled in as we build)
 ```
