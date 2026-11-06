@@ -19,7 +19,7 @@ Conventions that everything shares (AGENTS.md and idea.md §7.3):
 - **96 slots of 15 minutes per window**, power in **kW**, energy in **kWh**. Windows run **noon to noon**: slot 0 is 12:00, slot 95 is 11:45 the next day.
 - The connection limit is always a `(96,)` array `C[t]`, never one number.
 - Every profile or schedule is a NumPy array of shape `(n, 96)`; Polars (not pandas) for tables.
-- Small data in `data/processed/` (grid map, Liander profiles) is committed. The GLASS extracts (211 MB) are **not in git**: run `python scripts/setup_data.py status` and follow it (`unpack` a zip from Joshua, or `build` from the raw file). The set is: **GLASS 2024, all 12 months, levels 0–3, 40 samples per condition, for 10 categories**: 009, 008, 006, 007, 015, 004 and the operating-hours classes E3A–E3D (480 files, about 210 MB). The development scenario is **category `009`, January 2024, level 1**.
+- Nothing in `data/processed/` is in git any more. Run `python scripts/download_data.py` and then `python scripts/setup_data.py build` (or `python scripts/setup_data.py status`, which says what is missing). It makes the GLASS extracts, the grid map and Liander's profiles. The GLASS set is: **GLASS 2024, all 12 months, levels 0–3, 40 samples per condition, for 10 categories**: 009, 008, 006, 007, 015, 004 and the operating-hours classes E3A–E3D (480 files, about 210 MB). The development scenario is **category `009`, January 2024, level 1**.
 
 ### Slot arithmetic (noon start)
 
@@ -76,7 +76,7 @@ Also: `limit` must have shape `(96,)` (a clear `ValueError` otherwise), and `van
 
 ### 3. The completed checkpoint
 
-A real development replay is available at `examples/replay_report_dev.json`. You can regenerate the report with:
+A real development replay was saved here during the build (the file was removed later, because it described the old January 2023 data). You can regenerate a report for any scenario with:
 
 ```python
 import dataclasses, json
@@ -253,7 +253,7 @@ Demo postcodes (idea.md §9): `1181KJ` Amstelveen (red, 29 requests, 5.8 MW, fix
 
 ### 9. Housekeeping
 
-- The wireframe landed in `wireframe/`, while AGENTS.md and idea.md say the app lives in `ui/`. Not Joshua's call: please settle it (and update AGENTS.md) so nobody scaffolds a second app.
+- The wireframe that landed in `wireframe/` was deleted; the app lives in `ui/` only.
 - After pulling, re-install `requirements.txt` (see the set-up section); a missing package such as `ortools` makes the API fail on import.
 - The assistant describes only computed facts. Groq or local Qwen (Ollama, `qwen3.5:9b`) writes answers that must cite fact IDs; the server checks every number against the cited facts, and templates are the fallback. Provider code lives in `call_llm()` in `gridflex/explain.py`. The Groq key is stored in the ignored local `.env` and must not be committed. Without a key or Ollama, the single-run assistant falls back to templates; the portfolio chat currently only says the model is unavailable (open in TODO.md).
 - With Groq selected, the portfolio chat sends uploaded site names, postcodes and grid-area details to Groq, not only synthetic facts. Local Qwen keeps them on the machine.

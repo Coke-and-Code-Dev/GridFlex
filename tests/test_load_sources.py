@@ -134,3 +134,24 @@ def test_meter_source_through_the_api(monkeypatch):
     missing = client.post("/optimize", json={"load_source": "meter", "meter_id": "0" * 16})
     assert missing.status_code == 404 and "upload the file again" in missing.json()["detail"]
     assert client.post("/meter-data", json={"csv": meter_csv(days=5)}).status_code == 422
+
+
+# --- the example meter files in examples/ ---
+
+from pathlib import Path  # noqa: E402
+
+EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
+
+
+@pytest.mark.parametrize("case", ["case_2_own_meter_data", "case_3_dutch_meter_export"])
+def test_clean_example_meter_files_load_without_warnings(case):
+    meter = parse_meter_csv((EXAMPLES / case / "meter-data.csv").read_text(encoding="utf-8"))
+    planning, test = split_by_date(meter_windows(meter))
+    assert meter.warnings == () and len(test) >= 20 and len(planning) > len(test)
+    assert meter.values.max() < 160  # inside the 60-160 kW range the app is built for
+
+
+def test_the_solar_example_shows_what_the_warnings_look_like():
+    meter = parse_meter_csv((EXAMPLES / "case_4_solar_with_gaps" / "meter-data.csv").read_text(encoding="utf-8"))
+    assert meter.dropped_days == 2 and meter.clipped_readings > 100 and len(meter.warnings) == 2
+    assert len(split_by_date(meter_windows(meter))[1]) >= 20

@@ -5,7 +5,7 @@ Usage:
     python scripts/extract_glass.py --categories 009 008 --months 2024-01 2024-02 --samples 40 --quiet
 
 Writes data/processed/glass_{category}_{yyyy-mm}_L{level}.parquet (git-ignored: 211 MB for the
-dashboard's set; scripts/setup_data.py builds or shares it). `--samples N` keeps only
+dashboard's set; `scripts/setup_data.py build` runs this for the whole set). `--samples N` keeps only
 the first N samples of each condition (GLASS has about 150): the samples are independent
 synthetic customers, so a smaller set is the same kind of data, in a file a third the size.
 Prints a summary per

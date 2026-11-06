@@ -6,13 +6,11 @@
 
 What each one is, and why:
   glass     GLASS_v1.1.parquet, synthetic large-customer smart-meter data (4TU.ResearchData, CDLA-Permissive-2.0).
-            `python scripts/setup_data.py build` turns it into the 480 small files the dashboard uses.
   capacity  The grid operators' capacity map (Netbeheer Nederland): 4 small files, 47 MB.
-            Only needed to refresh data/processed/grid_*.parquet with scripts/prepare_grid_map.py.
   liander   Liander's real 2023 consumption profiles (3 files, 397 MB).
-            Only needed to refresh data/processed/liander_sbi_*.parquet with scripts/prepare_liander_sbi.py.
 
-The grid map and Liander results are already committed in data/processed/, so most people only need glass.
+Nothing in data/processed/ is in git: after downloading, `python scripts/setup_data.py build` makes it
+all (the 480 GLASS files, the grid map and Liander's profiles) from these three.
 
 Downloads resume where they stopped (run the command again after a dropped connection), files that
 are already complete are skipped, and GLASS is checked against the SHA-256 in data/README.md.

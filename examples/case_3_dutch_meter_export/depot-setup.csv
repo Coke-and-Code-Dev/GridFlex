@@ -1,0 +1,17 @@
+site_id,postcode,category,month,level,monthly_kwh,limit_kw,extra_kw,off_peak_start,off_peak_end,battery_kwh,battery_kw,q,risk_tolerance_pct,van_name,arrival,departure,energy_kwh,charger_kw
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 01,17:30,06:15,31,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 02,18:45,06:00,37,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 03,19:30,06:45,35,11
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 04,18:00,05:30,50,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 05,17:30,07:30,57,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 06,17:00,05:30,67,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 07,18:00,07:00,42,11
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 08,17:15,07:30,66,11
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 09,18:15,06:45,46,11
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 10,18:30,06:30,62,11
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 11,18:00,06:30,41,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 12,17:00,06:45,64,11
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 13,18:30,06:30,62,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 14,19:00,07:00,55,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 15,17:30,06:30,66,22
+Distribution centre - Venlo,5911AA,008,2024-11,2,18400,105,0,22:00,06:00,0,0,0.9,5,Van 16,18:30,05:30,49,22

@@ -405,7 +405,7 @@ ey_hackathon/
 ├── data/
 │   ├── README.md          ← GLASS dataset card
 │   ├── raw/               ← downloads: GLASS parquet, capacity-map CSVs, Liander zips (git-ignored)
-│   └── processed/         ← small extracts (committed, so the demo works offline)
+│   └── processed/         ← made from raw/ by scripts/setup_data.py (git-ignored; the demo works offline once built)
 ├── scripts/
 │   ├── extract_glass.py       ← GLASS → per-condition extracts
 │   ├── prepare_grid_map.py    ← capacity-map CSVs → compact parquet
@@ -812,7 +812,7 @@ cd ui
 npm install
 ```
 
-**Data downloads** (into `data/raw/`, which is git-ignored). `python scripts/download_data.py` fetches all of the files below (`python scripts/download_data.py glass` only GLASS, the one you need); the manual sources are:
+**Data downloads** (into `data/raw/`, which is git-ignored). `python scripts/download_data.py` fetches all of the files below; the manual sources are:
 
 - GLASS: `GLASS_v1.1.parquet` (see [data/README.md](data/README.md)).
 - Capacity map: `brondata_documentatie.txt`, `congestie_pc6.csv`, `voedingsgebieden.csv`, `projecten.csv` into `data/raw/capaciteitskaart/`, e.g.
@@ -823,10 +823,15 @@ npm install
 
 - Liander profiles: "Overzicht met per SBI-code een aanbevolen profiel" (xlsx), "Geaggregeerde SBI-profielen" (zip) and "K&O profielen" (zip) from https://www.liander.nl/over-ons/open-data into `data/raw/liander_sbi/`.
 
-Then:
+Then make everything in `data/processed/` (git-ignored) in one step:
 
 ```bash
-python scripts/setup_data.py status   # the GLASS extracts are not in git; this says how to get them
+python scripts/setup_data.py build    # GLASS extracts, grid map and Liander profiles; `status` says what is missing
+```
+
+`build` runs these three, which you can also run by hand:
+
+```bash
 python scripts/extract_glass.py --categories 009 --months 2024-01 --levels 0 1 2 3 --samples 40
 ```
 
