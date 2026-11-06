@@ -352,10 +352,6 @@ function Dashboard() {
 
       <main className="relative mx-auto max-w-6xl px-6">
         {portfolio.filename && <TabsContent value="portfolio" className="py-8">
-          {portfolio.serverRunId && <article className="panel mb-4 space-y-4 p-6">
-            <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} currentDepot={activeDepot}
-                provider={portfolioProvider} onProviderChange={setPortfolioProvider} />
-          </article>}
           <PortfolioResults portfolio={portfolio} canOpenSite={canOpenDepot}
             onOpenSite={(site) => {
               setActiveTab("compare");
