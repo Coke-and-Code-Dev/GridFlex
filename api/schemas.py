@@ -114,6 +114,7 @@ class WhatIfResponse(BaseModel):
 
 
 class PortfolioQuestion(BaseModel):
+    current_depot: str | None = Field(default=None, max_length=200)
     run_id: str = Field(pattern=r"^[0-9a-f]{32}$")
     question: str = Field(min_length=1, max_length=500)
     history: list[ConversationTurn] = Field(default_factory=list, max_length=6)

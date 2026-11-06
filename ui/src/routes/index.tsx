@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { api, type Area, type Condition, type OptimizeResult, type Reality, type Scenario, type Sweep, type VanOverride, type ExplanationResponse, type ExplanationProvider, type WhatIfAction, type WhatIfResponse, type PortfolioSite } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PortfolioResults, PortfolioUpload } from "@/components/gridflex/BatchReport";
+import { PortfolioAssistant, PortfolioResults, PortfolioUpload } from "@/components/gridflex/BatchReport";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { DepotVan, VAN_DRIVE_MS } from "@/components/gridflex/DepotVan";
 import { LoadChart, Heatmap } from "@/components/gridflex/Charts";
@@ -208,7 +208,7 @@ function Dashboard() {
     }
   }
 
-  async function applyResult(snapshot: Scenario, result: OptimizeResult, previous?: Scenario) {
+  async function applyResult(snapshot: Scenario, result: OptimizeResult, previous?: Scenario, portfolioDepot = false) {
     setRun({ cfg: snapshot, previous, result });
     setExplanation("");
     setWhatIf(undefined);
@@ -223,9 +223,9 @@ function Dashboard() {
     const params = new URLSearchParams({ category: snapshot.category, month: snapshot.month, level: String(level) });
     await Promise.allSettled([
       snapshot.load_source === "meter" ? Promise.resolve() : api<Reality[]>(`/reality?${params}`).then(setChecks),
-      api<ExplanationResponse>("/explain", { scenario: snapshot, previous, provider })
+      ...(!portfolioDepot ? [api<ExplanationResponse>("/explain", { scenario: snapshot, previous, provider })
         .then(({ text, source }) => { setExplanation(text); setExplanationSource(source); })
-        .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); }),
+        .catch(() => { setExplanationSource("template"); setExplanation(`The plan exceeded the limit in ${result.report.days_over_pct.toFixed(2)}% of held-out windows and left ${sum(result.schedule.unmet_kwh).toFixed(2)} kWh unmet.`); })] : []),
     ]);
   }
 
@@ -235,7 +235,7 @@ function Dashboard() {
     setCfg(site.scenario);
     setImportedFile(portfolio.filename);
     setError("");
-    void applyResult(site.scenario, site.detail).finally(() => setBusy(false));
+    void applyResult(site.scenario, site.detail, undefined, true).finally(() => setBusy(false));
   }
 
   const canOpenDepot = !busy && !asking && !sweeping && !whatIfBusy && !importing;
@@ -549,7 +549,9 @@ function Dashboard() {
           </TabsContent>
           <TabsContent value="explanation">
           <Section id="explanation" n={5} title="Explanation" synthetic={report.synthetic}>
-            <article className="panel space-y-4 p-6">
+            {portfolio.report && portfolio.serverRunId && activeDepot ? <article className="panel space-y-4 p-6">
+              <PortfolioAssistant key={portfolio.serverRunId} runId={portfolio.serverRunId} currentDepot={activeDepot} />
+            </article> : <article className="panel space-y-4 p-6">
               <fieldset className="flex flex-wrap items-center gap-2" disabled={busy || asking}>
                 <legend className="mb-2 text-sm font-semibold">Choose explanation model</legend>
                 {([ ["groq", "Groq (cloud)"], ["ollama", "Qwen 3.5 9B (local)"] ] as const).map(([value, label]) =>
@@ -568,7 +570,7 @@ function Dashboard() {
                 <input id="ask" className="grow rounded border border-input bg-background p-2" value={q} maxLength={500} onChange={(e) => setQ(e.target.value)} placeholder="Ask about this run" />
                 <button className={btnPrimary} disabled={busy || asking || !q.trim()}>{asking ? "Thinking…" : "Ask"}</button>
               </form>
-            </article>
+            </article>}
           </Section>
           </TabsContent>
           <TabsContent value="analysis">

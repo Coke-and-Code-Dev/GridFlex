@@ -102,3 +102,35 @@ def test_custom_battery_request_never_uses_fixed_toggle(monkeypatch):
     result = ask_portfolio({'total': 1, 'complete': True, 'sites': [site('Depot A','1181KJ',3)]},
                            'Would a bigger battery help Depot A?', [], 'ollama', lambda x: calls.append(x))
     assert not calls and result['warnings']
+
+@pytest.mark.parametrize('provider', ['groq', 'ollama'])
+def test_verdict_lists_use_stored_results_even_when_risk_order_disagrees(monkeypatch, provider):
+    def unexpected(*args, **kwargs):
+        raise AssertionError('Verdict selection must not depend on the model')
+    monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', unexpected)
+    a = {**site('Depot A', '1181KJ', 90), 'verdict': 'does_not_fit'}
+    b = {**site('Depot B', '2311BD', 20), 'verdict': 'fits_with_risk'}
+    c = {**site('Depot C', '1011AA', 1), 'verdict': 'fits'}
+    failed = {'site': 'Depot D', 'postcode': '1000AA', 'vans': 1, 'error': 'failed'}
+    run = {'complete': True, 'sites': [a, b, c, failed]}
+    result = ask_portfolio(run, 'Which depots fit with risk?', [], provider)
+    assert 'Depot B' in result['text'] and 'Depot A' not in result['text']
+    assert 'failed' in result['text']
+    result = ask_portfolio(run, 'Which depots do not fit?', [], provider)
+    assert 'Depot A' in result['text'] and 'Depot B' not in result['text']
+
+
+def test_selected_depot_and_verdict_are_in_model_context(monkeypatch):
+    calls = []
+    def llm(system, user, schema, provider):
+        data = json.loads(user); calls.append(data)
+        if 'site_ids' in schema['properties']:
+            return json.dumps({'site_ids': [], 'compare_battery': False})
+        return json.dumps({'answer': 'The selected depot has a fits with risk verdict.', 'fact_ids': ['site_0']})
+    monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', llm)
+    monkeypatch.setattr('gridflex.portfolio_assistant.retrieve', lambda _: [])
+    selected = {**site('Depot A', '1181KJ', 3), 'verdict': 'fits_with_risk'}
+    result = ask_portfolio({'complete': True, 'sites': [selected]}, 'What is the verdict for this depot?', [], 'ollama', current_depot='Depot A')
+    assert calls[0]['current_depot'] == 'Depot A'
+    assert 'verdict fits_with_risk' in calls[-1]['facts']['site_0']
+    assert result['source'] == 'ollama'
