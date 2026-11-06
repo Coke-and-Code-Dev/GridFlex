@@ -1,0 +1,13 @@
+{
+  "overlap": 0.5,
+  "scenes": [
+    { "id": "grid",   "offset": 0.6, "tail": 1.0, "overlap": 0 },
+    { "id": "queue",  "offset": 0.4, "tail": 0.8, "overlap": 0.5 },
+    { "id": "crash",  "offset": 0.5, "tail": 2.6, "overlap": 0.5 },
+    { "id": "reveal", "offset": 0.5, "tail": 1.4, "overlap": 0 },
+    { "id": "plan",   "offset": 0.4, "tail": 6.2, "overlap": 0.5 },
+    { "id": "stress", "offset": 0.3, "tail": 1.6, "overlap": 0.5 },
+    { "id": "human",  "offset": 0.3, "tail": 1.0, "overlap": 0.5 },
+    { "id": "close",  "offset": 0.3, "tail": 3.6, "overlap": 0.5 }
+  ]
+}

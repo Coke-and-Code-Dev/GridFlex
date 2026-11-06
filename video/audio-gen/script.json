@@ -1,0 +1,10 @@
+[
+  { "id": "grid",   "text": "The Dutch power grid is full. Across the Netherlands, more than half of all postcodes are now marked red for new demand. In Liander's area, nearly eight in ten." },
+  { "id": "queue",  "text": "For a business, that means no bigger connection. In Amsterdam, eighty-seven requests are waiting, and relief is not expected until twenty twenty-seven. Meanwhile, every fleet is being told to go electric." },
+  { "id": "crash",  "text": "Picture a depot with a hundred kilowatt connection, and ten electric trucks. They all roll in at six, and plug in at once. The site pulls a hundred and seventy-eight kilowatts. The fuse blows." },
+  { "id": "reveal", "text": "GridFlex fixes that. Without a single new cable." },
+  { "id": "plan",   "text": "Enter your postcode, your building, and your fleet. GridFlex builds a charging timetable for every truck. They take turns, using the quiet hours of the night, so the site never crosses its limit, and every truck is full by morning." },
+  { "id": "stress", "text": "But a plan that works on one made-up day proves nothing. So GridFlex tests it on a hundred realistic days it has never seen, and tells you how often it would still go over, by how much, and when." },
+  { "id": "human",  "text": "Then it explains the result in plain language. A person approves or rejects it. GridFlex only recommends. Nothing switches automatically." },
+  { "id": "close",  "text": "Every depot stuck in the queue is a fleet that cannot go electric. GridFlex lets it charge more trucks on the connection it already has. Plan. Stress-test. Explain." }
+]
