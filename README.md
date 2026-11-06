@@ -109,7 +109,7 @@ Restart the API afterwards. A local model through Ollama (`qwen3.5:9b`) also wor
 
 ### 6. Try the example files
 
-The [examples/](examples/) folder has six ready-made scenarios, one folder each (`case_1` to `case_6`): a depot that uses its energy bill, three depots with their **own meter data**, a 5-depot portfolio and a 30-depot portfolio. Upload the files of one case together. [examples/README.md](examples/README.md) describes every case, says what to upload and in which order, what you should see, and what every column means, including where the monthly bill (`monthly_kwh`) goes.
+The [examples/](examples/) folder has seven ready-made scenarios, one folder each (`case_1` to `case_7`): a depot that uses its energy bill, three depots with their **own meter data**, a 5-depot portfolio, a 30-depot portfolio and a 649-depot stress test. Upload the files of one case together. [examples/README.md](examples/README.md) describes every case, says what to upload and in which order, what you should see, and what every column means, including where the monthly bill (`monthly_kwh`) goes.
 
 ### 7. Run the tests
 
@@ -153,7 +153,7 @@ TODO.md          tasks per person
 data/README.md   the GLASS dataset card (the only file under data/ that is in git)
 data/raw/        downloads (git-ignored, never commit)
 data/processed/  small files the app reads, made from data/raw by setup_data.py (git-ignored)
-examples/        six ready-made scenarios to try the app with (case_1 to case_6)
+examples/        seven ready-made scenarios to try the app with (case_1 to case_7)
 scripts/         download_data, setup_data, extract_glass, prepare_grid_map, prepare_liander_sbi
 gridflex/        library code: profiles, scheduler, replay, reality, explanations
 api/             the Python JSON API (FastAPI)
