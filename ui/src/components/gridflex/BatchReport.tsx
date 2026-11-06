@@ -160,13 +160,13 @@ export function PortfolioAssistant({ runId, currentDepot }: { runId: string; cur
   return <section className="space-y-3 border-t border-border pt-4" aria-labelledby="portfolio-assistant-heading">
     <h3 id="portfolio-assistant-heading" className="text-lg font-semibold">Ask about your portfolio</h3>
     <p className="text-sm text-muted-foreground">{currentDepot ? `Selected depot: ${currentDepot}` : "No depot selected. Ask about the full portfolio or name a depot."}</p>
-    <p className="text-sm text-muted-foreground">Ask about a depot, postcode, fleet or the whole simulation.</p>
+    <p className="text-sm text-muted-foreground">Ask about a depot, postcode, fleet or the whole simulation. To search the Pinecone snapshot, ask about the uploaded report.</p>
     <label className="text-sm">Explanation model <select value={provider} onChange={(e) => setProvider(e.target.value as ExplanationProvider)} className="ml-2 rounded border border-border bg-background p-2">
       <option value="groq">Groq (cloud)</option><option value="ollama">Qwen 9B (local)</option>
     </select></label>
     <div aria-live="polite" className="space-y-3">{messages.map((message, i) => <div key={i}>
       <p className="font-semibold">{message.question}</p><p className="whitespace-pre-wrap">{message.text}</p>
-      <p className="text-xs text-muted-foreground">{message.source === "ollama" ? "Local Qwen" : message.source === "groq" ? "Groq" : message.evidence.length ? "Calculated from simulation results" : "Unavailable"}</p>
+      <p className="text-xs text-muted-foreground">{message.source === "ollama" ? "Local Qwen" : message.source === "groq" ? "Groq" : message.evidence.some((item) => item.id.startsWith("uploaded_report_")) ? "Retrieved report passages" : message.evidence.length ? "Calculated from simulation results" : "Unavailable"}</p>
       {message.warnings.map((warning) => <p key={warning} className="text-xs text-muted-foreground">{warning}</p>)}
       {!!message.evidence.length && <details className="text-sm text-muted-foreground"><summary>View supporting evidence</summary>{message.evidence.map((item) => <p className="break-words" key={item.id}>{item.id}: {item.text}</p>)}</details>}
     </div>)}</div>

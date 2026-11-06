@@ -134,3 +134,53 @@ def test_selected_depot_and_verdict_are_in_model_context(monkeypatch):
     assert calls[0]['current_depot'] == 'Depot A'
     assert 'verdict fits_with_risk' in calls[-1]['facts']['site_0']
     assert result['source'] == 'ollama'
+
+
+def test_uploaded_report_is_separate_and_cited(monkeypatch):
+    calls = []
+    def llm(system, user, schema, provider):
+        payload = json.loads(user); calls.append(payload)
+        if 'site_ids' in schema['properties']:
+            return json.dumps({'site_ids': [], 'compare_battery': False})
+        return json.dumps({'answer': 'The uploaded report describes depot charging.', 'fact_ids': ['uploaded_report_0']})
+    monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', llm)
+    monkeypatch.setattr('gridflex.portfolio_assistant.retrieve', lambda _: [])
+    monkeypatch.setattr('gridflex.portfolio_assistant.search_uploaded_report', lambda _: [{'source': 'Pinecone report chunk', 'text': 'Depot charging.'}])
+    run = {'complete': True, 'sites': [site('Depot A', '1181KJ', 3)]}
+    result = ask_portfolio(run, 'What does the uploaded report say?', [], 'ollama')
+    assert result['source'] == 'ollama'
+    assert result['evidence'][0]['id'] == 'uploaded_report_0'
+    assert 'not been matched' in result['warnings'][0]
+    assert 'not verified as the current run' in calls[-1]['facts']['uploaded_report_0']
+
+
+def test_pinecone_failure_does_not_claim_report_answer(monkeypatch):
+    monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', lambda *a, **k: json.dumps({'site_ids': [], 'compare_battery': False}))
+    monkeypatch.setattr('gridflex.portfolio_assistant.retrieve', lambda _: [])
+    def unavailable(_): raise OSError('offline')
+    monkeypatch.setattr('gridflex.portfolio_assistant.search_uploaded_report', unavailable)
+    result = ask_portfolio({'complete': True, 'sites': [site('Depot A', '1181KJ', 3)]}, 'What does the uploaded report say?', [], 'groq')
+    assert result['source'] == 'template' and 'could not be retrieved' in result['text']
+
+
+def test_current_run_question_does_not_search_unmatched_report(monkeypatch):
+    def llm(system, user, schema, provider):
+        if 'site_ids' in schema['properties']:
+            return json.dumps({'site_ids': [], 'compare_battery': False})
+        return json.dumps({'answer': 'Depot A has 3.00% risk.', 'fact_ids': ['portfolio']})
+    monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', llm)
+    monkeypatch.setattr('gridflex.portfolio_assistant.retrieve', lambda _: [])
+    def should_not_search(_): raise AssertionError('must not search unmatched report')
+    monkeypatch.setattr('gridflex.portfolio_assistant.search_uploaded_report', should_not_search)
+    result = ask_portfolio({'complete': True, 'sites': [site('Depot A', '1181KJ', 3)]}, 'What is the risk?', [], 'groq')
+    assert result['source'] == 'groq'
+
+
+def test_report_passages_remain_accessible_if_model_fails(monkeypatch):
+    monkeypatch.setattr('gridflex.portfolio_assistant.search_uploaded_report', lambda _: [{'source': 'Pinecone report', 'text': 'A source passage.'}])
+    def unavailable(*args, **kwargs): raise OSError('offline')
+    monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', unavailable)
+    result = ask_portfolio({'complete': True, 'sites': [site('Depot A', '1181KJ', 3)]}, 'Summarize the uploaded report', [], 'ollama')
+    assert result['source'] == 'template'
+    assert result['evidence'][0]['id'] == 'uploaded_report_0'
+    assert 'open the retrieved report passages' in result['text']
