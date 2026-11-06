@@ -37,6 +37,7 @@ The GLASS dataset is described in [data/README.md](data/README.md); the other da
 ## Repository layout
 
 ```
+README.md            what GridFlex is, how to set it up and where the data comes from
 idea.md              idea + implementation plan (source of truth)
 TODO.md              tasks per person
 HANDOFF.md           handoff notes between teammates (what exists, how to call it, gotchas)
@@ -44,7 +45,7 @@ AGENTS.md            this file
 data/README.md       GLASS dataset card
 data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, never commit
 data/processed/      small extracts: committed, except the GLASS ones (git-ignored, see scripts/setup_data.py)
-scripts/             one-off data scripts (extract_glass, prepare_grid_map, prepare_liander_sbi)
+scripts/             data scripts (download_data, setup_data, extract_glass, prepare_grid_map, prepare_liander_sbi)
 gridflex/            library code: profiles, grid_area, fleet, naive, scheduler, replay, reality, explain
 api/                 Python JSON API that calls gridflex/ (idea.md §8.1)
 ui/                  React + TypeScript dashboard (idea.md §8.1)
@@ -58,8 +59,9 @@ requirements.txt     Python dependencies (filled in as we build)
 python -m venv .venv
 .venv\Scripts\activate          # Windows; use `source .venv/bin/activate` on macOS/Linux
 pip install -r requirements.txt
-python scripts/setup_data.py status   # the GLASS extracts (211 MB) are not in git; follow what it prints
-python scripts/setup_data.py unpack glass_2024_extract.zip   # from a teammate's zip, or: ... build (needs the 13 GB raw file)
+python scripts/download_data.py glass   # the raw GLASS file (13.2 GB) into data/raw/; resumes if interrupted
+python scripts/setup_data.py build      # the 480 GLASS extracts (211 MB, not in git) from it; or: unpack <zip from a teammate>
+python scripts/setup_data.py status     # says what is missing
 python scripts/prepare_grid_map.py
 python scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01
 pytest
@@ -67,7 +69,7 @@ uvicorn api.main:app --reload   # API
 cd ui && npm install && npm run dev   # dashboard, in a second terminal
 ```
 
-Data download steps are in idea.md §13.
+The full setup steps and the dataset sources are in README.md; idea.md §13 has the same in short.
 
 ## Dependencies: fill them in as you build
 
