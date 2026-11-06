@@ -151,3 +151,22 @@ def test_portfolio_depot_count_uses_uploaded_total_without_model_or_retrieval(mo
         assert result["text"] == "This portfolio contains 2 depots in total."
         assert result["source"] == "template"
         assert result["warnings"] == []
+
+
+def test_portfolio_counts_only_the_requested_verdict(monkeypatch):
+    def unexpected(*args, **kwargs):
+        pytest.fail("Exact verdict counts must bypass models and retrieval")
+
+    monkeypatch.setattr("gridflex.portfolio_assistant.call_llm", unexpected)
+    monkeypatch.setattr("gridflex.portfolio_assistant.retrieve", unexpected)
+    run = {"complete": True, "total": 4, "sites": [
+        {**site("Depot A", "1181KJ", 12), "verdict": "fits_with_risk"},
+        {**site("Depot B", "2311BD", 20), "verdict": "does_not_fit"},
+        {**site("Depot C", "1315RA", 0), "verdict": "fits"},
+        {"site": "Depot D", "postcode": "2291AA", "vans": 4, "error": "No result"},
+    ]}
+    question = 'Out of the total number of depots, how many depots "FIts with risk" but not "Does not fit"'
+    for provider in ("groq", "ollama"):
+        result = ask_portfolio(run, question, [], provider)
+        assert result["text"] == '1 of 4 depots are marked "Fits with risk".'
+        assert result["warnings"] == []

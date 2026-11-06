@@ -32,6 +32,25 @@ def ask_portfolio(run, question, history, provider, compare_battery=None, curren
                 'evidence': [{'id': 'portfolio_count', 'text': text}], 'warnings': []}
 
     successful = [s for s in sites if 'error' not in s]
+    count_query = re.sub(r'[“”"‘’]', '', query)
+    count_query = ' '.join(count_query.split()).rstrip('?.!')
+    verdict_count = re.fullmatch(
+        r'(?:out of the total number of (?:depots|sites),? )?'
+        r'how many (?:depots|sites) (?:are (?:marked |rated )?|have verdict )?'
+        r'(fit(?:s)? with risk|does not fit|do not fit|fit(?:s)?(?: without risk)?)'
+        r'(?: but not does not fit)?(?: in (?:this|the) portfolio)?',
+        count_query,
+    )
+    if verdict_count:
+        label = verdict_count.group(1)
+        verdict = ('fits_with_risk' if 'with risk' in label else
+                   'does_not_fit' if 'not fit' in label else 'fits')
+        labels = {'fits_with_risk': 'Fits with risk', 'does_not_fit': 'Does not fit', 'fits': 'Fits'}
+        count = sum(site.get('verdict') == verdict for site in successful)
+        total = run.get('total', len(sites))
+        text = f'{count:,} of {total:,} depots are marked "{labels[verdict]}".'
+        return {'text': text, 'source': 'template',
+                'evidence': [{'id': 'portfolio_verdict_count', 'text': text}], 'warnings': []}
     ranking = sorted(successful, key=lambda s: (-s['breach_pct'], s['site'].casefold()))
     overview = [{'site': s['site'], 'postcode': s['postcode'], 'vans': s['vans'],
                  **({'error': s['error']} if 'error' in s else {
