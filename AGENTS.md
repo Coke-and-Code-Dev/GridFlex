@@ -45,7 +45,7 @@ AGENTS.md            this file
 data/README.md       GLASS dataset card
 data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, never commit
 data/processed/      small files the app reads, made from data/raw by scripts/setup_data.py (git-ignored)
-examples/            six ready-made scenarios (case_1 to case_6: bill, own meter data, portfolios); see examples/README.md
+examples/            seven ready-made scenarios (case_1 to case_7: bill, own meter data, portfolios, a 649-depot stress test); see examples/README.md
 scripts/             data scripts (download_data, setup_data, extract_glass, prepare_grid_map, prepare_liander_sbi)
 gridflex/            library code: profiles, grid_area, fleet, naive, scheduler, replay, reality, explain
 api/                 Python JSON API that calls gridflex/ (idea.md §8.1)

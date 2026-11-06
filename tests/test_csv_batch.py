@@ -157,3 +157,12 @@ def test_case_4_does_not_fit_until_a_battery_is_added():
     assert run_case("case_4_solar_with_gaps", meter=True)["verdict"] == "does_not_fit"
     report = run_case("case_4_solar_with_gaps", meter=True, battery_kwh=60, battery_kw=30)
     assert report["verdict"] == "fits" and report["days_over_pct"] == 0
+
+
+def test_case_7_stress_test_reads_with_every_sector_and_month():
+    # Reading is quick; simulating all 649 depots takes about five minutes, so that is run by hand.
+    sites = read_scenarios(case_text("case_7_649_depot_stress_test", "portfolio.csv"))
+    assert len(sites) == 649 and sum(site.vans for site in sites.values()) == 25_929
+    assert {site.load_source for site in sites.values()} == {"bill"}
+    assert len({site.category for site in sites.values()}) == 10 and len({site.month for site in sites.values()}) == 12
+
