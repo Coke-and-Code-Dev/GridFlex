@@ -83,19 +83,20 @@ def evidence_facts(result: ScheduleResult, report: ReplayReport, previous: Repla
     return facts
 
 
-def call_llm(system: str, user: str, schema: dict | None = None, provider: str = "groq") -> str:
+def call_llm(system: str, user: str, schema: dict | None = None, provider: str = "groq", timeout: float | None = None,
+             max_tokens: int = 1024, ollama_model: str = "qwen3.5:9b") -> str:
     """Call Groq on the server with structured output and bounded reasoning."""
     schema = schema or {"type": "object", "properties": {"fact_ids": {"type": "array", "items": {"type": "string"}}},
               "required": ["fact_ids"], "additionalProperties": False}
     if provider == "ollama":
         # The model and URL are fixed server-side: no browser-supplied host or model.
-        payload = json.dumps({"model": "qwen3.5:9b", "messages": [
+        payload = json.dumps({"model": ollama_model, "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": user}],
             "stream": False, "think": False, "format": schema,
-            "options": {"temperature": 0.2, "num_predict": 1024}}).encode()
+            "options": {"temperature": 0.2, "num_predict": max_tokens}}).encode()
         request = urllib.request.Request("http://127.0.0.1:11434/api/chat", data=payload,
                                          headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=120) as response:
+        with urllib.request.urlopen(request, timeout=120 if timeout is None else timeout) as response:
             result = json.load(response)
         if not result.get("done") or result.get("done_reason") != "stop":
             raise ValueError("Ollama response was incomplete")
@@ -105,7 +106,7 @@ def call_llm(system: str, user: str, schema: dict | None = None, provider: str =
     key = os.environ.get("GROQ_API_KEY") or dotenv_values(Path(__file__).resolve().parents[1] / ".env").get("GROQ_API_KEY")
     if not key:
         raise RuntimeError("Groq API key not configured")
-    client = Groq(api_key=key, timeout=12.0, max_retries=0)
+    client = Groq(api_key=key, timeout=12.0 if timeout is None else timeout, max_retries=0)
     try:
         response = client.chat.completions.create(
             model=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),

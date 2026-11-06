@@ -8,8 +8,11 @@ vi.mock("@/components/gridflex/Charts", () => ({ Heatmap: () => null, LoadChart:
 
 it("asks about the active portfolio using the chosen model", async () => {
   vi.mocked(api).mockResolvedValue({ text: "Depot B has the highest risk.", source: "ollama", evidence: [], warnings: [] });
-  render(<PortfolioAssistant runId={"a".repeat(32)} currentDepot="Depot A" />);
+  const onProviderChange = vi.fn();
+  const { rerender } = render(<PortfolioAssistant runId={"a".repeat(32)} currentDepot="Depot A" provider="groq" onProviderChange={onProviderChange} />);
   fireEvent.change(screen.getByLabelText("Explanation model"), { target: { value: "ollama" } });
+  expect(onProviderChange).toHaveBeenCalledWith("ollama");
+  rerender(<PortfolioAssistant runId={"a".repeat(32)} currentDepot="Depot A" provider="ollama" onProviderChange={onProviderChange} />);
   fireEvent.change(screen.getByLabelText("Ask about this portfolio"), { target: { value: "Which depot has the highest risk?" } });
   fireEvent.click(screen.getByRole("button", { name: "Ask" }));
   await waitFor(() => expect(screen.getByText("Depot B has the highest risk.")).toBeInTheDocument());

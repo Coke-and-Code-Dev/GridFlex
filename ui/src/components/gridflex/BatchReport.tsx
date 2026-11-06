@@ -136,8 +136,12 @@ function DepotDetails({ site }: { site: CompletedSite }) {
 }
 
 
-export function PortfolioAssistant({ runId, currentDepot }: { runId: string; currentDepot?: string }) {
-  const [provider, setProvider] = useState<ExplanationProvider>("groq");
+export function PortfolioAssistant({ runId, currentDepot, provider, onProviderChange }: {
+  runId: string;
+  currentDepot?: string;
+  provider: ExplanationProvider;
+  onProviderChange: (provider: ExplanationProvider) => void;
+}) {
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -161,8 +165,8 @@ export function PortfolioAssistant({ runId, currentDepot }: { runId: string; cur
     <h3 id="portfolio-assistant-heading" className="text-lg font-semibold">Ask about your portfolio</h3>
     <p className="text-sm text-muted-foreground">{currentDepot ? `Selected depot: ${currentDepot}` : "No depot selected. Ask about the full portfolio or name a depot."}</p>
     <p className="text-sm text-muted-foreground">Ask about a depot, postcode, fleet or the whole simulation.</p>
-    <label className="text-sm">Explanation model <select value={provider} onChange={(e) => setProvider(e.target.value as ExplanationProvider)} className="ml-2 rounded border border-border bg-background p-2">
-      <option value="groq">Groq (cloud)</option><option value="ollama">Qwen 9B (local)</option>
+    <label className="text-sm">Explanation model <select value={provider} onChange={(e) => onProviderChange(e.target.value as ExplanationProvider)} className="ml-2 rounded border border-border bg-background p-2">
+      <option value="groq">Groq (cloud)</option><option value="ollama">Qwen (local)</option>
     </select></label>
     <div aria-live="polite" className="space-y-3">{messages.map((message, i) => <div key={i}>
       <p className="font-semibold">{message.question}</p><p className="whitespace-pre-wrap">{message.text}</p>
