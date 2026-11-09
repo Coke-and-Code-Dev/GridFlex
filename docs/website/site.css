@@ -170,3 +170,20 @@ code,pre{font-family:var(--mono);font-size:.85rem}
   .pipeline-page .landing-enter :is(h2,.eyebrow){animation:landing-reveal 560ms cubic-bezier(.2,.7,.2,1) both}
   .pipeline-page .landing-enter h2{animation-delay:65ms}
 }
+
+/* Reveal the story in reading order as each block reaches the viewport. */
+.landing .story-copy{font-size:clamp(18px,1.7vw,22px);line-height:1.65;color:var(--muted)}
+.landing .story-copy strong{color:var(--text)}
+.landing .story-note{max-width:70ch;margin-top:24px}
+@media (prefers-reduced-motion: no-preference) {
+  .landing .section .landing-enter:not(:focus-within){
+    animation:story-rise 1.15s cubic-bezier(.22,.61,.36,1) both;
+  }
+  .landing .section .landing-enter:is(h2,.panel:nth-child(2)){animation-delay:65ms}
+  .landing .section .panel:nth-child(3).landing-enter{animation-delay:130ms}
+  .landing .section .panel:nth-child(4).landing-enter{animation-delay:195ms}
+  @keyframes story-rise {
+    from{opacity:.12;transform:translateY(22px)}
+    to{opacity:1;transform:none}
+  }
+}

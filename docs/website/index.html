@@ -33,7 +33,7 @@
         <h1>Can your business charge more vans on the grid connection it <em>already has?</em></h1>
         <p class="lede">GridFlex plans EV fleet charging inside the capacity your site already has, tests that plan on realistic days it has never seen, and explains the result in plain language. A person decides.</p>
         <div class="cta">
-          <a class="btn primary" href="pipeline/">Read the methodology</a>
+          <a class="btn primary" href="#schedule">Read the methodology</a>
           <a class="btn" href="#how">See the idea</a>
           <a class="btn video-link" href="watch/"><span class="play-icon" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg></span>Watch the video</a>
         </div>
@@ -48,24 +48,74 @@
     <section class="section" id="problem">
       <div class="wrap split">
         <div><p class="eyebrow">01 · The problem</p><h2>One connection. <em>Many demands.</em></h2></div>
-        <div class="lede"><p>Ten vans charging at 11 kW each draw 110 kW before the building uses anything. That already exceeds a 100 kW connection.</p><p>In a congested area, extra capacity may take time. If vans are parked for hours, charging them at different times can make better use of the connection.</p></div>
+        <div class="story-copy">
+          <p>In a congested part of the Dutch grid, a depot may have to wait for more capacity. Its building, equipment and EV chargers still share the same connection today.</p>
+          <p>Ten vans charging at 11 kW each draw <strong>110 kW</strong> before the building uses anything. On a <strong>100 kW</strong> connection, plugging them all in at once already exceeds the limit.</p>
+          <p>The question is how much energy the fleet needs <em>by departure</em>. If some vans can wait, the depot can spread charging across quieter hours.</p>
+        </div>
       </div>
     </section>
     <section class="section" id="how">
       <div class="wrap">
-        <p class="eyebrow">02 · How it works</p><h2>From postcode <em>to plan.</em></h2>
+        <p class="eyebrow">02 · The idea</p><h2>Use the hours <em>the vans are parked.</em></h2>
+        <p class="lede">GridFlex treats fleet charging as a timetable. It works out how to share the site’s available power between vehicles that have different deadlines, then checks where that timetable could fail.</p>
         <div class="grid">
-          <article class="panel"><h3>Locate</h3><p class="muted">Use the postcode to see congestion context. Enter the depot's connection limit separately.</p></article>
-          <article class="panel"><h3>Plan</h3><p class="muted">Use building load, van deadlines and optional battery settings to build one timetable.</p></article>
-          <article class="panel"><h3>Stress-test</h3><p class="muted">Replay that timetable against held-out demand to find breaches and flag charging shortfalls.</p></article>
-          <article class="panel"><h3>Explain</h3><p class="muted">Review the verdict, compare changes and ask about the evidence. A person decides what to do.</p></article>
+          <article class="panel"><h3>Locate</h3><p class="muted">Look up local grid congestion by postcode. Enter the depot’s connection limit separately.</p></article>
+          <article class="panel"><h3>Plan</h3><p class="muted">Use building demand and each van’s departure time to propose a charging schedule.</p></article>
+          <article class="panel"><h3>Stress-test</h3><p class="muted">Replay that fixed schedule against demand the planner did not use.</p></article>
+          <article class="panel"><h3>Explain</h3><p class="muted">Show the evidence behind the verdict so an operator can decide what to change.</p></article>
         </div>
-        <div class="actions"><a class="btn primary" href="pipeline/">Follow each stage</a></div>
+      </div>
+    </section>
+    <section class="section" id="inputs">
+      <div class="wrap">
+        <p class="eyebrow">03 · Set up the depot</p><h2>Start with <em>the site you have.</em></h2>
+        <p class="lede">The postcode describes the local grid. The site’s actual connection limit is the number the scheduler uses. If the depot has confirmed extra capacity during certain hours, enter that as a separate allowance.</p>
+        <div class="grid">
+          <article class="panel"><h3>Building demand</h3><p class="muted">Upload quarter-hour meter readings when available. Otherwise, GridFlex estimates the daily shape from synthetic GLASS profiles for the sector and month, and scales it to the electricity bill.</p></article>
+          <article class="panel"><h3>Fleet requirements</h3><p class="muted">Set each van’s arrival, departure, energy needed in kWh and charging power in kW. A setup CSV can fill in the site and fleet details.</p></article>
+          <article class="panel"><h3>Optional site battery</h3><p class="muted">Enter its storage capacity in kWh and its charge and discharge power in kW. That lets the planner test whether stored energy can help at busy times.</p></article>
+        </div>
+        <p class="muted story-note">The capacity map gives a dated view of local congestion and queues. For supported sectors, Liander reference profiles let you compare the shape of the GLASS estimate with measured demand.</p>
+      </div>
+    </section>
+    <section class="section" id="schedule">
+      <div class="wrap split">
+        <div><p class="eyebrow">04 · Make a schedule</p><h2>Give each van <em>a time to charge.</em></h2></div>
+        <div class="story-copy">
+          <p>The OR-Tools solver divides the planning window into 15-minute slots. It allocates power only while a van is parked and respects the charger rating, the site limit and any battery constraints.</p>
+          <p>It first reduces unavoidable overload, then unmet energy, then peak demand and battery cycling. When the site cannot supply enough energy, the schedule shows which vans will be short and by how much.</p>
+          <p>The demand chart compares the planned grid draw with charging on arrival. The van heatmap shows exactly which slots each vehicle gets.</p>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="stress-test">
+      <div class="wrap">
+        <p class="eyebrow">05 · Stress-test</p><h2>See where the same plan <em>breaks.</em></h2>
+        <p class="lede">GridFlex separates planning and test data by customer for GLASS or by date for meter readings. It keeps the charging timetable fixed and replays it against those unseen building loads.</p>
+        <div class="grid">
+          <article class="panel"><h3>How often?</h3><p class="muted">A test window counts as a breach if even one quarter hour goes above the connection limit.</p></article>
+          <article class="panel"><h3>How much?</h3><p class="muted">Worst overshoot shows the largest excess in kW. Unmet energy shows how many kWh the vans still need at departure.</p></article>
+          <article class="panel"><h3>When?</h3><p class="muted">The breach-timing chart shows when the limit is exceeded most often. That can differ from the time of the largest spike.</p></article>
+        </div>
+        <p class="muted story-note">These results describe the selected test windows. A run with zero observed breaches can still face different conditions at a real depot.</p>
+      </div>
+    </section>
+    <section class="section" id="explain">
+      <div class="wrap">
+        <p class="eyebrow">06 · Explain and decide</p><h2>Turn the result <em>into a decision.</em></h2>
+        <p class="lede">The solver calculates the plan and the replay measures it. The explanation assistant uses those computed facts to answer questions such as “Which vans are short?” or “When did we go over the limit?”</p>
+        <div class="grid">
+          <article class="panel"><h3>Fits</h3><p class="muted">The fleet receives its requested charge and the test-window breach rate stays within your tolerance.</p></article>
+          <article class="panel"><h3>Fits with risk</h3><p class="muted">The fleet receives its charge, but too many test windows breach the limit.</p></article>
+          <article class="panel"><h3>Does not fit</h3><p class="muted">At least one van leaves short. Compare what happens with later departures, extra capacity or a different battery setting.</p></article>
+        </div>
+        <p class="story-note">A person reviews the evidence and chooses what to do. GridFlex recommends a plan, and the depot confirms capacity with its grid operator before acting.</p>
       </div>
     </section>
     <section class="section" id="evidence">
       <div class="wrap">
-        <p class="eyebrow">03 · Worked example</p>
+        <p class="eyebrow">07 · Worked example</p>
         <h2>What changed at a <em>Groningen depot?</em></h2>
         <p class="lede">This synthetic example uses 14 vans, a 60 kW connection and a sample meter file. The first run leaves vans short. The second asks whether an on-site battery changes the result.</p>
         <div class="grid">
@@ -83,22 +133,23 @@
     </section>
     <section class="section" id="portfolio">
       <div class="wrap split">
-        <div><p class="eyebrow">04 · Multi-depot planning</p><h2>One fleet. <em>Different limits.</em></h2></div>
+        <div><p class="eyebrow">08 · Multi-depot planning</p><h2>One fleet. <em>Different limits.</em></h2></div>
         <div>
           <p class="lede">A fleet manager may have room to electrify one depot while another runs out of capacity. Upload a portfolio CSV to model each depot with its own fleet, building demand and connection limit.</p>
-          <p class="muted">Compare verdicts, open an individual timetable, and export a PDF. The example portfolio includes a depot with room to charge, one that falls short, and one that charges fully but breaches the limit too often.</p>
+          <p class="muted story-note">Compare verdicts, open an individual timetable, and export a PDF. The five-depot example includes all three verdicts. The larger synthetic stress test contains 649 depots and 25,929 vans.</p>
+          <p class="muted story-note">For portfolio questions, the backend retrieves the relevant depot results or calculates a ranking from the saved run. The assistant can explain those results using Groq or local Qwen.</p>
           <a class="btn" href="docs/#examples">Explore the example portfolios</a>
         </div>
       </div>
     </section>
     <section class="section" id="watch">
       <div class="wrap split">
-        <div><p class="eyebrow">05 · Watch</p><h2>The GridFlex <em>pitch.</em></h2><p class="lede">See the grid constraint, the charging problem and how GridFlex helps a depot plan around both.</p><a class="btn primary" href="watch/">Watch the video</a></div>
+        <div><p class="eyebrow">09 · Watch</p><h2>The GridFlex <em>pitch.</em></h2><p class="lede">See the grid constraint, the charging problem and how GridFlex helps a depot plan around both.</p><a class="btn primary" href="watch/">Watch the video</a></div>
         <a href="watch/" aria-label="Watch the GridFlex pitch"><img src="assets/gridflex-fleet-banner.png" alt="GridFlex fleet banner showing ten electric delivery vans" width="900" height="300" loading="lazy" style="display:block;width:100%;height:auto;border-radius:12px"></a>
       </div>
     </section>
     <section class="section" id="mission">
-      <div class="wrap"><p class="eyebrow">06 · Try GridFlex</p><h2>Run a depot <em>of your own.</em></h2><p class="lede">Start with a single depot or try a portfolio CSV. Use the synthetic examples to explore the dashboard, or bring meter readings to model your own building demand.</p><div class="actions"><a class="btn primary" href="docs/#quick-start">Quick start</a><a class="btn" href="https://github.com/Coke-and-Code-Dev/GridFlex">Source on GitHub ↗</a></div></div>
+      <div class="wrap"><p class="eyebrow">10 · Try GridFlex</p><h2>Run a depot <em>of your own.</em></h2><p class="lede">Start with a single depot or try a portfolio CSV. Use the synthetic examples to explore the dashboard, or bring meter readings to model your own building demand.</p><div class="actions"><a class="btn primary" href="docs/#quick-start">Quick start</a><a class="btn" href="https://github.com/Coke-and-Code-Dev/GridFlex">Source on GitHub ↗</a></div></div>
     </section>
   </main>
   <footer class="footer"><div class="wrap"><span>GridFlex</span><a href="https://github.com/Coke-and-Code-Dev/GridFlex">Source on GitHub ↗</a></div></footer>
