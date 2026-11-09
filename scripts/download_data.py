@@ -130,7 +130,7 @@ def fetch(item: Item, folder: Path, force: bool = False, attempts: int = 6) -> P
                 break
             if exc.code in (400, 401, 403, 404, 410):
                 sys.exit(f"\n  {item.name}: the server answered {exc.code} for {item.url}\n"
-                         "  The link may have moved; see data/README.md and idea.md section 13 for the source page.")
+                         "  The link may have moved; see data/README.md for the source page.")
             problem = f"HTTP {exc.code}"
         except (urllib.error.URLError, OSError, http.client.HTTPException) as exc:
             problem = str(getattr(exc, "reason", exc)) or type(exc).__name__

@@ -1,4 +1,4 @@
-"""Reality check: do GLASS's synthetic days look like Liander's real 2023 profiles? (idea.md 5.10)
+"""Reality check: do GLASS's synthetic days look like Liander's real 2023 profiles?
 
 For one category, month and level, build the typical working day of GLASS and of a Liander
 profile, rescale both to the same mean, then compare the median shapes (correlation and mean
@@ -23,7 +23,7 @@ import polars as pl
 
 from gridflex.profiles import DEFAULT_DATA_DIR, N_SLOTS, load_condition
 
-# Liander profiles used per GLASS category (idea.md 4.3). SBI 46 (wholesale) has no usable
+# Liander profiles used per GLASS category. SBI 46 (wholesale) has no usable
 # profile (no time series, and a warning), so category 008 falls back to the logistics K&O profile.
 SOURCES_FOR_CATEGORY: dict[str, tuple[str, ...]] = {
     "009": ("52", "49", "KO_LOGISTIEK"),

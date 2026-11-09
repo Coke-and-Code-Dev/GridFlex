@@ -2,7 +2,7 @@
 
 Reads the compact files written by scripts/prepare_grid_map.py (data/processed/grid_*.parquet).
 The map is indicative and a snapshot, per supply area and not per connection: always show
-`data_date` and tell the user to check with their grid operator (idea.md 4.2).
+`data_date` and tell the user to check with their grid operator.
 
 Anything the map leaves empty comes back as None, never as a guess.
 """

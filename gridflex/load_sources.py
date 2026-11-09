@@ -1,4 +1,4 @@
-"""Where the building's own electricity use comes from (idea.md 5.2a).
+"""Where the building's own electricity use comes from.
 
 Three sources, from best to fallback:
 - "meter":   the site's own 15-minute meter readings, uploaded as CSV.

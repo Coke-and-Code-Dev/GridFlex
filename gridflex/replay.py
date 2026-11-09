@@ -1,6 +1,6 @@
 """Replay a fixed charging plan on held-out test windows and flag the risk.
 
-See idea.md section 5.8. For every test window W_i[t]:
+For every test window W_i[t]:
 
     grid_i[t] = max(0, W_i[t] + S[t] + ch[t] - dis[t])
 
@@ -8,7 +8,7 @@ where S[t] is the vans' total charging power and ch/dis are the battery's. A slo
 over the limit when grid_i[t] > C[t] (exactly at the limit is fine).
 
 Units: kW, 15-minute slots, 96 per window. `days_over_pct` and `baseline_alone_over_pct`
-are percentages (0-100); `tolerance` is a fraction (0.05 = 5%), as in idea.md 7.3.
+are percentages (0-100); `tolerance` is a fraction (0.05 = 5%), as used by the scheduler.
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ Verdict = Literal["fits", "fits_with_risk", "does_not_fit"]
 
 
 class SchedulePlan(Protocol):
-    """The parts of scheduler.ScheduleResult that replay needs (idea.md 7.3)."""
+    """The parts of scheduler.ScheduleResult that replay needs."""
 
     power: np.ndarray  # (n_vans, 96) kW
     battery_charge: np.ndarray  # (96,) kW
@@ -38,7 +38,7 @@ class SchedulePlan(Protocol):
 
 @dataclass
 class ImmediateReplay:
-    """Immediate-charging comparison (idea.md 5.7): the same flags, without a plan."""
+    """Immediate-charging comparison: the same flags, without a plan."""
 
     days_over_pct: float
     worst_overshoot_kw: float
@@ -113,7 +113,7 @@ def replay(
 ) -> ReplayReport:
     """Stress-test a fixed plan on the test windows and return the flags and verdict.
 
-    Verdict (idea.md 5.8): does_not_fit if any van is short; otherwise fits_with_risk if the
+    Verdict: does_not_fit if any van is short; otherwise fits_with_risk if the
     share of days over the limit is above `tolerance`; otherwise fits.
     """
     if len(test) == 0:

@@ -41,14 +41,14 @@ def test_model_receives_compact_ranking_and_project_context(monkeypatch):
             return json.dumps({'site_ids': [], 'compare_battery': False})
         return json.dumps({'answer': 'Depot B has a 20.00% breach rate.', 'fact_ids': ['portfolio']})
     monkeypatch.setattr('gridflex.portfolio_assistant.call_llm', llm)
-    monkeypatch.setattr('gridflex.portfolio_assistant.retrieve', lambda q: [{'source': 'idea.md', 'text': 'Synthetic held-out windows.'}])
+    monkeypatch.setattr('gridflex.portfolio_assistant.retrieve', lambda q: [{'source': 'README.md', 'text': 'Synthetic held-out windows.'}])
     result = ask_portfolio({'total': 2, 'complete': True, 'sites': [site('Depot A','1181KJ',3), site('Depot B','2311BD',20)]},
                            'Which depot has the highest risk?', [], 'ollama')
     assert result['source'] == 'ollama' and 'Depot B' in result['text']
     assert len(calls) == 1
     evidence = calls[-1]['facts']['portfolio']
     assert evidence.index('Depot B') < evidence.index('Depot A')
-    assert calls[-1]['facts']['document_0'].startswith('idea.md:')
+    assert calls[-1]['facts']['document_0'].startswith('README.md:')
 
 
 def test_duplicate_postcode_keeps_both_sites_and_never_runs_comparison(monkeypatch):

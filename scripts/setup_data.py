@@ -35,14 +35,14 @@ RAW_LIANDER = REPO_ROOT / "data" / "raw" / "liander_sbi"
 DEFAULT_ZIP = REPO_ROOT / "data" / "processed_data.zip"
 MANIFEST = "MANIFEST.sha256"
 
-# GLASS: fleet-depot sectors plus the operating-hours classes (a generic fallback), see idea.md section 4.5.
+# GLASS: fleet-depot sectors plus the operating-hours classes (a generic fallback).
 CATEGORIES = ["009", "008", "006", "007", "015", "004", "E3A", "E3B", "E3C", "E3D"]
 MONTHS = [f"2024-{month:02d}" for month in range(1, 13)]
 LEVELS = [0, 1, 2, 3]
 SAMPLES = 40
 # Capacity map: the files prepare_grid_map.py writes.
 GRID_FILES = ["grid_pc6.parquet", "grid_areas.parquet", "grid_projects.parquet", "grid_map_meta.json"]
-# Liander: the SBI profiles of the logistics sectors (idea.md section 4.3), every month of 2023.
+# Liander: the SBI profiles of the logistics sectors, every month of 2023.
 LIANDER_CODES = ["49", "52", "KO_LOGISTIEK"]
 LIANDER_MONTHS = [f"2023-{month:02d}" for month in range(1, 13)]
 LIANDER_META = "liander_sbi_meta.json"

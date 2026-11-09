@@ -1,6 +1,6 @@
 """Load GLASS extracts, build noon-to-noon windows, split by customer, cautious baseline.
 
-See idea.md sections 5.2-5.4 and 7.3. Rules that matter (AGENTS.md):
+Key data-handling rules:
 - GLASS rows only join into a continuous series within the same scenario, category,
   year-month, level_id and sample_id. Windows never cross a month or a sample.
 - The planning/test split is by `sample_id`, never by day.
@@ -196,7 +196,7 @@ def build_windows(df: pl.DataFrame, start_hour: int = 12, working_days_only: boo
 
 
 def split_by_sample(windows: Windows, test_share: float = 0.3, seed: int = 42) -> tuple[Windows, Windows]:
-    """Split into (planning, test) by `sample_id`, never by day (idea.md 5.3)."""
+    """Split into (planning, test) by `sample_id`, never by day."""
     if not 0 < test_share < 1:
         raise ValueError("test_share must be between 0 and 1")
     ids = np.unique(windows.sample_ids)
