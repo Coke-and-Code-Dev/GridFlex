@@ -240,6 +240,4 @@ Create a descriptive branch and open a pull request to `main` with the problem, 
 
 ## Team
 
-Built for the **EY AI Week Hackathon** in Amsterdam, 5–6 November 2026.
-
-[Smriti Sridhar](https://github.com/smritis21) (original concept), [Joshua Varghese Thomji](https://github.com/josh1221wa) and [Sunil Parameswaran](https://github.com/SunilParameswaran).
+[Smriti Sridhar](https://github.com/smritis21), [Joshua Varghese Thomji](https://github.com/josh1221wa) and [Sunil Parameswaran](https://github.com/SunilParameswaran).
