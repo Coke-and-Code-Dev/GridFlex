@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/gridflex-banner.png" alt="GridFlex. Illustrative ten-van charging comparison against a 100 kW site limit." width="100%">
+  <img src="docs/images/gridflex-banner.png" alt="GridFlex. Ten yellow electric delivery vans at a depot, with two plugged in." width="100%">
 </p>
 
 <p align="center">
