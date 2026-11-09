@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="ui/public/gridflex-mark.png" alt="GridFlex logo" width="210">
+  <img src="docs/images/gridflex-banner.png" alt="GridFlex. Illustrative ten-van charging comparison against a 100 kW site limit." width="100%">
 </p>
 
 <p align="center">
