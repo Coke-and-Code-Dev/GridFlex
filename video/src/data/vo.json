@@ -152,162 +152,177 @@
  },
  "queue": {
   "file": "vo/queue.mp3",
-  "duration": 14.99,
+  "duration": 16.74,
   "words": [
    {
     "w": "For",
     "start": 0,
-    "end": 0.197
+    "end": 0.209
    },
    {
     "w": "a",
-    "start": 0.244,
-    "end": 0.267
+    "start": 0.267,
+    "end": 0.302
    },
    {
     "w": "business,",
-    "start": 0.325,
-    "end": 0.917
+    "start": 0.36,
+    "end": 0.952
    },
    {
     "w": "that",
-    "start": 1.103,
-    "end": 1.265
+    "start": 1.115,
+    "end": 1.289
    },
    {
     "w": "means",
-    "start": 1.324,
-    "end": 1.602
+    "start": 1.347,
+    "end": 1.672
    },
    {
     "w": "no",
-    "start": 1.66,
-    "end": 1.846
+    "start": 1.834,
+    "end": 2.101
    },
    {
     "w": "bigger",
-    "start": 1.927,
-    "end": 2.171
+    "start": 2.206,
+    "end": 2.473
    },
    {
     "w": "connection.",
-    "start": 2.218,
-    "end": 2.926
+    "start": 2.531,
+    "end": 3.239
    },
    {
     "w": "In",
-    "start": 3.39,
-    "end": 3.518
+    "start": 3.704,
+    "end": 3.831
    },
    {
     "w": "Amsterdam,",
-    "start": 3.576,
-    "end": 4.307
+    "start": 3.889,
+    "end": 4.656
    },
    {
     "w": "eighty-seven",
-    "start": 4.528,
-    "end": 5.12
+    "start": 4.876,
+    "end": 5.526
    },
    {
     "w": "requests",
-    "start": 5.178,
-    "end": 5.619
+    "start": 5.584,
+    "end": 6.095
+   },
+   {
+    "w": "for",
+    "start": 6.153,
+    "end": 6.269
+   },
+   {
+    "w": "more",
+    "start": 6.327,
+    "end": 6.478
+   },
+   {
+    "w": "capacity",
+    "start": 6.513,
+    "end": 6.989
    },
    {
     "w": "are",
-    "start": 5.654,
-    "end": 5.735
+    "start": 7.047,
+    "end": 7.14
    },
    {
     "w": "waiting,",
-    "start": 5.759,
-    "end": 6.235
+    "start": 7.163,
+    "end": 7.686
    },
    {
     "w": "and",
-    "start": 6.525,
-    "end": 6.664
+    "start": 8.034,
+    "end": 8.173
    },
    {
     "w": "relief",
-    "start": 6.722,
-    "end": 7.094
+    "start": 8.231,
+    "end": 8.568
    },
    {
     "w": "is",
-    "start": 7.233,
-    "end": 7.384
+    "start": 8.824,
+    "end": 8.975
    },
    {
     "w": "not",
-    "start": 7.442,
-    "end": 7.57
-   },
-   {
-    "w": "expected",
-    "start": 7.628,
-    "end": 8.092
-   },
-   {
-    "w": "until",
-    "start": 8.382,
-    "end": 8.661
-   },
-   {
-    "w": "twenty",
-    "start": 8.719,
+    "start": 9.033,
     "end": 9.16
    },
    {
+    "w": "expected",
+    "start": 9.207,
+    "end": 9.729
+   },
+   {
+    "w": "until",
+    "start": 10.019,
+    "end": 10.31
+   },
+   {
+    "w": "twenty",
+    "start": 10.356,
+    "end": 10.774
+   },
+   {
     "w": "twenty-seven.",
-    "start": 9.451,
-    "end": 10.356
+    "start": 11.064,
+    "end": 11.923
    },
    {
     "w": "Meanwhile,",
-    "start": 10.995,
-    "end": 11.656
+    "start": 12.562,
+    "end": 13.293
    },
    {
     "w": "every",
-    "start": 12.005,
-    "end": 12.295
+    "start": 13.479,
+    "end": 13.781
    },
    {
     "w": "fleet",
-    "start": 12.365,
-    "end": 12.666
+    "start": 13.851,
+    "end": 14.141
    },
    {
     "w": "is",
-    "start": 12.783,
-    "end": 12.934
+    "start": 14.28,
+    "end": 14.431
    },
    {
     "w": "being",
-    "start": 12.992,
-    "end": 13.189
+    "start": 14.489,
+    "end": 14.698
    },
    {
     "w": "told",
-    "start": 13.247,
-    "end": 13.584
+    "start": 14.756,
+    "end": 15.105
    },
    {
     "w": "to",
-    "start": 13.769,
-    "end": 13.886
+    "start": 15.325,
+    "end": 15.441
    },
    {
     "w": "go",
-    "start": 13.944,
-    "end": 14.048
+    "start": 15.499,
+    "end": 15.708
    },
    {
     "w": "electric.",
-    "start": 14.106,
-    "end": 14.954
+    "start": 15.848,
+    "end": 16.718
    }
   ]
  },
