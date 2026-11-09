@@ -171,4 +171,4 @@ Create a descriptive branch and open a pull request to `main` with the problem, 
 
 ## Team
 
-[Smriti Sridhar](https://github.com/smritis21), [Joshua Varghese Thomji](https://github.com/josh1221wa) and [Sunil Parameswaran](https://github.com/SunilParameswaran).
+**Team Coke & Code Dev** — [GitHub Organization](https://github.com/Coke-and-Code-Dev/)
