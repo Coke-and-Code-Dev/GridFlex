@@ -11,6 +11,10 @@
 <link rel="stylesheet" href="site.css">
 <style>
 /* Layout: one long editorial page — dark charcoal ground, electric-yellow accent, coral only for limits and breaches. */
+#watch{scroll-margin-top:80px}
+#watch video{display:block;width:min(100%,960px);aspect-ratio:16/9;margin-top:24px;background:#000;border:1px solid var(--border);border-radius:12px}
+@media (max-width:760px){#watch{scroll-margin-top:0}}
+
 /* hero */
 .hero{padding-block:clamp(70px,10vw,140px) clamp(60px,8vw,110px);border-top:0;position:relative;overflow:hidden}
 .hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--bg-2) 1px,transparent 1px),linear-gradient(90deg,var(--bg-2) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse at 30% 40%,#000 0,transparent 70%);opacity:.9;pointer-events:none}
@@ -146,7 +150,7 @@ footer a{color:var(--muted)}
   <div class="wrap">
     <a class="brand" href="#top" aria-label="GridFlex home"><img src="ui/public/gridflex-mark.png" alt="" width="40" height="27">GridFlex</a>
     <nav class="main" aria-label="Sections">
-      <a href="watch/">Watch</a>
+      <a href="#watch">Watch</a>
       <a href="#problem">The problem</a>
       <a href="#idea">The idea</a>
       <a href="#how">How it works</a>
@@ -166,7 +170,7 @@ footer a{color:var(--muted)}
     <div class="cta">
       <a class="btn primary" href="#how">Read the methodology</a>
       <a class="btn" href="#idea">See the idea</a>
-      <a class="btn video-link" href="watch/"><span class="play-icon" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg></span>Watch the video</a>
+      <a class="btn video-link" href="#watch"><span class="play-icon" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg></span>Watch the video</a>
     </div>
     <div class="hero-strip" aria-label="At a glance">
       <span><b>Locate</b> grid congestion by postcode</span>
@@ -174,6 +178,18 @@ footer a{color:var(--muted)}
       <span><b>Stress-test</b> on unseen days</span>
       <span><b>Explain</b> · a person decides</span>
     </div>
+  </div>
+</section>
+
+<section id="watch" aria-labelledby="watch-title">
+  <div class="wrap">
+    <p class="eyebrow">Watch</p>
+    <h2 id="watch-title">The GridFlex pitch</h2>
+    <p class="lede">See why charging on arrival can overwhelm a depot's connection, and how GridFlex plans around the power the site already has.</p>
+    <video controls playsinline preload="none" aria-labelledby="watch-title">
+      <source src="media/gridflex-pitch.mp4" type="video/mp4">
+      <a href="media/gridflex-pitch.mp4">Open the GridFlex pitch video</a>
+    </video>
   </div>
 </section>
 
