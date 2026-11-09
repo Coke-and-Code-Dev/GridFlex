@@ -72,6 +72,20 @@ nav.main a:hover{color:var(--fg)}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:var(--r,4px);font-weight:600;font-size:15px;text-decoration:none;border:1.5px solid var(--fg)}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
 .btn:hover{transform:translateY(-1px)}
+.btn.video-link{border-color:var(--border);color:var(--fg)}
+.btn.video-link:hover{border-color:var(--primary)}
+.play-icon{display:grid;place-items:center;width:26px;height:26px;border:1px solid var(--primary);border-radius:50%;color:var(--primary)}
+.play-icon svg{width:10px;height:10px;margin-left:2px;fill:currentColor}
+.pitch-dialog{width:min(960px,calc(100% - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--border);border-radius:10px;background:var(--bg-2);color:var(--fg);box-shadow:0 24px 90px #000b;overflow:auto}
+.pitch-dialog::backdrop{background:rgb(0 0 0 / .82);backdrop-filter:blur(6px)}
+.pitch-header{display:flex;align-items:start;justify-content:space-between;gap:20px;padding:24px 28px 18px}
+.pitch-header .eyebrow{margin:0 0 4px;font-size:11px}
+.pitch-header h2{font-size:clamp(26px,4vw,36px);margin:0}
+.pitch-close{flex:none;display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--border);border-radius:50%;background:transparent;color:var(--fg);font:inherit;font-size:25px;line-height:1;cursor:pointer}
+.pitch-close:hover{border-color:var(--primary);color:var(--primary)}
+.pitch-dialog video{display:block;width:100%;max-height:65vh;background:#000;aspect-ratio:16 / 9;object-fit:contain}
+.pitch-note{padding:14px 28px 18px;margin:0;color:var(--dim);font-family:var(--f-mono);font-size:12px}
+@media (max-width:560px){.pitch-header{padding:20px 18px 16px}.pitch-note{padding:12px 18px 16px}}
 .hero-strip{margin-top:56px;display:flex;flex-wrap:wrap;gap:10px 28px;font-family:var(--f-mono);font-size:13px;color:var(--dim)}
 .hero-strip b{color:var(--fg);font-weight:500}
 
@@ -211,6 +225,7 @@ footer a{color:var(--muted)}
     <div class="cta">
       <a class="btn primary" href="#how">Read the methodology</a>
       <a class="btn" href="#idea">See the idea</a>
+      <a class="btn video-link" href="media/gridflex-pitch.mp4" id="watch-pitch"><span class="play-icon" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg></span>Watch the video</a>
     </div>
     <div class="hero-strip" aria-label="At a glance">
       <span><b>Locate</b> grid congestion by postcode</span>
@@ -220,6 +235,18 @@ footer a{color:var(--muted)}
     </div>
   </div>
 </section>
+
+<dialog class="pitch-dialog" id="pitch-dialog" aria-labelledby="pitch-title">
+  <div class="pitch-header">
+    <div><p class="eyebrow">GridFlex AI · The story</p><h2 id="pitch-title">A smarter way to charge.</h2></div>
+    <button class="pitch-close" type="button" aria-label="Close video">&times;</button>
+  </div>
+  <video controls playsinline preload="none">
+    <source src="media/gridflex-pitch.mp4" type="video/mp4">
+    Your browser does not support embedded video. <a href="media/gridflex-pitch.mp4">Download the video</a>.
+  </video>
+  <p class="pitch-note">GridFlex AI · Plan. Stress-test. Explain.</p>
+</dialog>
 
 <section id="problem">
   <div class="wrap">
@@ -447,6 +474,19 @@ footer a{color:var(--muted)}
 
 <script>
 (function(){
+  var pitchLink=document.getElementById('watch-pitch');
+  var pitchDialog=document.getElementById('pitch-dialog');
+  var pitchVideo=pitchDialog.querySelector('video');
+  if(typeof pitchDialog.showModal==='function'){
+    pitchLink.addEventListener('click',function(event){
+      event.preventDefault();
+      pitchDialog.showModal();
+      var playback=pitchVideo.play();
+      if(playback && playback.catch) playback.catch(function(){});
+    });
+    pitchDialog.querySelector('.pitch-close').addEventListener('click',function(){pitchDialog.close()});
+    pitchDialog.addEventListener('close',function(){pitchVideo.pause();pitchVideo.currentTime=0});
+  }
   document.documentElement.classList.add('js');
   var NS='http://www.w3.org/2000/svg';
   function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
