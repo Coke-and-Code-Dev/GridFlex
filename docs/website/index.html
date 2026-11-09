@@ -63,14 +63,42 @@
         <div class="actions"><a class="btn primary" href="pipeline/">Follow each stage</a></div>
       </div>
     </section>
+    <section class="section" id="evidence">
+      <div class="wrap">
+        <p class="eyebrow">03 · Worked example</p>
+        <h2>What changed at a <em>Groningen depot?</em></h2>
+        <p class="lede">This synthetic example uses 14 vans, a 60 kW connection and a sample meter file. The first run leaves vans short. The second asks whether an on-site battery changes the result.</p>
+        <div class="grid">
+          <article class="panel">
+            <h3>Without a battery</h3>
+            <p><strong>Does not fit.</strong> The schedule leaves 21 kWh unmet. About 71% of the held-out windows exceed the connection limit.</p>
+          </article>
+          <article class="panel">
+            <h3>With a 60 kWh / 30 kW battery</h3>
+            <p><strong>Fits in this example.</strong> The re-run meets the fleet's energy request, with no breaches in the selected test windows.</p>
+          </article>
+        </div>
+        <div class="actions"><a class="btn primary" href="docs/#examples">Try the example</a><a class="btn" href="pipeline/#stress-test">How we test a plan</a></div>
+      </div>
+    </section>
+    <section class="section" id="portfolio">
+      <div class="wrap split">
+        <div><p class="eyebrow">04 · Multi-depot planning</p><h2>One fleet. <em>Different limits.</em></h2></div>
+        <div>
+          <p class="lede">A fleet manager may have room to electrify one depot while another runs out of capacity. Upload a portfolio CSV to model each depot with its own fleet, building demand and connection limit.</p>
+          <p class="muted">Compare verdicts, open an individual timetable, and export a PDF. The example portfolio includes a depot with room to charge, one that falls short, and one that charges fully but breaches the limit too often.</p>
+          <a class="btn" href="docs/#examples">Explore the example portfolios</a>
+        </div>
+      </div>
+    </section>
     <section class="section" id="watch">
       <div class="wrap split">
-        <div><p class="eyebrow">03 · Watch</p><h2>The GridFlex <em>pitch.</em></h2><p class="lede">See the grid constraint, the charging problem and how GridFlex helps a depot plan around both.</p><a class="btn primary" href="watch/">Watch the video</a></div>
+        <div><p class="eyebrow">05 · Watch</p><h2>The GridFlex <em>pitch.</em></h2><p class="lede">See the grid constraint, the charging problem and how GridFlex helps a depot plan around both.</p><a class="btn primary" href="watch/">Watch the video</a></div>
         <a href="watch/" aria-label="Watch the GridFlex pitch"><img src="assets/gridflex-fleet-banner.png" alt="GridFlex fleet banner showing ten electric delivery vans" width="900" height="300" loading="lazy" style="display:block;width:100%;height:auto;border-radius:12px"></a>
       </div>
     </section>
     <section class="section" id="mission">
-      <div class="wrap"><p class="eyebrow">04 · Try GridFlex</p><h2>Run a depot <em>of your own.</em></h2><p class="lede">Start with a single depot or try a portfolio CSV. Use the synthetic examples to explore the dashboard, or bring meter readings to model your own building demand.</p><div class="actions"><a class="btn primary" href="docs/#quick-start">Quick start</a><a class="btn" href="https://github.com/Coke-and-Code-Dev/GridFlex">Source on GitHub ↗</a></div></div>
+      <div class="wrap"><p class="eyebrow">06 · Try GridFlex</p><h2>Run a depot <em>of your own.</em></h2><p class="lede">Start with a single depot or try a portfolio CSV. Use the synthetic examples to explore the dashboard, or bring meter readings to model your own building demand.</p><div class="actions"><a class="btn primary" href="docs/#quick-start">Quick start</a><a class="btn" href="https://github.com/Coke-and-Code-Dev/GridFlex">Source on GitHub ↗</a></div></div>
     </section>
   </main>
   <footer class="footer"><div class="wrap"><span>GridFlex</span><a href="https://github.com/Coke-and-Code-Dev/GridFlex">Source on GitHub ↗</a></div></footer>

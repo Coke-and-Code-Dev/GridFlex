@@ -27,28 +27,48 @@
   <main id="main" class="wrap">
     <div class="page-intro"><p class="eyebrow">Docs</p><h1>Documentation</h1><p class="lede">Run GridFlex locally, load a depot or portfolio, and understand what the simulation tells you.</p></div>
     <div class="docs-layout">
-      <aside><nav aria-label="On this page"><a href="#quick-start">Quick start</a><a href="#examples">Example data</a><a href="#results">Interpreting results</a><a href="#sources">Data and sources</a><a href="#guides">Repository guides</a></nav></aside>
+      <aside><nav aria-label="On this page"><a href="#quick-start">Quick start</a><a href="#examples">Example data</a><a href="#results">Interpreting results</a><a href="#sources">Data and sources</a><a href="#guides">Repository guides</a><a href="#troubleshooting">Troubleshooting</a></nav></aside>
       <div>
         <section class="stage" id="quick-start"><h2>Quick start</h2><p>Use Python 3.11, Node.js LTS and Git. Install the backend from the repository root.</p>
 <pre><code>git clone https://github.com/Coke-and-Code-Dev/GridFlex.git
 cd GridFlex
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt</code></pre>
+python -m pip install -r src/requirements.txt</code></pre>
           <p>On Windows PowerShell, activate with <code>.venv\Scripts\Activate.ps1</code>.</p>
           <p>Download and prepare the datasets, or unpack a prepared archive using the instructions in the README. The full download and build needs about 15 GB of free disk space.</p>
-<pre><code>python scripts/download_data.py
-python scripts/setup_data.py build
-python scripts/setup_data.py status</code></pre>
-          <p>Start the API from the repository root.</p><pre><code>python -m uvicorn api.main:app --reload --port 8000</code></pre>
+<pre><code>python data/scripts/download_data.py
+python data/scripts/setup_data.py build
+python data/scripts/setup_data.py status</code></pre>
+          <p>Start the API from the repository root.</p><pre><code>python -m uvicorn api.main:app --app-dir src --reload --port 8000</code></pre>
           <p>In a second terminal, start the dashboard and open the URL printed by Vite.</p><pre><code>cd ui
 npm ci
 npm run dev</code></pre>
         </section>
-        <section class="stage" id="examples"><h2>Example data</h2><p>Start with one synthetic depot. Upload its setup CSV under <strong>Setup</strong> and click <strong>Optimize</strong>. For cases with meter data, upload it after the setup CSV. For multiple depots, use <strong>Upload portfolio CSV</strong>.</p><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/examples/README.md">Browse the example cases and file formats ↗</a></section>
-        <section class="stage" id="results"><h2>Interpreting results</h2><ul><li><strong>Fits</strong> means the vans receive their planned energy and breaches stay within the selected test tolerance.</li><li><strong>Fits with risk</strong> means the vans receive their planned energy, but more test windows breach the limit than the tolerance allows.</li><li><strong>Does not fit</strong> means at least one van is short of energy.</li><li><strong>Breach rate</strong> is the share of held-out windows with at least one slot over the limit. It describes those windows.</li></ul><p>GridFlex is a planning prototype. Confirm available capacity with the grid operator before acting. Battery replay uses the planned battery actions. AI explanations are grounded in computed evidence and should be checked against the results.</p></section>
+        <section class="stage" id="examples"><h2>Example data</h2><p>Start with one synthetic depot. Upload its setup CSV under <strong>Setup</strong> and click <strong>Optimize</strong>. For cases with meter data, upload it after the setup CSV. For multiple depots, use <strong>Upload portfolio CSV</strong>.</p><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/examples/README.md">Browse the example cases and file formats ↗</a>
+          <ul>
+            <li><strong>Case 1 · Leiden:</strong> Start with eight vans and a monthly bill. This is the quickest single-site example.</li>
+            <li><strong>Case 4 · Groningen:</strong> Upload the meter file after the setup CSV. Check the initial shortfall, then try the documented 60 kWh battery at 30 kW and compare the result.</li>
+            <li><strong>Case 5 · Five depots:</strong> Compare all three verdicts, open a depot from the portfolio, and try the PDF export.</li>
+          </ul>
+        </section>
+        <section class="stage" id="results"><h2>Interpreting results</h2><ul><li><strong>Fits</strong> means the vans receive their planned energy and breaches stay within the selected test tolerance.</li><li><strong>Fits with risk</strong> means the vans receive their planned energy, but more test windows breach the limit than the tolerance allows.</li><li><strong>Does not fit</strong> means at least one van is short of energy.</li><li><strong>Breach rate</strong> is the share of held-out windows with at least one slot over the limit. It describes those windows.</li></ul><p>GridFlex is a planning prototype. Confirm available capacity with the grid operator before acting. Battery replay uses the planned battery actions. AI explanations are grounded in computed evidence and should be checked against the results.</p>
+          <h3>Read two numbers together</h3>
+          <p>Start with <strong>unmet energy (kWh)</strong> and <strong>windows over the limit (%)</strong>. The first tells you whether the vans got enough charge. The second tells you how often the building and fleet together exceeded the site limit in testing. Then use the van heatmap or breach timing chart to see where the problem occurs.</p>
+        </section>
         <section class="stage" id="sources"><h2>Data and sources</h2><p>GLASS provides synthetic building demand. The capacity map provides indicative postcode context, and Liander profiles let supported sectors compare the shape of synthetic and measured demand.</p><ul><li><a href="https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991.v4">GLASS dataset, Version 4 ↗</a></li><li><a href="https://capaciteitskaart.netbeheernederland.nl">Dutch capacity map ↗</a></li><li><a href="https://www.liander.nl/over-ons/open-data">Liander open data ↗</a></li></ul></section>
-        <section class="stage" id="guides"><h2>Repository guides</h2><ul><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex#readme">Project README ↗</a></li><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/ui/README.md">Dashboard, CSV imports and model setup ↗</a></li><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/data/README.md">GLASS dataset card ↗</a></li><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/video/README.md">Pitch video source ↗</a></li></ul></section>
+        <section class="stage" id="guides"><h2>Repository guides</h2><ul><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex#readme">Project README ↗</a></li><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/ui/README.md">Dashboard, CSV imports and model setup ↗</a></li><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/data/README.md">GLASS dataset card ↗</a></li><li><a href="https://github.com/Coke-and-Code-Dev/GridFlex/blob/main/docs/video/README.md">Pitch video source ↗</a></li></ul></section>
+        <section class="stage" id="troubleshooting">
+          <h2>Troubleshooting</h2>
+          <dl>
+            <dt><strong>The dashboard cannot reach the API</strong></dt>
+            <dd>Start the backend and wait for it to finish starting. The dashboard defaults to <code>http://127.0.0.1:8000</code>. Set <code>VITE_GRIDFLEX_API_URL</code> if you use another API address.</dd>
+            <dt><strong>The sector profiles are missing</strong></dt>
+            <dd>Run <code>python data/scripts/setup_data.py status</code> from the repository root to check which prepared data files are available.</dd>
+            <dt><strong>Reality Check has no comparison</strong></dt>
+            <dd>The graph needs a GLASS profile and a matching Liander reference. A run using the depot's own meter file skips this comparison.</dd>
+          </dl>
+        </section>
       </div>
     </div>
   </main>

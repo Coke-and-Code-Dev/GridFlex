@@ -27,10 +27,19 @@
   <main id="main" class="wrap">
     <div class="page-intro"><p class="eyebrow">Pipeline</p><h1>Follow a depot <em>through every stage.</em></h1><p class="lede">See how a postcode, building demand and a fleet become a timetable you can test and review.</p></div>
     <nav class="steps" aria-label="Pipeline stages"><a href="#locate">01 Locate</a><a href="#prepare">02 Prepare</a><a href="#plan">03 Plan</a><a href="#stress-test">04 Stress-test</a><a href="#review">05 Review</a></nav>
-    <section class="stage" id="locate"><p class="eyebrow">01 · Locate</p><h2>Know the <em>local grid.</em></h2><p class="lede">A Dutch postcode brings up the congestion snapshot, queue and expected relief when available. The depot supplies its own connection limit and any confirmed off-peak allowance. The map gives context for the decision.</p></section>
-    <section class="stage" id="prepare"><p class="eyebrow">02 · Prepare</p><h2>Know when the <em>building is busy.</em></h2><p class="lede">Use quarter-hour meter readings, or estimate demand from the sector, month and electricity bill using GLASS. GridFlex splits meter data by date and synthetic data by customer, keeping separate demand windows for testing.</p></section>
+    <section class="stage" id="locate"><p class="eyebrow">01 · Locate</p><h2>Know the <em>local grid.</em></h2><p class="lede">A Dutch postcode brings up the congestion snapshot, queue and expected relief when available. The depot supplies its own connection limit and any confirmed off-peak allowance. The map gives context for the decision.</p>
+      <p><strong>What you enter:</strong> postcode, the site's connection limit in kW, and the hours when any extra capacity is available. <strong>What you see:</strong> local congestion and queue details separately from the limit used by the solver.</p>
+    </section>
+    <section class="stage" id="prepare"><p class="eyebrow">02 · Prepare</p><h2>Know when the <em>building is busy.</em></h2><p class="lede">Use quarter-hour meter readings, or estimate demand from the sector, month and electricity bill using GLASS. GridFlex splits meter data by date and synthetic data by customer, keeping separate demand windows for testing.</p>
+      <div class="grid">
+        <article class="panel"><h3>With meter readings</h3><p>Use the site's own quarter-hour demand. Earlier working days are used to plan and later working days are held back for replay.</p></article>
+        <article class="panel"><h3>With an electricity bill</h3><p>Use a sector profile for the daily shape, then scale it to the site's monthly kWh. GridFlex keeps each synthetic customer on one side of the planning and test split.</p></article>
+      </div>
+    </section>
     <section class="stage split" id="plan">
-      <div><p class="eyebrow">03 · Plan</p><h2>Give every van <em>a time to charge.</em></h2><p class="lede">The solver allocates power in 15-minute slots, respecting arrival, departure, charger power and battery constraints. It prioritises unavoidable overload, missing energy, peak demand and battery cycling, in that order.</p></div>
+      <div><p class="eyebrow">03 · Plan</p><h2>Give every van <em>a time to charge.</em></h2><p class="lede">The solver allocates power in 15-minute slots, respecting arrival, departure, charger power and battery constraints. It prioritises unavoidable overload, missing energy, peak demand and battery cycling, in that order.</p>
+        <p>Each slot shares the available power between the building, the vans and the battery. The battery can charge when there's room and discharge when the site needs help. If the vans cannot all get their requested energy, the plan reports the shortfall.</p>
+      </div>
       <figure class="panel">
         <h3>Compare one charging interval</h3>
         <div class="compare-buttons" aria-label="Illustrative charging modes"><button type="button" data-vans="10" aria-pressed="true">On arrival</button><button type="button" data-vans="2" aria-pressed="false">Staggered</button></div>
@@ -39,8 +48,16 @@
         <figcaption>Illustrative only. 45 kW building demand and 11 kW per active van. The vertical mark is the site limit. This comparison shows one interval.</figcaption>
       </figure>
     </section>
-    <section class="stage" id="stress-test"><p class="eyebrow">04 · Stress-test</p><h2>Try the same plan <em>on other days.</em></h2><p class="lede">Replay the fixed timetable across held-out demand windows and compare it with charging on arrival. One quarter hour over the limit counts as a breach for that window. GridFlex reports how often it happens, when, and by how much.</p></section>
-    <section class="stage" id="review"><p class="eyebrow">05 · Review</p><h2>See what fits. <em>Decide what to change.</em></h2><p class="lede">Check the verdict, each van's energy shortfall and the breach timing. Rerun a what-if or compare depots in a portfolio. The assistant explains computed evidence, and an operator reviews the recommendation.</p><div class="actions"><a class="btn primary" href="../docs/#results">How to read the results</a></div></section>
+    <section class="stage" id="stress-test"><p class="eyebrow">04 · Stress-test</p><h2>Try the same plan <em>on other days.</em></h2><p class="lede">Replay the fixed timetable across held-out demand windows and compare it with charging on arrival. One quarter hour over the limit counts as a breach for that window. GridFlex reports how often it happens, when, and by how much.</p>
+      <div class="grid">
+        <article class="panel"><h3>How often?</h3><p>The breach rate counts test windows with at least one quarter hour above the limit.</p></article>
+        <article class="panel"><h3>How far over?</h3><p>The worst overshoot is the largest excess power, in kW, in any held-out slot.</p></article>
+        <article class="panel"><h3>When?</h3><p>The breach-timing chart counts how often each clock time goes over. The most frequent time can differ from the worst spike.</p></article>
+      </div>
+    </section>
+    <section class="stage" id="review"><p class="eyebrow">05 · Review</p><h2>See what fits. <em>Decide what to change.</em></h2><p class="lede">Check the verdict, each van's energy shortfall and the breach timing. Rerun a what-if or compare depots in a portfolio. The assistant explains computed evidence, and an operator reviews the recommendation.</p>
+      <p>For a tight site, compare a later departure, more connection capacity, or a different battery setting. Each what-if runs the solver again and replays the new plan on the same test windows so you can compare the trade-offs.</p>
+      <div class="actions"><a class="btn primary" href="../docs/#results">How to read the results</a></div></section>
   </main>
   <script>
     const buttons = document.querySelectorAll('button[data-vans]');
