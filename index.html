@@ -11,10 +11,10 @@
 <link rel="stylesheet" href="site.css">
 <style>
 /* Layout: one long editorial page — dark charcoal ground, electric-yellow accent, coral only for limits and breaches. */
-#watch{scroll-margin-top:calc(72px + env(safe-area-inset-top,0px));padding-block-start:clamp(24px,4vw,48px)}
-#watch{text-align:center}
-#watch .lede{margin-inline:auto}
-#watch video{display:block;width:min(100%,900px);height:auto;aspect-ratio:16/9;margin:24px auto 0;background:#000;border:1px solid var(--border);border-radius:12px}
+#watch{scroll-margin-top:calc(72px + env(safe-area-inset-top,0px));padding-block:clamp(24px,3vw,42px);text-align:center}
+#watch h2{font-size:clamp(32px,4.8vw,52px);margin-bottom:12px}
+#watch .lede{margin-inline:auto;text-wrap:balance}
+#watch video{display:block;width:min(100%,900px);width:min(100%,900px,max(360px,calc((100svh - 350px) * 16 / 9)));height:auto;aspect-ratio:16/9;margin:24px auto 0;background:#000;border:1px solid var(--border);border-radius:12px}
 @media (max-width:760px){#watch{scroll-margin-top:calc(120px + env(safe-area-inset-top,0px))}}
 
 /* hero */
@@ -421,6 +421,20 @@ footer a{color:var(--muted)}
 
 <script>
 (function(){
+  const pitchVideo = document.querySelector('#watch video');
+  function playPitch(muted) {
+    pitchVideo.muted = muted;
+    // Keep native controls available if the browser blocks autoplay.
+    pitchVideo.play().catch(() => {});
+  }
+  for (const link of document.querySelectorAll('a[href="#watch"]')) {
+    link.addEventListener('click', event => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      playPitch(false);
+    });
+  }
+  if (location.hash === '#watch') playPitch(true);
+
   document.documentElement.classList.add('js');
   var NS='http://www.w3.org/2000/svg';
   function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
