@@ -13,7 +13,6 @@
 <p align="center">
   <a href="https://coke-and-code-dev.github.io/GridFlex/">Website</a> ·
   <a href="#watch">Watch</a> ·
-  <a href="#why">Why</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#interpreting-results">Interpreting results</a> ·
@@ -29,36 +28,13 @@
 
 Start with one depot or upload a portfolio CSV to compare many sites. Use a site's own meter readings when available, or estimate building demand from its sector, month and electricity bill.
 
-The repository includes synthetic examples. GridFlex is a planning prototype. A person reviews the recommendation, and the grid operator confirms available capacity.
+GridFlex is a planning prototype. A person reviews the recommendation, and the grid operator confirms available capacity.
 
 ## Watch
 
 [Watch the GridFlex pitch video](https://coke-and-code-dev.github.io/GridFlex/watch/) to see the fleet charging problem and how GridFlex helps depots plan around their existing connection.
 
-## Why
-
-- **Getting more grid capacity can take time.** A postcode lookup shows the local queue and any expected relief. The site's own connection limit is a separate planning input.
-- **Charging on arrival can create a peak.** Ten vans drawing 11 kW each need 110 kW before the building uses any power. A timetable can spread charging across the hours the vans are parked.
-- **Building demand changes.** A timetable that works on the planning profile can still exceed the limit on a busier day. Replaying the same schedule shows when that happens and how large the breach is.
-
 ## How it works
-
-```mermaid
-flowchart LR
-    PC[Postcode] --> MAP[Capacity map<br/>congestion · queue · fix year]
-    LOAD[Building load<br/>meter CSV, or sector + monthly bill] --> SPLIT[Split by customer<br/>70% planning · 30% test]
-    SPLIT -->|planning days| BASE[Cautious baseline<br/>p90 per 15 min]
-    FLEET[Fleet<br/>arrivals · departures · kWh] --> CPSAT
-    LIMIT[Connection limit<br/>battery · off-peak capacity] --> CPSAT
-    BASE --> CPSAT[CP-SAT scheduler]
-    CPSAT --> PLAN[One fixed timetable]
-    SPLIT -->|held-out days| REPLAY[Replay]
-    PLAN --> REPLAY
-    REPLAY --> FLAGS[Verdict · breaches · vans short · sweeps]
-    MAP --> EXPLAIN
-    FLAGS --> EXPLAIN[Explanation agent<br/>LLM or template]
-    EXPLAIN --> HUMAN{{Person approves or rejects}}
-```
 
 | Stage | What it does | Code |
 | --- | --- | --- |
@@ -137,7 +113,6 @@ When Groq is selected, questions and relevant computed context are sent to the p
 
 ### 5. Run the tests
 
-
 ```bash
 python -m pytest
 ```
@@ -165,50 +140,14 @@ Tests that need processed data skip when the relevant files are unavailable.
 
 | Guide | Covers |
 | --- | --- |
-| [Dataset card](data/README.md) | GLASS documentation and licensing |
+| [Dataset card](data/README.md) | Data preparation and licensing |
 | [Dashboard guide](ui/README.md) | Running the UI, configuring explanations and uploading CSVs |
 | [Example cases](examples/README.md) | Files to upload, expected results and CSV column definitions |
 | [Pitch video](video/README.md) | Remotion source and rendering instructions |
 
-### Data sources
-
-| Dataset | What it is | Where it comes from | Needed for |
-|---|---|---|---|
-| **GLASS v1.1** | Synthetic daily load profiles of Dutch large business customers (60–160 kW connections), 15-minute readings, 3 years. License CDLA-Permissive-2.0. | [4TU.ResearchData, doi:10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991](https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991) (`GLASS_v1.1.parquet`, 13.2 GB). Dataset card: [data/README.md](data/README.md). | The building's electricity use. |
-| **Capacity map** | Which postcodes have grid congestion, the queue per supply area and expected fix year. A snapshot, indicative only. | [Netbeheer Nederland capaciteitskaart](https://capaciteitskaart.netbeheernederland.nl) | The postcode card. |
-| **Liander profiles** | Real measured 2023 consumption profiles per sector (SBI code) from Liander's large customers. | [Liander open data](https://www.liander.nl/over-ons/open-data) ("Verbruiksprofielen grootverbruikaansluitingen elektriciteit 2023") | The reality check next to the synthetic data. |
-
-Do not use the Hugging Face copy of GLASS (`sentient-codebot/tud-glass`): it is v1.0, a different file.
-
-`python scripts/download_data.py` downloads all three (about 13.6 GB). You can also fetch one: `python scripts/download_data.py glass`, `capacity` or `liander`.
-
-The capacity map is a **live snapshot** that its owners update regularly, so a fresh download can differ from the one this project was built on (5 November 2026): the postcode card shows the download date, and some numbers in the docs may not match exactly. GLASS and Liander's 2023 profiles do not change. To refresh only the capacity map later, delete `data/raw/capaciteitskaart/`, run `python scripts/download_data.py capacity`, then `python scripts/setup_data.py build`.
-
-### Troubleshooting
-
-- **The dashboard has no sectors, the postcode card is empty, or the API says a `glass_...parquet` file was not found:** the data is not set up. Run `python scripts/setup_data.py status` and follow what it prints.
-- **`python` is not found or opens the Microsoft Store:** install Python 3.11 and open a new terminal. Use the Python from the activated `.venv`.
-- **`could not reach the GridFlex API` in the browser:** start the API first (step 3) and wait for "Application startup complete".
-- **The download stops or fails:** run the same command again. Finished files are skipped and partial ones resume. If it reports the link moved, see [Data sources](#data-sources).
-- **"SHA-256 mismatch":** the GLASS file is damaged or a different version. Delete `data/raw/GLASS_v1.1.parquet` and run the download again.
-- **"Not enough disk space":** the download needs about 14 GB free where `data/raw/` lives.
-## Repository layout
-
-```text
-api/        FastAPI endpoints, CSV imports and portfolio results
-gridflex/   Load profiles, scheduling, replay and explanations
-ui/         React and TypeScript dashboard
-scripts/    Data download, preparation and packaging
-examples/   Example depots, portfolios and meter files
-tests/      Python tests
-docs/       README graphics
-data/       Dataset documentation and local data
-video/      Remotion pitch-video source
-media/      Rendered pitch video
-index.html  Standalone project website
-```
-
 ## Status and limitations
+
+GridFlex uses [GLASS](https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991) for synthetic demand, the [Dutch capacity map](https://capaciteitskaart.netbeheernederland.nl) for postcode context, and [Liander open data](https://www.liander.nl/over-ons/open-data) for the reality check.
 
 - Results describe a simulated schedule on the selected test windows. Confirm the site's capacity with its grid operator before acting.
 - The capacity map is a dated snapshot. The Liander comparison checks demand shape, and GLASS was trained on Liander data.
