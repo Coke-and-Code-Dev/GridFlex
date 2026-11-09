@@ -98,3 +98,45 @@ code,pre{font-family:var(--mono);font-size:.85rem}
 @media(max-width:720px){.split,.docs-layout{grid-template-columns:minmax(0,1fr)}.docs-layout aside nav{position:static;flex-direction:row}.wrap{width:calc(100% - 32px)}}
 @media(max-width:370px){.top .wrap{gap:4px 12px}.top nav{gap:4px 12px}html{scroll-padding-top:120px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Landing motion progressively enhances the visible content. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-progress {
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 2px;
+    background: var(--accent);
+    transform-origin: left;
+    transform: scaleX(0);
+    pointer-events: none;
+  }
+
+  .landing-enter:not(:focus-within) > .wrap {
+    animation: landing-reveal 480ms cubic-bezier(.2,.7,.2,1) both;
+  }
+
+  .landing .hero.landing-enter::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(transparent 0 63px,#ffe60020 63px 64px);
+    mask-image: linear-gradient(100deg,transparent 25%,#000 50%,transparent 75%);
+    animation: landing-grid-pulse 3.6s ease-out both;
+  }
+
+  .landing .hero .wrap {
+    z-index: 1;
+  }
+
+  @keyframes landing-reveal {
+    from { opacity: .72; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes landing-grid-pulse {
+    0% { opacity: 0; transform: translateX(-30%); }
+    24% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(36%); }
+  }
+}
