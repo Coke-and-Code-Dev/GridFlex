@@ -53,9 +53,9 @@ function Hint({ label }: { label: string }) {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "GridFlex AI — Fleet Charging Dashboard Demo" },
+      { title: "GridFlex — Fleet Charging Dashboard Demo" },
       { name: "description", content: "Synthetic demo: plan overnight EV van charging under a grid limit, compare schedules and review results." },
-      { property: "og:title", content: "GridFlex AI — Fleet Charging Dashboard Demo" },
+      { property: "og:title", content: "GridFlex — Fleet Charging Dashboard Demo" },
       { property: "og:description", content: "Plan EV fleet charging under a grid limit with synthetic scenarios." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -371,10 +371,10 @@ function Dashboard() {
       <header className="top-0 z-20 border-b border-border bg-background/95 backdrop-blur md:sticky">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex items-center justify-between gap-2">
-            <button type="button" onClick={() => setActiveTab("welcome")} aria-label="GridFlex.ai home"
+            <button type="button" onClick={() => setActiveTab("welcome")} aria-label="GridFlex home"
               className="my-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-bold tracking-tight hover:bg-accent">
               <img src="/gridflex-mark.png" alt="" width={40} height={27} className="h-auto w-10 rounded object-contain" />
-              <span>GridFlex<span className="text-primary">.ai</span></span>
+              <span>GridFlex</span>
             </button>
             <ThemeToggle />
           </div>
@@ -433,8 +433,10 @@ function Dashboard() {
           </div>
           <p className="mt-10 font-mono text-xs text-muted-foreground">Synthetic load profiles · Held-out replay · Human decision</p>
           </div>
-          <img src="/gridflex-brand.png" alt="GridFlex.ai logo with a yellow lightning bolt above an electric fleet depot"
-            width={1536} height={1024} className="h-auto w-full rounded-2xl border border-border" />
+          <div className="flex aspect-[3/2] flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card">
+            <img src="/gridflex-mark.png" alt="" width={210} height={137} className="h-auto w-1/2 max-w-52 rounded-lg" />
+            <span className="text-3xl font-bold tracking-tight sm:text-4xl">GridFlex</span>
+          </div>
         </section></TabsContent>
 
         {/* 02 Configure */}

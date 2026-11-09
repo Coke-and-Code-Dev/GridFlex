@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GridFlex AI — Charge more vans on the grid connection you have</title>
-<meta name="description" content="GridFlex AI plans EV fleet charging inside a site's existing grid connection, stress-tests the plan on unseen days and explains the result. A person decides.">
+<title>GridFlex — Charge more vans on the grid connection you have</title>
+<meta name="description" content="GridFlex plans EV fleet charging inside a site's existing grid connection, stress-tests the plan on unseen days and explains the result. A person decides.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -56,7 +56,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;backgroun
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:21;background:var(--bg)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:64px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:600;letter-spacing:.01em}
-.brand i{width:14px;height:14px;background:var(--primary);display:inline-block;border-radius:2px}
+.brand img{display:block;width:40px;height:auto;flex:none;border-radius:4px}
 nav.main{display:flex;gap:22px;flex-wrap:wrap}
 nav.main a{text-decoration:none;font-size:14px;color:var(--muted)}
 nav.main a:hover{color:var(--fg)}
@@ -199,12 +199,13 @@ footer a{color:var(--muted)}
 .reveal{opacity:1;transform:none;transition:opacity .6s ease,transform .6s ease}
 .js .reveal.pre{opacity:0;transform:translateY(14px)}
 </style>
+<link rel="icon" type="image/png" href="ui/public/gridflex-mark.png">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="GridFlex AI home"><i aria-hidden="true"></i>GridFlex AI</a>
+    <a class="brand" href="#top" aria-label="GridFlex home"><img src="ui/public/gridflex-mark.png" alt="" width="40" height="27">GridFlex</a>
     <nav class="main" aria-label="Sections">
       <a href="#problem">The problem</a>
       <a href="#idea">The idea</a>
@@ -219,7 +220,7 @@ footer a{color:var(--muted)}
 <main id="main">
 <section class="hero" id="top">
   <div class="wrap">
-    <p class="eyebrow">GridFlex AI · Plan. Stress-test. Explain.</p>
+    <p class="eyebrow">GridFlex · Plan. Stress-test. Explain.</p>
     <h1>Can your business charge more vans on the grid connection it <em>already has?</em></h1>
     <p class="lede">GridFlex plans EV fleet charging inside the capacity your site already has, tests that plan on realistic days it has never seen, and explains the result in plain language. A person decides.</p>
     <div class="cta">
@@ -238,14 +239,14 @@ footer a{color:var(--muted)}
 
 <dialog class="pitch-dialog" id="pitch-dialog" aria-labelledby="pitch-title">
   <div class="pitch-header">
-    <div><p class="eyebrow">GridFlex AI · The story</p><h2 id="pitch-title">A smarter way to charge.</h2></div>
+    <div><p class="eyebrow">GridFlex · The story</p><h2 id="pitch-title">A smarter way to charge.</h2></div>
     <button class="pitch-close" type="button" aria-label="Close video">&times;</button>
   </div>
   <video controls playsinline preload="none">
     <source src="media/gridflex-pitch.mp4" type="video/mp4">
     Your browser does not support embedded video. <a href="media/gridflex-pitch.mp4">Download the video</a>.
   </video>
-  <p class="pitch-note">GridFlex AI · Plan. Stress-test. Explain.</p>
+  <p class="pitch-note">GridFlex · Plan. Stress-test. Explain.</p>
 </dialog>
 
 <section id="problem">
@@ -456,7 +457,7 @@ footer a{color:var(--muted)}
   <div class="wrap cols">
     <div>
       <p><strong style="color:var(--fg)">Synthetic data and simulation. Not a grid-operator approval.</strong> Check local capacity with your grid operator.</p>
-      <p>Original concept by Team GridFlex AI in the context of the EY AI Week Hackathon, 5–6 November 2026, Amsterdam</p>
+      <p>Original concept by Team GridFlex in the context of the EY AI Week Hackathon, 5–6 November 2026, Amsterdam</p>
     </div>
     <div>
       <p class="mono" style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)">Data and sources</p>

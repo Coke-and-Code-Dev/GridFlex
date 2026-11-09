@@ -95,7 +95,7 @@ def _paragraph(pdf, x, y, value, size=10):
 def _header(pdf, label):
     pdf.setFillColor(INK)
     pdf.rect(0, HEIGHT - 110, WIDTH, 110, fill=1, stroke=0)
-    _text(pdf, MARGIN, HEIGHT - 46, "GridFlex.ai", 26, True, YELLOW)
+    _text(pdf, MARGIN, HEIGHT - 46, "GridFlex", 26, True, YELLOW)
     _text(pdf, MARGIN, HEIGHT - 76, label, 14, color=colors.white)
     _text(pdf, MARGIN, 34, "Synthetic building demand and simulation. Check capacity with the grid operator.", 8, color=MUTED)
     _text(pdf, WIDTH - MARGIN - 16, 34, pdf.getPageNumber(), 8, color=MUTED)
@@ -196,7 +196,7 @@ def _fleet_pages(pdf, site):
 def render_portfolio(sites: list[SiteResult]) -> bytes:
     target = BytesIO()
     pdf = Canvas(target, pagesize=A4)
-    pdf.setTitle("GridFlex.ai multi-site simulation")
+    pdf.setTitle("GridFlex multi-site simulation")
     completed = [site for site in sites if site.payload is not None]
     total = sum(site.scenario.vans for site in completed)
     fully_charged = sum(sum(short == 0 for short in site.payload["schedule"]["unmet_kwh"]) for site in completed)
