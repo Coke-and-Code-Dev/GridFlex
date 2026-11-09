@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "elevenlabs-tts": {
+      "source": "mengto/skills",
+      "sourceType": "github",
+      "skillPath": "agent-skills/codex/elevenlabs-tts/SKILL.md",
+      "computedHash": "7f7980e8201524e33c427a5ab73b9e430bae61531dd9faa470963b6cd0b928f4"
+    },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-best-practices/SKILL.md",
+      "computedHash": "9a4c0a0f9e3cc4613cbe351bb6be48568eb1cca0b06995aeae9e91292102aa16"
+    },
+    "remotion-captions": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-captions/SKILL.md",
+      "computedHash": "83e853f96f4f10526c166944f2bdb1752ee28d6bf1ddd9532b899c4d05228c2a"
+    }
+  }
+}

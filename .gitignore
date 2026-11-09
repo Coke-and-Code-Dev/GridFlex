@@ -2,8 +2,8 @@
 CLAUDE.md
 .claude/
 
-# Data: nothing under data/ is committed except data/README.md. Raw downloads are multi-GB and the
-# processed files are made from them: python scripts/download_data.py, then python scripts/setup_data.py build
+# Data: only data/README.md and data/scripts/ are committed. Raw downloads are multi-GB and the
+# processed files are made from them: python data/scripts/download_data.py, then python data/scripts/setup_data.py build
 data/raw/
 data/processed/
 data/*.parquet
@@ -26,9 +26,10 @@ ui/dist/
 *.tsbuildinfo
 npm-debug.log*
 
-# Secrets
+# Secrets (the .env.example templates are committed)
 .env
 .env.*
+!.env.example
 
 # OS / editors
 .DS_Store
@@ -40,9 +41,9 @@ desktop.ini
 # Local portfolio runs and document embeddings
 .gridflex-local/
 
-# Pitch video (Remotion in video/)
-video/out/
-video/audio-gen/cues.json
+# Pitch video (Remotion in docs/video/)
+docs/video/out/
+docs/video/audio-gen/cues.json
 
-# Agent skills are restored from skills-lock.json (see AGENTS.md), not committed
+# Agent skills are restored from docs/video/skills-lock.json (see docs/video/README.md), not committed
 .agents/

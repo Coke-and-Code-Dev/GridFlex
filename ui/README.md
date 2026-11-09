@@ -3,8 +3,8 @@
 From the repository root, with Python 3.11 and the prepared data in place:
 
 ```powershell
-python -m pip install -r requirements.txt
-python -m uvicorn api.main:app --reload
+python -m pip install -r src/requirements.txt
+python -m uvicorn api.main:app --app-dir src --reload
 ```
 
 In a second terminal:

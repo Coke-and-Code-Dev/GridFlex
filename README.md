@@ -32,17 +32,25 @@ GridFlex is a planning prototype. A person reviews the recommendation, and the g
 
 ## Watch
 
-[Watch the GridFlex pitch video](https://coke-and-code-dev.github.io/GridFlex/watch/) to see the fleet charging problem and how GridFlex helps depots plan around their existing connection.
+<p align="center">
+  <a href="https://coke-and-code-dev.github.io/GridFlex/watch/">
+    <img src="docs/images/gridflex-pitch-poster.jpg" alt="GridFlex pitch video: charge more trucks on the connection you already have" width="85%">
+  </a>
+</p>
+
+<p align="center"><a href="https://coke-and-code-dev.github.io/GridFlex/watch/"><strong>Watch the 115-second pitch</strong></a></p>
+
+A 115-second explainer of the fleet charging problem and how GridFlex helps depots plan around their existing connection, for people who have not seen it before. It uses synthetic illustrations only. The source is in [docs/video](docs/video/README.md).
 
 ## How it works
 
 | Stage | What it does | Code |
 | --- | --- | --- |
-| **Locate** | Looks up local congestion, the queue and expected relief from a dated postcode snapshot. | [Grid area lookup](gridflex/grid_area.py) |
-| **Prepare** | Builds a load profile from meter readings or GLASS, then separates planning data from held-out data by date for meter readings or by customer for GLASS. | [Load sources](gridflex/load_sources.py) · [Profiles](gridflex/profiles.py) |
-| **Plan** | Uses OR-Tools CP-SAT to schedule vans and an optional battery in 15-minute slots. The solver prioritises reducing unavoidable overload, unmet energy, peak demand and battery cycling, in that order. | [Scheduler](gridflex/scheduler.py) |
-| **Stress-test** | Replays the fixed timetable on held-out demand. Compares it with charging on arrival and measures breaches and charging shortfalls. | [Replay](gridflex/replay.py) |
-| **Review** | Shows the timetable, risk and what-if results. For portfolios, compares depots and exports a PDF. Groq or local Qwen can explain computed evidence. | [Dashboard](ui/) · [API](api/) |
+| **Locate** | Looks up local congestion, the queue and expected relief from a dated postcode snapshot. | [Grid area lookup](src/gridflex/grid_area.py) |
+| **Prepare** | Builds a load profile from meter readings or GLASS, then separates planning data from held-out data by date for meter readings or by customer for GLASS. | [Load sources](src/gridflex/load_sources.py) · [Profiles](src/gridflex/profiles.py) |
+| **Plan** | Uses OR-Tools CP-SAT to schedule vans and an optional battery in 15-minute slots. The solver prioritises reducing unavoidable overload, unmet energy, peak demand and battery cycling, in that order. | [Scheduler](src/gridflex/scheduler.py) |
+| **Stress-test** | Replays the fixed timetable on held-out demand. Compares it with charging on arrival and measures breaches and charging shortfalls. | [Replay](src/gridflex/replay.py) |
+| **Review** | Shows the timetable, risk and what-if results. For portfolios, compares depots and exports a PDF. Groq or local Qwen can explain computed evidence. | [Dashboard](ui/) · [API](src/api/) |
 
 ## Quick start
 
@@ -59,36 +67,36 @@ git clone https://github.com/Coke-and-Code-Dev/GridFlex.git
 cd GridFlex
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python -m pip install -r src/requirements.txt
 ```
 
 On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1` instead.
 
 ### 2. Prepare the data
 
-Processed data is not committed to Git. If you have a verified ZIP created with `setup_data.py pack`, run:
+Processed data is not committed to Git. Build it from the public sources (about 15 GB of disk and one long download):
 
 ```bash
-python scripts/setup_data.py unpack path/to/processed_data.zip
-python scripts/setup_data.py status
+python data/scripts/download_data.py
+python data/scripts/setup_data.py build
+python data/scripts/setup_data.py status
 ```
 
-Alternatively, download and build the data yourself:
+or, if you have a verified ZIP created with `setup_data.py pack`, restore it in seconds:
 
 ```bash
-python scripts/download_data.py
-python scripts/setup_data.py build
-python scripts/setup_data.py status
+python data/scripts/setup_data.py unpack path/to/processed_data.zip
+python data/scripts/setup_data.py status
 ```
 
-The raw downloads total approximately 13.6 GB. The status command reports whether the GLASS, grid-map and Liander extracts are present. For sources and licensing, see [data/README.md](data/README.md).
+[data/README.md](data/README.md) explains each step, what is kept or dropped, and how to change it.
 
 ### 3. Start the API and dashboard
 
 In the activated environment, from the repository root:
 
 ```bash
-python -m uvicorn api.main:app --reload --port 8000
+python -m uvicorn api.main:app --app-dir src --reload --port 8000
 ```
 
 In a second terminal:
@@ -114,7 +122,7 @@ When Groq is selected, questions and relevant computed context are sent to the p
 ### 5. Run the tests
 
 ```bash
-python -m pytest
+python -m pytest src
 ```
 
 ```bash
@@ -140,10 +148,9 @@ Tests that need processed data skip when the relevant files are unavailable.
 
 | Guide | Covers |
 | --- | --- |
-| [Dataset card](data/README.md) | Data preparation and licensing |
+| [Data pipeline](data/README.md) | Downloading the sources and building `data/processed/` |
 | [Dashboard guide](ui/README.md) | Running the UI, configuring explanations and uploading CSVs |
 | [Example cases](examples/README.md) | Files to upload, expected results and CSV column definitions |
-| [Pitch video](video/README.md) | Remotion source and rendering instructions |
 
 ### GLASS dataset citation
 
