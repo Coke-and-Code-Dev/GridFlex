@@ -145,9 +145,13 @@ Tests that need processed data skip when the relevant files are unavailable.
 | [Example cases](examples/README.md) | Files to upload, expected results and CSV column definitions |
 | [Pitch video](video/README.md) | Remotion source and rendering instructions |
 
+### GLASS dataset citation
+
+Lin, Nan; Heres, Jacco; Vergara Barrios, Pedro (2026): *GLASS Dataset: Generative-AI Large-customer Smart-meter Samples*. Version 4. 4TU.ResearchData. Dataset. [doi:10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991.v4](https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991.v4).
+
 ## Status and limitations
 
-GridFlex uses [GLASS](https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991) for synthetic demand, the [Dutch capacity map](https://capaciteitskaart.netbeheernederland.nl) for postcode context, and [Liander open data](https://www.liander.nl/over-ons/open-data) for the reality check.
+GridFlex uses [GLASS](#glass-dataset-citation) for synthetic demand, the [Dutch capacity map](https://capaciteitskaart.netbeheernederland.nl) for postcode context, and [Liander open data](https://www.liander.nl/over-ons/open-data) for the reality check.
 
 - Results describe a simulated schedule on the selected test windows. Confirm the site's capacity with its grid operator before acting.
 - The capacity map is a dated snapshot. The Liander comparison checks demand shape, and GLASS was trained on Liander data.
