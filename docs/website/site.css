@@ -83,7 +83,9 @@ svg{display:block;width:100%;height:auto}
 .watch-main .actions{justify-content:center}
 .steps{padding-block:16px;border-block:1px solid var(--line);margin-bottom:12px}
 .stage{padding-block:clamp(32px,6vw,64px);border-bottom:1px solid var(--line)}
-.stage p,.stage li{color:var(--muted)}
+.stage p,.stage li,.stage dd{color:var(--muted)}
+.stage dd{margin:4px 0 18px}
+.stage .grid + p{margin-top:18px}
 .compare-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .meter{height:22px;background:#111116;border-radius:4px;position:relative;overflow:hidden;margin:12px 0}
 .meter span{display:block;background:var(--accent);height:100%;width:var(--draw)}
