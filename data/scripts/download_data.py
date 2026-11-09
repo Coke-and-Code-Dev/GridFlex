@@ -31,7 +31,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DEST = REPO_ROOT / "data" / "raw"
-USER_AGENT = "gridflex-setup/1.0 (hackathon project; data/scripts/download_data.py)"
+USER_AGENT = "gridflex-setup/1.0 (data/scripts/download_data.py)"
 
 GLASS_NAME = "GLASS_v1.1.parquet"
 GLASS_SIZE = 13_214_162_600

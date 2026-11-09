@@ -64,7 +64,7 @@ export const Reveal: React.FC = () => {
           }}
         />
         <div style={{ marginTop: 22, fontFamily: HEAD, fontWeight: 900, fontSize: 168, letterSpacing: -5, color: C.text, opacity: wordIn, transform: "translateY(" + (1 - wordIn) * 40 + "px)" }}>
-          GridFlex<span style={{ color: C.yellow }}>.ai</span>
+          GridFlex
         </div>
         <div style={{ marginTop: 44 }}>
           <WordReveal

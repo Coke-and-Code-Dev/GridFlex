@@ -1,5 +1,5 @@
-// Shared helpers for the audio generators. Reads the ElevenLabs key from ../.env
-// (the repo-root .env is git-ignored). The key is never printed.
+// Shared helpers for the audio generators. Reads the ElevenLabs key from docs/video/.env,
+// or from a .env at the repo root (both are git-ignored). The key is never printed.
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,7 +9,7 @@ export const ROOT = join(here, "..");
 
 function loadEnv() {
   const env = {};
-  for (const p of [join(ROOT, "..", ".env"), join(ROOT, ".env")]) {
+  for (const p of [join(ROOT, "..", "..", ".env"), join(ROOT, ".env")]) {
     try {
       for (const line of readFileSync(p, "utf8").split(/\r?\n/)) {
         const m = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)\s*$/);

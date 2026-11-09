@@ -145,13 +145,12 @@ export const Close: React.FC = () => {
         <AbsoluteFill style={{ alignItems: "center", paddingTop: 120 }}>
           <Img src={staticFile("gridflex-mark-hd.png")} style={{ height: 230, width: "auto", transform: "scale(" + (0.85 + 0.15 * lock) + ")" }} />
           <div style={{ marginTop: 14, fontFamily: HEAD, fontWeight: 900, fontSize: 150, letterSpacing: -4 }}>
-            GridFlex<span style={{ color: C.yellow }}>.ai</span>
+            GridFlex
           </div>
           <div style={{ marginTop: 26, fontFamily: HEAD, fontWeight: 800, fontSize: 62, textAlign: "center", lineHeight: 1.12, transform: "translateY(" + (1 - lock) * 24 + "px)" }}>
             Charge more trucks on the connection<br />you <span style={{ color: C.yellow }}>already have.</span>
           </div>
           <div style={{ marginTop: 46, textAlign: "center", opacity: prog(t, tExplain + 2.2, 0.8) }}>
-            <Mono size={22} spacing={3} color="#b9bcc9">EY AI Week Hackathon · Amsterdam · November 2026</Mono>
             <div style={{ fontFamily: MONO, fontSize: 18, color: "#767a87", marginTop: 14, letterSpacing: 1 }}>
               Synthetic data and simulation · recommendation only, not a grid-operator approval
             </div>

@@ -178,7 +178,7 @@ export const Brand: React.FC<{ x?: number; y?: number; scale?: number; label?: s
   <div style={{ position: "absolute", left: x, top: y, display: "flex", alignItems: "center", gap: 14 * scale }}>
     <Img src={staticFile("gridflex-mark-hd.png")} style={{ height: 54 * scale, width: "auto" }} />
     <div style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 38 * scale, letterSpacing: -0.5, color: C.text }}>
-      GridFlex<span style={{ color: C.yellow }}>.ai</span>
+      GridFlex
     </div>
     {label && <div style={{ fontFamily: MONO, fontSize: 20 * scale, color: C.mute, letterSpacing: 3, marginLeft: 10, textTransform: "uppercase" }}>{label}</div>}
   </div>

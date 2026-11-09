@@ -25,8 +25,11 @@ fixed seed so every render is identical.
 
 ## Run it
 
+You need Node.js LTS and an internet connection (the fonts, Archivo and JetBrains Mono, are fetched from Google Fonts at
+render time). No API key is needed: all audio is committed. Run everything from this folder.
+
 ```bash
-cd video
+cd docs/video
 npm install
 npm run dev          # Remotion Studio (preview), pick the GridFlexPitch composition
 ```
@@ -35,7 +38,12 @@ npm run dev          # Remotion Studio (preview), pick the GridFlexPitch composi
 npx remotion render src/index.ts GridFlexPitch out/gridflex-pitch.mp4
 ```
 
-Fonts (Archivo, JetBrains Mono) are fetched from Google Fonts at render time, so the machine needs internet.
+`out/` is git-ignored. The website plays `docs/website/media/gridflex-pitch.mp4`, so to publish a new render, copy it
+there and commit it:
+
+```bash
+cp out/gridflex-pitch.mp4 ../website/media/gridflex-pitch.mp4
+```
 
 ## Audio
 
@@ -47,15 +55,30 @@ All audio is committed under `public/` so the video renders without any API key.
 | Realistic sound effects (trucks, plug-in, breaker, ambience) | `node audio-gen/make-sfx.mjs` writes `public/sfx/*.mp3` | ElevenLabs key |
 | Music bed + whooshes, risers, ticks, chimes | `node audio-gen/build-cues.mjs` then `node audio-gen/synth.mjs` (pure code, no API) | nothing |
 
-The ElevenLabs key goes in the repo-root `.env` as `ELEVENLABS_API_KEY` (the scripts also accept `ELEVENLABS_API`).
-`.env` is git-ignored. The scene timings follow the narration word by word (`src/timeline.ts`), so after
+The ElevenLabs key goes in `docs/video/.env` as `ELEVENLABS_API_KEY` (the scripts also accept `ELEVENLABS_API`, and read a
+`.env` at the repo root too). Copy the template to start: `cp .env.example .env`. `.env` is git-ignored, so never commit a real key. The scene timings follow the narration word by word (`src/timeline.ts`), so after
 regenerating the narration just re-run `build-cues.mjs` and `synth.mjs`.
 
 The default voice is "Daniel" (`onwK4e9ZLuTAKqWW03F9`). Change the voice by passing another voice id to `make-vo.mjs`.
 
+## Agent skills (optional)
+
+The AI agent skills used to build the video (Remotion and ElevenLabs) are recorded in `skills-lock.json` and not
+committed: `.agents/` and `.claude/` are git-ignored. Nobody needs them to render or edit the video; they only help an AI
+coding agent. To restore them, from this folder (it needs internet):
+
+```bash
+npx skills experimental_install              # add --dry-run to preview
+```
+
+The command is marked experimental. To add a skill, run `npx skills add <owner/repo@skill> -y` here (no `-g`) and commit
+the updated `skills-lock.json`.
+
 ## Layout
 
 ```
+.env.example             template for the ElevenLabs key (copy to .env)
+skills-lock.json         the agent skills this project uses (see "Agent skills")
 src/Pitch.tsx            the composition: scenes, voiceover, music, FX
 src/timeline.ts          scene start times, built from the narration timings
 src/cues.ts              cue times shared with the audio generators
@@ -70,6 +93,6 @@ public/                  logo, narration, sound effects, music
 
 - Remotion is free for teams of up to 3; larger companies need a licence (`remotion.pro/license`).
 - ElevenLabs free-plan output requires attribution and is not licensed for commercial use. Check the plan before
-  the video is used outside the hackathon.
+  the video is used commercially.
 - Attributions shown at the end of the video include: GLASS (CDLA-Permissive-2.0), Netbeheer Nederland
   capaciteitskaart, Liander open data.
