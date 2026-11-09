@@ -10,7 +10,7 @@ the first N samples of each condition (GLASS has about 150): the samples are ind
 synthetic customers, so a smaller set is the same kind of data, in a file a third the size.
 Prints a summary per
 condition: samples, daily-peak statistics, spread across samples, kW range, and
-monthly energy against the target `level_value` (idea.md section 4.5).
+monthly energy against the target `level_value`.
 
 The raw file is read lazily with filters; the full 43M rows are never loaded.
 """
@@ -34,7 +34,7 @@ META_COLUMNS = ["category", "date", "level_id", "level_value", "sample_id"]
 TIME_RE = re.compile(r"^\d{2}:\d{2}:\d{2}$")
 
 # Heuristic: if the typical daily peak barely differs between samples, the
-# stress test says little about day-to-day risk (idea.md 4.5).
+# stress test says little about day-to-day risk.
 LOW_SPREAD_CV = 0.05
 
 
@@ -75,7 +75,7 @@ def time_columns(columns: list[str]) -> list[str]:
 
 
 def summarise(df: pl.DataFrame, cols: list[str]) -> dict:
-    """Numbers that tell us whether a condition is useful (idea.md 4.5)."""
+    """Numbers that tell us whether a condition is useful."""
     x = df.select(cols).to_numpy().astype(np.float64)  # (rows, 96) kW
     sample_ids = df["sample_id"].to_numpy()
     uniq, inverse = np.unique(sample_ids, return_inverse=True)

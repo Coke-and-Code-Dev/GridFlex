@@ -11,7 +11,7 @@ Reads data/raw/capaciteitskaart/{congestie_pc6,voedingsgebieden,projecten}.csv
     grid_projects.parquet  planned grid reinforcements per area
     grid_map_meta.json     download date, source, counts (shown in the app)
 
-Only the offtake side ("afname") is kept: GridFlex is about new demand (idea.md 4.2).
+Only the offtake side ("afname") is kept: GridFlex is about new demand.
 The map is indicative and a snapshot; always show the download date.
 """
 from __future__ import annotations

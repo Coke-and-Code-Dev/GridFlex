@@ -71,5 +71,5 @@ public/                  logo, narration, sound effects, music
 - Remotion is free for teams of up to 3; larger companies need a licence (`remotion.pro/license`).
 - ElevenLabs free-plan output requires attribution and is not licensed for commercial use. Check the plan before
   the video is used outside the hackathon.
-- Attributions shown at the end of the video follow idea.md §14: GLASS (CDLA-Permissive-2.0), Netbeheer Nederland
+- Attributions shown at the end of the video include: GLASS (CDLA-Permissive-2.0), Netbeheer Nederland
   capaciteitskaart, Liander open data.

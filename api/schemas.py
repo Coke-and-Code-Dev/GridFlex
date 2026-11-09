@@ -12,7 +12,7 @@ class VanOverride(BaseModel):
 
 
 class Scenario(BaseModel):
-    # Building load (idea.md 5.2a): "meter" = the site's own upload, "bill" = the sector's
+    # Building load: "meter" = the site's own upload, "bill" = the sector's
     # GLASS profile scaled to monthly_kwh, "profile" = a GLASS profile as-is (demo default).
     load_source: Literal["profile", "bill", "meter"] = "profile"
     category: str = Field(default="009", pattern=r"^(\d{3}|E3[A-D])$")

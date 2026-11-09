@@ -30,7 +30,7 @@ GridFlex helps depot operators explore whether electric vans can receive their r
 4. Replay the fixed plan on the held-out windows. The app reports charging shortfalls, the frequency and size of limit breaches, and a verdict based on the configured tolerance.
 5. Review the evidence and optionally compare a what-if scenario. AI explanations use computed facts, but numerical checks do not guarantee that every interpretation is correct.
 
-The detailed model, assumptions and interfaces are documented in [idea.md](idea.md).
+The scheduler uses integer-valued 15-minute charging decisions, charger and vehicle availability constraints, and a time-varying connection limit. It rounds the planning baseline up and the limit down. When the building baseline alone exceeds the limit, the model records unavoidable overshoot rather than hiding it.
 
 ## Quick start
 
@@ -124,8 +124,6 @@ tests/      Backend tests
 docs/       Dashboard images
 data/       Dataset documentation; local data is Git-ignored
 video/      Remotion pitch-video project
-idea.md     Detailed design, assumptions and interfaces
-AGENTS.md   Repository and contributor instructions
 ```
 
 ## Data and limitations
@@ -133,10 +131,10 @@ AGENTS.md   Repository and contributor instructions
 - **GLASS:** synthetic electricity profiles from TU Delft / OpenSynth, distributed under CDLA-Permissive-2.0. [Dataset](https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991).
 - **Grid-capacity map:** indicative postcode-level snapshot from [Netbeheer Nederland](https://capaciteitskaart.netbeheernederland.nl); check its displayed date and confirm capacity with the grid operator.
 - **Liander profiles:** 2023 reference profiles from [Liander open data](https://www.liander.nl/over-ons/open-data). The GLASS comparison is not independent validation because GLASS was trained on Liander data.
-- **Replay:** risk describes the selected held-out windows under a fixed simulated timetable. It is not a probability guarantee for a real site. Battery replay has the clipping limitation described in [idea.md](idea.md).
+- **Replay:** risk describes the selected held-out windows under a fixed simulated timetable. It is not a probability guarantee for a real site. Battery replay clips negative net load without recalculating battery state for every test window.
 
 ## Contributing
 
-Create a descriptive branch and open a pull request to `main` with the problem, changes and validation. Follow [AGENTS.md](AGENTS.md) and avoid committing credentials, uploaded customer data, raw datasets or generated build output.
+Create a descriptive branch and open a pull request to `main` with the problem, changes and validation. Avoid committing credentials, uploaded customer data, raw datasets or generated build output.
 
 Built for the EY AI Week Hackathon in Amsterdam. Original concept by Smriti Sridhar; developed by the GridFlex team.

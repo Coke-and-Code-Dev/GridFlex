@@ -1,4 +1,4 @@
-"""Extract Liander's real 2023 profiles for the reality check (idea.md 4.3, 5.10).
+"""Extract Liander's real 2023 profiles for the reality check.
 
 Usage:
     python scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01
