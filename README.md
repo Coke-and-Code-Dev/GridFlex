@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="index.html">Website source</a> ·
+  <a href="https://coke-and-code-dev.github.io/GridFlex/">Website</a> ·
   <a href="#watch">Watch</a> ·
   <a href="#why">Why</a> ·
   <a href="#how-it-works">How it works</a> ·
@@ -33,12 +33,7 @@ The repository includes synthetic examples. GridFlex is a planning prototype. A 
 
 ## Watch
 
-[Watch the GridFlex pitch video](media/gridflex-pitch.mp4).
-
-<p align="center">
-  <img src="docs/images/ten-trucks-demo.gif" alt="Animation: ten trucks plug in at once and the site meter jumps to 178 kW, over the 100 kW limit; then the scheduled run charges two trucks at a time at 90 kW, Truck 01 pauses at 5.5 of 11 kWh while staying plugged in and resumes later, and all ten finish by 23:00." width="860">
-</p>
-<p align="center"><sub><b>Ten trucks, one grid connection.</b> Charging on arrival would draw 178 kW on a 100 kW connection. Staggered two at a time, the site stays at 90 kW and every truck is full by 23:00. Illustrative charging schedule · synthetic data.</sub></p>
+[Watch the GridFlex pitch video](https://coke-and-code-dev.github.io/GridFlex/watch/) to see the fleet charging problem and how GridFlex helps depots plan around their existing connection.
 
 ## Why
 
@@ -72,20 +67,6 @@ flowchart LR
 | **Plan** | Uses OR-Tools CP-SAT to schedule vans and an optional battery in 15-minute slots. The solver prioritises reducing unavoidable overload, unmet energy, peak demand and battery cycling, in that order. | [Scheduler](gridflex/scheduler.py) |
 | **Stress-test** | Replays the fixed timetable on held-out demand. Compares it with charging on arrival and measures breaches and charging shortfalls. | [Replay](gridflex/replay.py) |
 | **Review** | Shows the timetable, risk and what-if results. For portfolios, compares depots and exports a PDF. Groq or local Qwen can explain computed evidence. | [Dashboard](ui/) · [API](api/) |
-
-### Dashboard
-
-<table>
-  <tr>
-    <td width="50%" valign="top"><img src="docs/images/dashboard-setup.jpg" alt="Setup tab with postcode, building electricity use from the bill, connection limit, sliders and an imported fleet table"><br><sub><b>Setup.</b> Postcode, building use from meter data or the energy bill, connection limit, battery, off-peak capacity and the fleet. Single depots and portfolios can be loaded from CSV.</sub></td>
-    <td width="50%" valign="top"><img src="docs/images/dashboard-charging-plan.jpg" alt="Charging plan tab: verdict fits, 0.00% of windows over the limit, 8 of 8 vans fully charged, and a demand chart comparing immediate charging with the optimised plan"><br><sub><b>Charging plan.</b> Verdict, held-out risk and the demand chart: immediate charging (dotted) against the optimised plan (yellow) and the connection limit (red).</sub></td>
-  </tr>
-  <tr>
-    <td colspan="2" valign="top"><img src="docs/images/dashboard-portfolio.jpg" alt="Multi-depot results: five depots with verdicts fits, does not fit and fits with risk, plus a per-depot inspection and a PDF report button"><br><sub><b>Portfolio.</b> Upload many depots at once, compare their verdicts and download a PDF report. Shown: <code>examples/case_5</code>, five depots with one of each verdict.</sub></td>
-  </tr>
-</table>
-
-<sub>Screenshots from a local run on the example files in <a href="examples/">examples/</a>. All load profiles are synthetic (GLASS) unless a site uploads its own meter data; results are simulations, not grid-operator approvals.</sub>
 
 ## Quick start
 
