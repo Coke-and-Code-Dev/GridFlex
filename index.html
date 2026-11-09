@@ -12,7 +12,9 @@
 <style>
 /* Layout: one long editorial page — dark charcoal ground, electric-yellow accent, coral only for limits and breaches. */
 #watch{scroll-margin-top:calc(72px + env(safe-area-inset-top,0px));padding-block-start:clamp(24px,4vw,48px)}
-#watch video{display:block;width:min(100%,960px);aspect-ratio:16/9;margin-top:24px;background:#000;border:1px solid var(--border);border-radius:12px}
+#watch{text-align:center}
+#watch .lede{margin-inline:auto}
+#watch video{display:block;width:min(100%,900px);height:auto;aspect-ratio:16/9;margin:24px auto 0;background:#000;border:1px solid var(--border);border-radius:12px}
 @media (max-width:760px){#watch{scroll-margin-top:calc(120px + env(safe-area-inset-top,0px))}}
 
 /* hero */
@@ -186,7 +188,7 @@ footer a{color:var(--muted)}
     <p class="eyebrow">Watch</p>
     <h2 id="watch-title">The GridFlex pitch</h2>
     <p class="lede">See why charging on arrival can overwhelm a depot's connection, and how GridFlex plans around the power the site already has.</p>
-    <video controls playsinline preload="none" aria-labelledby="watch-title">
+    <video controls playsinline preload="metadata" width="1280" height="720" aria-labelledby="watch-title">
       <source src="media/gridflex-pitch.mp4" type="video/mp4">
       <a href="media/gridflex-pitch.mp4">Open the GridFlex pitch video</a>
     </video>
