@@ -12,7 +12,7 @@ const S = SCENES.human;
 
 type Seg = { s: string; hl?: boolean };
 const LINES: Seg[][] = [
-  [{ s: "Your area, " }, { s: "Amsterdam", hl: true }, { s: ", is " }, { s: "red", hl: true }, { s: " for new demand: 87 requests are waiting." }],
+  [{ s: "Your area, " }, { s: "Amsterdam", hl: true }, { s: ", is " }, { s: "red", hl: true }, { s: " for new demand: 87 requests for more capacity are waiting." }],
   [{ s: "10 chargers", hl: true }, { s: " work in January. The site stays under " }, { s: "100 kW", hl: true }, { s: " on " }, { s: "97 of 100 days", hl: true }, { s: "." }],
   [{ s: "Worst case: " }, { s: "107 kW", hl: true }, { s: " at " }, { s: "18:15", hl: true }, { s: ", in the early evening." }],
 ];

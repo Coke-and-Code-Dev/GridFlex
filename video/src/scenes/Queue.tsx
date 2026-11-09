@@ -183,7 +183,7 @@ export const Queue: React.FC = () => {
           <div style={{ display: "flex", gap: 60, marginTop: 40 }}>
             {/* queue */}
             <div style={{ width: 640 }}>
-              <Mono size={22}>Requests waiting</Mono>
+              <Mono size={22}>Capacity requests waiting</Mono>
               <div style={{ display: "flex", alignItems: "baseline", gap: 22, marginTop: 4 }}>
                 <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 210, lineHeight: 1, letterSpacing: -8, color: C.text }}>{nTokens}</div>
                 <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: 40, color: C.mute }}>27.2 MW<br />waiting</div>
@@ -193,6 +193,9 @@ export const Queue: React.FC = () => {
                   const on = i < nTokens;
                   return <div key={i} style={{ width: 22, height: 22, borderRadius: 6, background: on ? C.yellow : "#262933", transform: "scale(" + (on ? 1 : 0.7) + ")", opacity: on ? 1 : 0.6 }} />;
                 })}
+              </div>
+              <div style={{ marginTop: 16, fontFamily: MONO, fontWeight: 500, fontSize: 21, color: "#9a9dab", lineHeight: 1.35 }}>
+                1 square = 1 request for more<br />grid capacity in this area
               </div>
             </div>
             {/* timeline */}
