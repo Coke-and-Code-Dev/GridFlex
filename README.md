@@ -171,4 +171,4 @@ Create a descriptive branch and open a pull request to `main` with the problem, 
 
 ## Team
 
-**Team Coke & Code Dev** — [GitHub Organization](https://github.com/Coke-and-Code-Dev/)
+**Team Coke & Code Dev** — [Coke & Code Dev - Github Organization](https://github.com/Coke-and-Code-Dev/)
