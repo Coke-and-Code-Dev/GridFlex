@@ -6,7 +6,7 @@ Rules for everyone working in this repository: teammates and AI coding agents al
 
 **GridFlex** checks whether a business can add EV chargers under its existing grid connection limit for a given month. It shows the local grid congestion for the business's postcode, proposes a charging and battery schedule, and flags how often that schedule would still go over the limit on realistic days.
 
-**Read [idea.md](idea.md) first.** It is the source of truth for the idea, architecture, module interfaces, scope and build plan. If you change the plan, update idea.md in the same PR. Tasks per person are in [TODO.md](TODO.md); tick items off in the PR that completes them.
+**Read [idea.md](idea.md) first.** It is the source of truth for the idea, architecture, module interfaces, scope and build plan. If you change the plan, update idea.md in the same PR.
 
 The GLASS dataset is described in [data/README.md](data/README.md); the other data sources in idea.md §4.
 
@@ -39,8 +39,6 @@ The GLASS dataset is described in [data/README.md](data/README.md); the other da
 ```
 README.md            what GridFlex is, how to set it up and where the data comes from
 idea.md              idea + implementation plan (source of truth)
-TODO.md              tasks per person
-HANDOFF.md           handoff notes between teammates (what exists, how to call it, gotchas)
 AGENTS.md            this file
 data/README.md       GLASS dataset card
 data/raw/            downloads (GLASS, capacity map, Liander): git-ignored, never commit

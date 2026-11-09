@@ -34,7 +34,7 @@ Original concept: GridFlex AI by Smriti Sridhar (Leiden University).
 13. [Setup](#13-setup)
 14. [References and attribution](#14-references-and-attribution)
 
-The task list per person is in [TODO.md](TODO.md).
+Project setup and contributor information are in [README.md](README.md) and [AGENTS.md](AGENTS.md).
 
 ---
 
@@ -399,7 +399,6 @@ In one line: *generative AI imagines the futures, an AI planner finds a plan tha
 ```
 ey_hackathon/
 ├── idea.md                ← this document
-├── TODO.md                ← tasks per person
 ├── AGENTS.md              ← rules for humans and AI agents
 ├── requirements.txt       ← Python dependencies, filled in as we build
 ├── data/

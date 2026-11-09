@@ -20,7 +20,7 @@ def embed(texts):
 
 def chunks():
     result = []
-    for filename in ('idea.md', 'HANDOFF.md', 'data/README.md'):
+    for filename in ('idea.md', 'README.md', 'data/README.md'):
         text = (ROOT / filename).read_text(encoding='utf-8')
         sections = re.split(r'(?=^#{1,3} )', text, flags=re.M)
         for section in sections:
