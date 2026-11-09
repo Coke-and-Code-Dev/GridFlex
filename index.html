@@ -9,9 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Instrument+Serif:ital@0;1&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
   <link rel="stylesheet" href="site.css">
 </head>
-<body>
+<body class="landing">
   <a class="skip" href="#main">Skip to content</a>
   <header class="top">
     <div class="wrap">
@@ -26,27 +27,23 @@
   </header>
   <main id="main">
     <section class="hero" id="hero">
-      <div class="wrap hero-grid">
-        <div>
-          <p class="eyebrow">Electric fleet planning · The Netherlands</p>
-          <h1>Grid<em>Flex</em></h1>
-          <p class="lede">Can your vans charge before they leave, using the grid connection you already have?</p>
-          <div class="actions"><a class="btn primary" href="watch/">Watch the video</a><a class="btn" href="pipeline/">Explore the pipeline</a></div>
+      <div class="wrap">
+        <p class="eyebrow">GridFlex · Plan. Stress-test. Explain.</p>
+        <h1>Can your business charge more vans on the grid connection it <em>already has?</em></h1>
+        <p class="lede">GridFlex plans EV fleet charging inside the capacity your site already has, tests that plan on realistic days it has never seen, and explains the result in plain language. A person decides.</p>
+        <div class="cta">
+          <a class="btn primary" href="pipeline/">Read the methodology</a>
+          <a class="btn" href="#how">See the idea</a>
+          <a class="btn video-link" href="watch/"><span class="play-icon" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg></span>Watch the video</a>
         </div>
-        <figure class="panel">
-          <svg viewBox="0 0 480 252" role="img" aria-labelledby="chart-title">
-            <title id="chart-title">Illustrative demand chart. Charging on arrival crosses the grid limit. Scheduled charging stays below it.</title>
-            <path d="M30 193H450M30 149H450M30 61H450" stroke="#34343e"/>
-            <path d="M30 105H450" stroke="#ff9189" stroke-dasharray="7 5"/>
-            <path d="M30 171H114L147 42L184 151L225 171H450" fill="none" stroke="#bab9c4" stroke-width="3" stroke-dasharray="6 6" stroke-linejoin="round"/>
-            <path d="M30 171H116L139 130H260L280 141H346L366 171H450" fill="none" stroke="#ffe600" stroke-width="4" stroke-linejoin="round"/>
-            <g font-family="monospace" font-size="13"><text x="168" y="40" fill="#bab9c4">Charging on arrival</text><text x="330" y="95" fill="#ff9189">Site limit</text><text x="194" y="159" fill="#ffe600">Scheduled charging</text><text x="30" y="226" fill="#bab9c4">Arrival</text><text x="387" y="226" fill="#bab9c4">Departure</text></g>
-          </svg>
-          <figcaption>Illustrative charging patterns on the same site connection.</figcaption>
-        </figure>
+        <div class="hero-strip" aria-label="At a glance">
+          <span><b>Locate</b> grid congestion by postcode</span>
+          <span><b>Plan</b> a charging timetable under the limit</span>
+          <span><b>Stress-test</b> on unseen days</span>
+          <span><b>Explain</b> · a person decides</span>
+        </div>
       </div>
     </section>
-    <div class="strip"><div class="wrap"><span><b>Locate</b> local congestion</span><span><b>Plan</b> the charging slots</span><span><b>Stress-test</b> on unseen demand</span><span><b>Explain</b> the result</span></div></div>
     <section class="section" id="problem">
       <div class="wrap split">
         <div><p class="eyebrow">01 · The problem</p><h2>One connection. <em>Many demands.</em></h2></div>
