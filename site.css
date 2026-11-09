@@ -49,7 +49,6 @@ nav.main{display:flex;gap:22px;flex-wrap:wrap}
 nav.main a{text-decoration:none;font-size:14px;color:var(--muted)}
 nav.main a:hover,nav.main a[aria-current=page]{color:var(--primary)}
 @media (max-width:760px){
-  header.top{position:relative}
   .top .wrap{align-items:flex-start;flex-direction:column;gap:8px;padding-block:10px}
   nav.main{gap:6px 16px}
 }
