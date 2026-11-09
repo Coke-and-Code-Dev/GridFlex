@@ -12,11 +12,11 @@
 
 <p align="center">
   <a href="https://coke-and-code-dev.github.io/GridFlex/">Website</a> ·
-  <a href="https://coke-and-code-dev.github.io/GridFlex/#watch">Watch</a> ·
-  <a href="#how-it-works">How it works</a> ·
+  <a href="https://coke-and-code-dev.github.io/GridFlex/watch/">Watch</a> ·
+  <a href="https://coke-and-code-dev.github.io/GridFlex/pipeline/">Pipeline</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#interpreting-results">Interpreting results</a> ·
-  <a href="#documentation">Docs</a> ·
+  <a href="https://coke-and-code-dev.github.io/GridFlex/docs/">Docs</a> ·
   <a href="#team">Team</a>
 </p>
 
@@ -32,7 +32,7 @@ GridFlex is a planning prototype. A person reviews the recommendation, and the g
 
 ## Watch
 
-[Watch the GridFlex pitch video](https://coke-and-code-dev.github.io/GridFlex/#watch) to see the fleet charging problem and how GridFlex helps depots plan around their existing connection.
+[Watch the GridFlex pitch video](https://coke-and-code-dev.github.io/GridFlex/watch/) to see the fleet charging problem and how GridFlex helps depots plan around their existing connection.
 
 ## How it works
 
