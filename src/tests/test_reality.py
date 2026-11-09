@@ -12,7 +12,7 @@ import pytest
 from gridflex.profiles import DEFAULT_DATA_DIR
 from gridflex.reality import RealityCheck, compare, compare_all, summary
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "prepare_liander_sbi.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "data" / "scripts" / "prepare_liander_sbi.py"
 spec = importlib.util.spec_from_file_location("prepare_liander_sbi", SCRIPT)
 prepare = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prepare)
@@ -139,7 +139,7 @@ def test_real_development_condition_against_sbi_52():
     assert r.mean_abs_diff < 0.5
 
 
-# --- scripts/prepare_liander_sbi.py ----------------------------------------------------------
+# --- data/scripts/prepare_liander_sbi.py ----------------------------------------------------------
 
 
 def make_overview(path: Path, rows: list[list[str | None]]) -> None:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "setup_data.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "data" / "scripts" / "setup_data.py"
 spec = importlib.util.spec_from_file_location("setup_data", SCRIPT)
 setup_data = importlib.util.module_from_spec(spec)
 sys.modules["setup_data"] = setup_data

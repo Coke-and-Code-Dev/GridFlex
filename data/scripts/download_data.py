@@ -1,19 +1,19 @@
 """Download the raw datasets into data/raw/ (git-ignored). Standard library only.
 
-    python scripts/download_data.py            # everything below (about 13.6 GB)
-    python scripts/download_data.py glass      # only GLASS (13.2 GB): all you need to build the dashboard data
-    python scripts/download_data.py capacity liander
+    python data/scripts/download_data.py            # everything below (about 13.6 GB)
+    python data/scripts/download_data.py glass      # only GLASS (13.2 GB): all you need to build the dashboard data
+    python data/scripts/download_data.py capacity liander
 
 What each one is, and why:
   glass     GLASS_v1.1.parquet, synthetic large-customer smart-meter data (4TU.ResearchData, CDLA-Permissive-2.0).
   capacity  The grid operators' capacity map (Netbeheer Nederland): 4 small files, 47 MB.
   liander   Liander's real 2023 consumption profiles (3 files, 397 MB).
 
-Nothing in data/processed/ is in git: after downloading, `python scripts/setup_data.py build` makes it
+Nothing in data/processed/ is in git: after downloading, `python data/scripts/setup_data.py build` makes it
 all (the 480 GLASS files, the grid map and Liander's profiles) from these three.
 
 Downloads resume where they stopped (run the command again after a dropped connection), files that
-are already complete are skipped, and GLASS is checked against the SHA-256 in data/README.md.
+are already complete are skipped, and GLASS is checked against its published SHA-256.
 """
 from __future__ import annotations
 
@@ -29,13 +29,13 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DEST = REPO_ROOT / "data" / "raw"
-README = REPO_ROOT / "data" / "README.md"
-USER_AGENT = "gridflex-setup/1.0 (hackathon project; scripts/download_data.py)"
+USER_AGENT = "gridflex-setup/1.0 (hackathon project; data/scripts/download_data.py)"
 
 GLASS_NAME = "GLASS_v1.1.parquet"
 GLASS_SIZE = 13_214_162_600
+GLASS_SHA256 = "815ac9fc98cf2a2823492a894ac81b132c88d6637a9e1642beb280b38d112343"  # published with the dataset on 4TU.ResearchData
 GLASS_URL = ("https://data.4tu.nl/file/b18de4df-0f67-4a6f-aa84-6634cdd63991/"
              "f5b15352-901e-4db5-afdb-2ff7b8c958db")  # https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991
 
@@ -130,7 +130,7 @@ def fetch(item: Item, folder: Path, force: bool = False, attempts: int = 6) -> P
                 break
             if exc.code in (400, 401, 403, 404, 410):
                 sys.exit(f"\n  {item.name}: the server answered {exc.code} for {item.url}\n"
-                         "  The link may have moved; see data/README.md for the source page.")
+                         "  The link may have moved; see https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991 for the source page.")
             problem = f"HTTP {exc.code}"
         except (urllib.error.URLError, OSError, http.client.HTTPException) as exc:
             problem = str(getattr(exc, "reason", exc)) or type(exc).__name__
@@ -149,14 +149,11 @@ def fetch(item: Item, folder: Path, force: bool = False, attempts: int = 6) -> P
 
 
 def expected_sha256() -> str:
-    match = re.search(r"\*\*SHA-256:\*\*\s*`([0-9a-f]{64})`", README.read_text(encoding="utf-8"))
-    if not match:
-        sys.exit(f"Could not find the SHA-256 in {README}")
-    return match.group(1)
+    return GLASS_SHA256
 
 
 def verify_glass(path: Path) -> None:
-    """Check GLASS against data/README.md. The marker file has the same format as extract_glass.py's,
+    """Check GLASS against its published SHA-256. The marker file has the same format as extract_glass.py's,
     so the extract step does not hash the 13 GB again."""
     marker = path.with_name(path.name + ".sha256-verified")
     stat, expected = path.stat(), expected_sha256()
@@ -209,7 +206,7 @@ def main() -> int:
 
     print("\nDone. Next:")
     if "glass" in groups:
-        print("  python scripts/setup_data.py build    # makes the 480 dashboard files from GLASS")
+        print("  python data/scripts/setup_data.py build    # makes the 480 dashboard files from GLASS")
     return 0
 
 

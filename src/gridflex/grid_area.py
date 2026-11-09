@@ -1,6 +1,6 @@
 """Postcode lookup in the Netbeheer Nederland capacity map ("Your area" card).
 
-Reads the compact files written by scripts/prepare_grid_map.py (data/processed/grid_*.parquet).
+Reads the compact files written by data/scripts/prepare_grid_map.py (data/processed/grid_*.parquet).
 The map is indicative and a snapshot, per supply area and not per connection: always show
 `data_date` and tell the user to check with their grid operator.
 
@@ -17,7 +17,7 @@ from typing import Literal
 
 import polars as pl
 
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 
 Status = Literal["unknown", "available", "limited", "under_study", "shortage"]
 # Offtake ("afname") colour code in the map: -1 no information, 0 transparent, 1 yellow, 2 orange, 3 red.
@@ -73,7 +73,7 @@ def _tables(data_dir: str) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
     missing = [name for name in needed if not (folder / name).exists()]
     if missing:
         raise FileNotFoundError(
-            f"{', '.join(missing)} not found in {folder}. Run: python scripts/prepare_grid_map.py"
+            f"{', '.join(missing)} not found in {folder}. Run: python data/scripts/prepare_grid_map.py"
         )
     areas = pl.read_parquet(folder / "grid_areas.parquet")
     projects = pl.read_parquet(folder / "grid_projects.parquet")

@@ -4,7 +4,7 @@ import sqlite3
 import uuid
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1] / '.gridflex-local'
+ROOT = Path(__file__).resolve().parents[2] / '.gridflex-local'
 DB = ROOT / 'portfolio.sqlite3'
 
 

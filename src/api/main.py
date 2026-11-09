@@ -43,7 +43,7 @@ async def invalid_scenario(request, exc):
 
 @app.exception_handler(FileNotFoundError)
 async def missing_data(request, exc):
-    return JSONResponse(status_code=404, content={"detail": "No prepared data for this selection. If the data is not set up yet, run: python scripts/setup_data.py status"})
+    return JSONResponse(status_code=404, content={"detail": "No prepared data for this selection. If the data is not set up yet, run: python data/scripts/setup_data.py status"})
 
 
 @lru_cache(maxsize=8)
@@ -127,7 +127,7 @@ def reality(category: str, month: str, level: int = 1):
     selected = next((c for c in available_conditions()
                      if (c.category, c.month, c.level) == (category, month, level)), None)
     if selected is None:
-        raise HTTPException(404, "No prepared data for this selection. If the data is not set up yet, run: python scripts/setup_data.py status")
+        raise HTTPException(404, "No prepared data for this selection. If the data is not set up yet, run: python data/scripts/setup_data.py status")
     checks = []
     for check in compare_all(category, month, level):
         payload = json_fields(check)

@@ -1,7 +1,7 @@
 """Extract Liander's real 2023 profiles for the reality check.
 
 Usage:
-    python scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01
+    python data/scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01
 
 Reads, without extracting them, the zips in data/raw/liander_sbi/:
   - "Geaggregeerde SBI-profielen.zip": one CSV per SBI code with, for every quarter-hour of
@@ -27,7 +27,7 @@ from pathlib import Path
 
 import polars as pl
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RAW = REPO_ROOT / "data" / "raw" / "liander_sbi"
 DEFAULT_OUT = REPO_ROOT / "data" / "processed"
 SBI_ZIP = "Geaggregeerde SBI-profielen.zip"
@@ -155,7 +155,7 @@ def main() -> None:
 
     for name in (SBI_ZIP, KO_ZIP, OVERVIEW):
         if not (args.raw / name).exists():
-            sys.exit(f"Missing {args.raw / name}. Download it with: python scripts/download_data.py liander")
+            sys.exit(f"Missing {args.raw / name}. Download it with: python data/scripts/download_data.py liander")
     for month in args.months:
         if not re.match(r"^2023-(0[1-9]|1[0-2])$", month):
             sys.exit(f"{month}: Liander's profiles cover 2023 only")

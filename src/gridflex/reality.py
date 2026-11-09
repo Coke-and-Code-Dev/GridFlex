@@ -111,7 +111,7 @@ def compare(
     if not path.exists():
         raise FileNotFoundError(
             f"{path.name} not found in {path.parent}. "
-            f"Run: python scripts/prepare_liander_sbi.py --sbi {sbi_code} --months {LIANDER_YEAR}-{month[5:7]}"
+            f"Run: python data/scripts/prepare_liander_sbi.py --sbi {sbi_code} --months {LIANDER_YEAR}-{month[5:7]}"
         )
     g_band, g_mean, n_days, n_samples = _glass_typical_day(glass)
     l_band, l_mean, has_band, l_days = _liander_typical_day(pl.read_parquet(path))

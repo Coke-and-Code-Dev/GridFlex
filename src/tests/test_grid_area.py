@@ -9,7 +9,7 @@ import pytest
 
 from gridflex.grid_area import DEFAULT_DATA_DIR, lookup, map_date, normalise_postcode
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "prepare_grid_map.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "data" / "scripts" / "prepare_grid_map.py"
 
 
 def _load_prepare():
@@ -24,7 +24,7 @@ prepare = _load_prepare()
 
 @pytest.fixture
 def data_dir(tmp_path) -> Path:
-    """A tiny capacity map with the same schema scripts/prepare_grid_map.py writes."""
+    """A tiny capacity map with the same schema data/scripts/prepare_grid_map.py writes."""
     pc6 = pl.DataFrame(
         {
             "postcode": ["1111AA", "2222BB", "3333CC", "4444DD", "5555EE"],
@@ -141,7 +141,7 @@ def test_missing_data_files_give_a_helpful_error(tmp_path):
         lookup("1111AA", tmp_path)
 
 
-# --- the rules in scripts/prepare_grid_map.py ---------------------------------------------
+# --- the rules in data/scripts/prepare_grid_map.py ---------------------------------------------
 
 
 def _raw_pc6(rows):

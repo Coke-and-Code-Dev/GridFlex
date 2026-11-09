@@ -2,8 +2,8 @@
 CLAUDE.md
 .claude/
 
-# Data: nothing under data/ is committed except data/README.md. Raw downloads are multi-GB and the
-# processed files are made from them: python scripts/download_data.py, then python scripts/setup_data.py build
+# Data: only data/scripts/ is committed. Raw downloads are multi-GB and the
+# processed files are made from them: python data/scripts/download_data.py, then python data/scripts/setup_data.py build
 data/raw/
 data/processed/
 data/*.parquet

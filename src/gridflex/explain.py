@@ -103,7 +103,7 @@ def call_llm(system: str, user: str, schema: dict | None = None, provider: str =
         return result["message"]["content"]
     if provider != "groq":
         raise ValueError("Unsupported explanation provider")
-    key = os.environ.get("GROQ_API_KEY") or dotenv_values(Path(__file__).resolve().parents[1] / ".env").get("GROQ_API_KEY")
+    key = os.environ.get("GROQ_API_KEY") or dotenv_values(Path(__file__).resolve().parents[2] / ".env").get("GROQ_API_KEY")
     if not key:
         raise RuntimeError("Groq API key not configured")
     client = Groq(api_key=key, timeout=12.0 if timeout is None else timeout, max_retries=0)

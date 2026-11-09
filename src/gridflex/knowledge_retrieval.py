@@ -6,7 +6,7 @@ import re
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 MODEL = 'qwen3-embedding:0.6b'
 
 
@@ -20,7 +20,7 @@ def embed(texts):
 
 def chunks():
     result = []
-    for filename in ('README.md', 'data/README.md'):
+    for filename in ('README.md',):
         text = (ROOT / filename).read_text(encoding='utf-8')
         sections = re.split(r'(?=^#{1,3} )', text, flags=re.M)
         for section in sections:

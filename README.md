@@ -15,6 +15,7 @@
   <a href="https://coke-and-code-dev.github.io/GridFlex/watch/">Watch</a> ·
   <a href="https://coke-and-code-dev.github.io/GridFlex/pipeline/">Pipeline</a> ·
   <a href="#quick-start">Quick start</a> ·
+  <a href="#data-pipeline">Data pipeline</a> ·
   <a href="#interpreting-results">Interpreting results</a> ·
   <a href="https://coke-and-code-dev.github.io/GridFlex/docs/">Docs</a> ·
   <a href="#team">Team</a>
@@ -38,11 +39,11 @@ GridFlex is a planning prototype. A person reviews the recommendation, and the g
 
 | Stage | What it does | Code |
 | --- | --- | --- |
-| **Locate** | Looks up local congestion, the queue and expected relief from a dated postcode snapshot. | [Grid area lookup](gridflex/grid_area.py) |
-| **Prepare** | Builds a load profile from meter readings or GLASS, then separates planning data from held-out data by date for meter readings or by customer for GLASS. | [Load sources](gridflex/load_sources.py) · [Profiles](gridflex/profiles.py) |
-| **Plan** | Uses OR-Tools CP-SAT to schedule vans and an optional battery in 15-minute slots. The solver prioritises reducing unavoidable overload, unmet energy, peak demand and battery cycling, in that order. | [Scheduler](gridflex/scheduler.py) |
-| **Stress-test** | Replays the fixed timetable on held-out demand. Compares it with charging on arrival and measures breaches and charging shortfalls. | [Replay](gridflex/replay.py) |
-| **Review** | Shows the timetable, risk and what-if results. For portfolios, compares depots and exports a PDF. Groq or local Qwen can explain computed evidence. | [Dashboard](ui/) · [API](api/) |
+| **Locate** | Looks up local congestion, the queue and expected relief from a dated postcode snapshot. | [Grid area lookup](src/gridflex/grid_area.py) |
+| **Prepare** | Builds a load profile from meter readings or GLASS, then separates planning data from held-out data by date for meter readings or by customer for GLASS. | [Load sources](src/gridflex/load_sources.py) · [Profiles](src/gridflex/profiles.py) |
+| **Plan** | Uses OR-Tools CP-SAT to schedule vans and an optional battery in 15-minute slots. The solver prioritises reducing unavoidable overload, unmet energy, peak demand and battery cycling, in that order. | [Scheduler](src/gridflex/scheduler.py) |
+| **Stress-test** | Replays the fixed timetable on held-out demand. Compares it with charging on arrival and measures breaches and charging shortfalls. | [Replay](src/gridflex/replay.py) |
+| **Review** | Shows the timetable, risk and what-if results. For portfolios, compares depots and exports a PDF. Groq or local Qwen can explain computed evidence. | [Dashboard](ui/) · [API](src/api/) |
 
 ## Quick start
 
@@ -59,36 +60,36 @@ git clone https://github.com/Coke-and-Code-Dev/GridFlex.git
 cd GridFlex
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python -m pip install -r src/requirements.txt
 ```
 
 On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1` instead.
 
 ### 2. Prepare the data
 
-Processed data is not committed to Git. If you have a verified ZIP created with `setup_data.py pack`, run:
+Processed data is not committed to Git. Build it from the public sources (about 15 GB of disk and one long download):
 
 ```bash
-python scripts/setup_data.py unpack path/to/processed_data.zip
-python scripts/setup_data.py status
+python data/scripts/download_data.py
+python data/scripts/setup_data.py build
+python data/scripts/setup_data.py status
 ```
 
-Alternatively, download and build the data yourself:
+or, if you have a verified ZIP created with `setup_data.py pack`, restore it in seconds:
 
 ```bash
-python scripts/download_data.py
-python scripts/setup_data.py build
-python scripts/setup_data.py status
+python data/scripts/setup_data.py unpack path/to/processed_data.zip
+python data/scripts/setup_data.py status
 ```
 
-The raw downloads total approximately 13.6 GB. The status command reports whether the GLASS, grid-map and Liander extracts are present. For sources and licensing, see [data/README.md](data/README.md).
+[Data pipeline](#data-pipeline) explains each step, what is kept or dropped, and how to change it.
 
 ### 3. Start the API and dashboard
 
 In the activated environment, from the repository root:
 
 ```bash
-python -m uvicorn api.main:app --reload --port 8000
+python -m uvicorn api.main:app --app-dir src --reload --port 8000
 ```
 
 In a second terminal:
@@ -114,7 +115,7 @@ When Groq is selected, questions and relevant computed context are sent to the p
 ### 5. Run the tests
 
 ```bash
-python -m pytest
+python -m pytest src
 ```
 
 ```bash
@@ -123,6 +124,75 @@ npm test
 ```
 
 Tests that need processed data skip when the relevant files are unavailable.
+
+## Data pipeline
+
+GridFlex reads three small datasets from `data/processed/`. They are not in Git: you rebuild them from three public sources with the scripts in [`data/scripts/`](data/scripts/). Run every command from the repository root, in the activated virtual environment.
+
+```text
+data/raw/                          data/scripts/                 data/processed/
+  GLASS_v1.1.parquet (13.2 GB) ──► extract_glass.py ──────────► glass_*.parquet          (480 files, 211 MB)
+  capaciteitskaart/*.csv (47 MB) ► prepare_grid_map.py ───────► grid_*.parquet + meta    (4 files)
+  liander_sbi/*.zip (397 MB) ────► prepare_liander_sbi.py ────► liander_sbi_*.parquet    (37 files)
+        ▲                                   ▲
+ download_data.py                   setup_data.py build (runs the three above)
+```
+
+### Sources
+
+| Dataset | Used for | Source and licence |
+| --- | --- | --- |
+| **GLASS v1.1** | Synthetic daily load profiles of large customers (96 quarter-hours per day) that stand in for a depot's building demand | [4TU.ResearchData](https://doi.org/10.4121/b18de4df-0f67-4a6f-aa84-6634cdd63991), CDLA-Permissive-2.0. The dataset page describes every field. |
+| **Capacity map** | Congestion colour, queue and expected relief per postcode | [Netbeheer Nederland capaciteitskaart](https://capaciteitskaart.netbeheernederland.nl). An indicative, dated snapshot. |
+| **Liander profiles 2023** | Real demand shapes that the reality check compares GLASS against | [Liander open data](https://www.liander.nl/over-ons/open-data). Attribution required. |
+
+### Step by step
+
+**1. Download** the raw files into `data/raw/` (git-ignored). The download resumes after a dropped connection, skips files that are already complete and checks GLASS against its published SHA-256.
+
+```bash
+python data/scripts/download_data.py                  # everything, about 13.6 GB
+python data/scripts/download_data.py glass            # or only GLASS (13.2 GB); add capacity and liander as needed
+```
+
+**2. Build** `data/processed/` from the raw files. The processing itself takes about a minute. The first GLASS run also spends a few minutes verifying the 13 GB file's checksum.
+
+```bash
+python data/scripts/setup_data.py build               # builds only what is missing; --force rebuilds all
+python data/scripts/setup_data.py status              # counts the files and says what is missing
+```
+
+`build` runs the three preparation scripts below with the settings GridFlex ships with. You can also run them yourself to build something different; each prints a summary of what it wrote.
+
+| Script | What it keeps | What it cleans or drops |
+| --- | --- | --- |
+| `extract_glass.py` | Scenario `consumption_only`, 10 categories (sectors 009, 008, 006, 007, 015, 004 and operating-hours classes E3A to E3D), every month of 2024, all 4 levels, and the first 40 samples of each combination. One file per category, month and level. | Reads the 43M-row file lazily with filters, never fully in memory. Keeps only the metadata and the 96 time columns. Each sample stays inside its own month, so days are never joined across months or samples. Prints peak, spread and monthly-energy checks per file. |
+| `prepare_grid_map.py` | Offtake (`afname`) only, because GridFlex is about new demand: one row per postcode, one per supply area, the planned reinforcement projects, and a `grid_map_meta.json` with the download date. | Reads the semicolon-separated CSVs with comma decimals as text, then converts. Normalises postcodes and drops invalid ones. Where a postcode lies in two supply areas, keeps the most severe colour and flags it. Turns the map's `-1` ("no information") into missing. Ignores the placeholder fix year 2099. |
+| `prepare_liander_sbi.py` | The aggregated profiles for SBI codes 49 and 52 and Liander's standard logistics profile (`KO_LOGISTIEK`), every month of 2023, as median, p10, p90 and mean. Values are relative, not kW. | Reads the zips without unpacking them. Keeps complete months only and stops if a month does not have every quarter-hour. Skips SBI codes that Liander's overview marks with a warning, unless you pass `--allow-warning`. |
+
+Run any of them directly for a custom selection, for example:
+
+```bash
+python data/scripts/extract_glass.py --categories 009 008 --months 2024-01 2024-02 --levels 0 1 2 3 --samples 40 --quiet
+python data/scripts/prepare_grid_map.py
+python data/scripts/prepare_liander_sbi.py --sbi 49 52 KO_LOGISTIEK --months 2023-01 2023-02
+```
+
+To change what `build` makes by default, edit the constants at the top of [`setup_data.py`](data/scripts/setup_data.py) (`CATEGORIES`, `MONTHS`, `LEVELS`, `SAMPLES`, `LIANDER_CODES`).
+
+**3. Share or restore** a finished folder instead of rebuilding it (around 215 MB). `pack` writes `data/processed_data.zip` with a checksum for each file, and `unpack` refuses anything that does not match.
+
+```bash
+python data/scripts/setup_data.py pack                                # on the machine that has the data
+python data/scripts/setup_data.py unpack path/to/processed_data.zip   # on the new machine
+```
+
+### Reproducibility notes
+
+- GLASS and the Liander profiles are fixed releases, so your processed files match ours. The capacity map is a live snapshot, so a fresh download can differ from ours; the download date is saved in `data/processed/grid_map_meta.json` and shown in the app.
+- Keep the planning and test data apart. Split GLASS by `sample_id`, never by day, and join days only within the same scenario, category, month, level and sample.
+- Tests that need the processed data are marked `needs_glass` and skip themselves when it is missing, so `python -m pytest src` runs either way.
+- Only `data/scripts/` is committed under `data/`. Never commit `data/raw/`, `data/processed/` or a ZIP. If you add a processed file, add it to `setup_data.py` so `status`, `build` and `pack` know about it.
 
 ## Interpreting results
 
@@ -140,7 +210,7 @@ Tests that need processed data skip when the relevant files are unavailable.
 
 | Guide | Covers |
 | --- | --- |
-| [Dataset card](data/README.md) | Data preparation and licensing |
+| [Data pipeline](#data-pipeline) | Downloading the sources and building `data/processed/` |
 | [Dashboard guide](ui/README.md) | Running the UI, configuring explanations and uploading CSVs |
 | [Example cases](examples/README.md) | Files to upload, expected results and CSV column definitions |
 | [Pitch video](video/README.md) | Remotion source and rendering instructions |

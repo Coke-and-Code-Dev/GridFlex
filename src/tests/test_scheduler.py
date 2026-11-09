@@ -102,7 +102,7 @@ def test_battery_invalid_parameters():
 
 
 @pytest.mark.skipif(not (DEFAULT_DATA_DIR / 'glass_009_2024-01_L1.parquet').exists(),
-                    reason='GLASS extracts not set up (python scripts/setup_data.py status)')
+                    reason='GLASS extracts not set up (python data/scripts/setup_data.py status)')
 def test_real_development_scenario_integrates_with_replay():
     from gridflex.profiles import load_condition, build_windows, split_by_sample, cautious_baseline
     from gridflex.replay import replay

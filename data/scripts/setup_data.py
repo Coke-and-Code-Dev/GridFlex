@@ -8,14 +8,14 @@ The dashboard reads three small datasets that are made from the raw downloads:
 
 The usual way, from the repository root:
 
-    python scripts/download_data.py        # the raw files into data/raw/ (13.6 GB, resumes if interrupted)
-    python scripts/setup_data.py build     # makes everything in data/processed/ from them (about a minute)
-    python scripts/setup_data.py status    # says what is missing
+    python data/scripts/download_data.py        # the raw files into data/raw/ (13.6 GB, resumes if interrupted)
+    python data/scripts/setup_data.py build     # makes everything in data/processed/ from them (about a minute)
+    python data/scripts/setup_data.py status    # says what is missing
 
 Or, if a teammate who has the finished folder shares a zip:
 
-    python scripts/setup_data.py pack                              # (them) writes data/processed_data.zip
-    python scripts/setup_data.py unpack path/to/processed_data.zip # (you) restores it, checksums verified
+    python data/scripts/setup_data.py pack                              # (them) writes data/processed_data.zip
+    python data/scripts/setup_data.py unpack path/to/processed_data.zip # (you) restores it, checksums verified
 """
 from __future__ import annotations
 
@@ -26,8 +26,8 @@ import sys
 import zipfile
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = REPO_ROOT / "scripts"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS = REPO_ROOT / "data" / "scripts"
 PROCESSED = REPO_ROOT / "data" / "processed"
 RAW = REPO_ROOT / "data" / "raw" / "GLASS_v1.1.parquet"
 RAW_CAPACITY = REPO_ROOT / "data" / "raw" / "capaciteitskaart"
@@ -91,9 +91,9 @@ def status() -> int:
         print("Complete. Nothing to do.")
         return 0
     print("To make it:")
-    print("  python scripts/download_data.py      # the raw files (skips what you already have)")
-    print("  python scripts/setup_data.py build   # processes them")
-    print("or: python scripts/setup_data.py unpack <zip from a teammate>")
+    print("  python data/scripts/download_data.py      # the raw files (skips what you already have)")
+    print("  python data/scripts/setup_data.py build   # processes them")
+    print("or: python data/scripts/setup_data.py unpack <zip from a teammate>")
     return 1
 
 
@@ -105,16 +105,16 @@ def _steps() -> dict[str, tuple[list[str], list[tuple[Path, str]]]]:
         "GLASS": (
             [sys.executable, str(SCRIPTS / "extract_glass.py"), "--categories", *CATEGORIES, "--months", *MONTHS,
              "--levels", *map(str, LEVELS), "--samples", str(SAMPLES), "--quiet"],
-            [(RAW, "python scripts/download_data.py glass")],
+            [(RAW, "python data/scripts/download_data.py glass")],
         ),
         "grid map": (
             [sys.executable, str(SCRIPTS / "prepare_grid_map.py")],
-            [(RAW_CAPACITY / "congestie_pc6.csv", "python scripts/download_data.py capacity")],
+            [(RAW_CAPACITY / "congestie_pc6.csv", "python data/scripts/download_data.py capacity")],
         ),
         "Liander": (
             [sys.executable, str(SCRIPTS / "prepare_liander_sbi.py"), "--sbi", *LIANDER_CODES,
              "--months", *LIANDER_MONTHS],
-            [(RAW_LIANDER / "Geaggregeerde SBI-profielen.zip", "python scripts/download_data.py liander")],
+            [(RAW_LIANDER / "Geaggregeerde SBI-profielen.zip", "python data/scripts/download_data.py liander")],
         ),
     }
 
@@ -129,8 +129,8 @@ def build(force: bool = False) -> int:
         print("Some raw files are missing, so not everything can be built yet:")
         for path, how in absent:
             print(f"  {path} is not there: {how}")
-        print("Download everything with `python scripts/download_data.py`, then run build again."
-              "\nOr ask a teammate for their zip and use: python scripts/setup_data.py unpack <zip>")
+        print("Download everything with `python data/scripts/download_data.py`, then run build again."
+              "\nOr ask a teammate for their zip and use: python data/scripts/setup_data.py unpack <zip>")
         return 1
     for name, (command, _) in todo.items():
         print(f"\n== {name}")
@@ -157,7 +157,7 @@ def pack(target: Path) -> int:
             z.write(PROCESSED / name, name)
         z.writestr(MANIFEST, "\n".join(lines) + "\n")
     print(f"Wrote {target} ({target.stat().st_size / 1e6:.0f} MB, {len(names)} files).")
-    print("Share it (cloud drive, USB stick). Teammates run: python scripts/setup_data.py unpack <that file>")
+    print("Share it (cloud drive, USB stick). Teammates run: python data/scripts/setup_data.py unpack <that file>")
     return 0
 
 

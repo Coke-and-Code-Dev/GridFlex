@@ -140,7 +140,7 @@ def test_meter_source_through_the_api(monkeypatch):
 
 from pathlib import Path  # noqa: E402
 
-EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
+EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 
 
 @pytest.mark.parametrize("case", ["case_2_own_meter_data", "case_3_dutch_meter_export"])

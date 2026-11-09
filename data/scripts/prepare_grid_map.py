@@ -1,7 +1,7 @@
 """Turn the Netbeheer Nederland capacity-map CSVs into compact parquet files.
 
 Usage:
-    python scripts/prepare_grid_map.py
+    python data/scripts/prepare_grid_map.py
 
 Reads data/raw/capaciteitskaart/{congestie_pc6,voedingsgebieden,projecten}.csv
 (semicolon-separated, comma decimals) and writes to data/processed/:
@@ -25,7 +25,7 @@ from pathlib import Path
 
 import polars as pl
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RAW = REPO_ROOT / "data" / "raw" / "capaciteitskaart"
 DEFAULT_OUT = REPO_ROOT / "data" / "processed"
 FILES = ["congestie_pc6.csv", "voedingsgebieden.csv", "projecten.csv", "brondata_documentatie.txt"]
@@ -162,7 +162,7 @@ def main() -> None:
 
     missing = [f for f in FILES[:3] if not (args.raw / f).exists()]
     if missing:
-        sys.exit(f"Missing in {args.raw}: {', '.join(missing)}. Download them with: python scripts/download_data.py capacity")
+        sys.exit(f"Missing in {args.raw}: {', '.join(missing)}. Download them with: python data/scripts/download_data.py capacity")
     if args.download_date:
         date.fromisoformat(args.download_date)  # validate
 

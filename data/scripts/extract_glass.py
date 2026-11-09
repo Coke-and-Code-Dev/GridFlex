@@ -1,11 +1,11 @@
 """Extract GLASS conditions into small per-condition parquet files.
 
 Usage:
-    python scripts/extract_glass.py --categories 009 --months 2024-01 --levels 0 1 2 3
-    python scripts/extract_glass.py --categories 009 008 --months 2024-01 2024-02 --samples 40 --quiet
+    python data/scripts/extract_glass.py --categories 009 --months 2024-01 --levels 0 1 2 3
+    python data/scripts/extract_glass.py --categories 009 008 --months 2024-01 2024-02 --samples 40 --quiet
 
 Writes data/processed/glass_{category}_{yyyy-mm}_L{level}.parquet (git-ignored: 211 MB for the
-dashboard's set; `scripts/setup_data.py build` runs this for the whole set). `--samples N` keeps only
+dashboard's set; `data/scripts/setup_data.py build` runs this for the whole set). `--samples N` keeps only
 the first N samples of each condition (GLASS has about 150): the samples are independent
 synthetic customers, so a smaller set is the same kind of data, in a file a third the size.
 Prints a summary per
@@ -25,10 +25,10 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RAW = REPO_ROOT / "data" / "raw" / "GLASS_v1.1.parquet"
 DEFAULT_OUT = REPO_ROOT / "data" / "processed"
-README = REPO_ROOT / "data" / "README.md"
+GLASS_SHA256 = "815ac9fc98cf2a2823492a894ac81b132c88d6637a9e1642beb280b38d112343"  # published with the dataset on 4TU.ResearchData
 
 META_COLUMNS = ["category", "date", "level_id", "level_value", "sample_id"]
 TIME_RE = re.compile(r"^\d{2}:\d{2}:\d{2}$")
@@ -39,14 +39,11 @@ LOW_SPREAD_CV = 0.05
 
 
 def expected_sha256() -> str:
-    match = re.search(r"\*\*SHA-256:\*\*\s*`([0-9a-f]{64})`", README.read_text(encoding="utf-8"))
-    if not match:
-        sys.exit(f"Could not find the SHA-256 in {README}")
-    return match.group(1)
+    return GLASS_SHA256
 
 
 def verify_sha256(raw: Path) -> None:
-    """Check the raw file against data/README.md. Hashing 13 GB takes minutes,
+    """Check the raw file against its published SHA-256. Hashing 13 GB takes minutes,
     so a marker file remembers a successful check for the same size and mtime."""
     marker = raw.with_name(raw.name + ".sha256-verified")
     stat = raw.stat()
@@ -164,7 +161,7 @@ def main() -> None:
         sys.stdout.reconfigure(errors="replace")
 
     if not args.raw.exists():
-        sys.exit(f"{args.raw} not found. Download it with: python scripts/download_data.py glass")
+        sys.exit(f"{args.raw} not found. Download it with: python data/scripts/download_data.py glass")
     if not args.skip_hash:
         verify_sha256(args.raw)
 

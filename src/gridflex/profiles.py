@@ -17,13 +17,13 @@ import polars as pl
 
 N_SLOTS = 96
 SLOTS_PER_HOUR = 4
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 
 _TIME_RE = re.compile(r"^\d{2}:\d{2}:\d{2}$")
 _FILE_RE = re.compile(r"^glass_(?P<category>[A-Za-z0-9]+)_(?P<month>\d{4}-\d{2})_L(?P<level>\d)\.parquet$")
 
 
-# GLASS consumption categories (data/README.md): the business sector of the connection.
+# GLASS consumption categories (see the GLASS dataset page on 4TU.ResearchData): the business sector of the connection.
 SECTOR_LABELS = {
     "001": "Standard branches",
     "002": "Agriculture, forestry and fishing",
@@ -98,8 +98,8 @@ def load_condition(category: str, month: str, level: int, data_dir: Path | None 
     if not path.exists():
         raise FileNotFoundError(
             f"{path.name} not found in {path.parent}. "
-            f"Run: python scripts/extract_glass.py --categories {category} --months {month} --levels {level} "
-            "(or python scripts/setup_data.py status, to see how to get the whole set)"
+            f"Run: python data/scripts/extract_glass.py --categories {category} --months {month} --levels {level} "
+            "(or python data/scripts/setup_data.py status, to see how to get the whole set)"
         )
     return pl.read_parquet(path)
 

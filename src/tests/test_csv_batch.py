@@ -8,7 +8,7 @@ from api.main import app
 
 pytestmark = pytest.mark.needs_glass  # loads the GLASS extracts
 
-PUBLIC = Path(__file__).resolve().parents[1] / "ui" / "public"
+PUBLIC = Path(__file__).resolve().parents[2] / "ui" / "public"
 
 
 def test_setup_csv_uses_exact_van_requests():
@@ -93,7 +93,7 @@ def test_setup_csv_monthly_kwh_column_uses_the_bill_source():
     assert next(iter(read_scenarios(source).values())).load_source == "profile"
 
 
-EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
+EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 
 
 def case_text(case: str, name: str) -> str:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "download_data.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "data" / "scripts" / "download_data.py"
 spec = importlib.util.spec_from_file_location("download_data", SCRIPT)
 dl = importlib.util.module_from_spec(spec)
 sys.modules["download_data"] = dl  # dataclasses look the module up by name
