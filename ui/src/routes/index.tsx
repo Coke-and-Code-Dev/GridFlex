@@ -373,7 +373,7 @@ function Dashboard() {
           <div className="flex items-center justify-between gap-2">
             <button type="button" onClick={() => setActiveTab("welcome")} aria-label="GridFlex home"
               className="my-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-bold tracking-tight hover:bg-accent">
-              <img src="/gridflex-mark.png" alt="" width={40} height={27} className="h-auto w-10 rounded object-contain" />
+              <img src="/gridflex-logo.png" alt="" width={40} height={27} className="h-auto w-10 rounded object-contain" />
               <span>GridFlex</span>
             </button>
             <ThemeToggle />
@@ -434,7 +434,7 @@ function Dashboard() {
           <p className="mt-10 font-mono text-xs text-muted-foreground">Synthetic load profiles · Held-out replay · Human decision</p>
           </div>
           <div className="flex aspect-[3/2] flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card">
-            <img src="/gridflex-mark.png" alt="" width={210} height={137} className="h-auto w-1/2 max-w-52 rounded-lg" />
+            <img src="/gridflex-logo.png" alt="" width={210} height={137} className="h-auto w-1/2 max-w-52 rounded-lg" />
             <span className="text-3xl font-bold tracking-tight sm:text-4xl">GridFlex</span>
           </div>
         </section></TabsContent>
