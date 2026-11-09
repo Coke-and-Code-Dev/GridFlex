@@ -11,9 +11,9 @@
 <link rel="stylesheet" href="site.css">
 <style>
 /* Layout: one long editorial page — dark charcoal ground, electric-yellow accent, coral only for limits and breaches. */
-#watch{scroll-margin-top:80px}
+#watch{scroll-margin-top:calc(72px + env(safe-area-inset-top,0px));padding-block-start:clamp(24px,4vw,48px)}
 #watch video{display:block;width:min(100%,960px);aspect-ratio:16/9;margin-top:24px;background:#000;border:1px solid var(--border);border-radius:12px}
-@media (max-width:760px){#watch{scroll-margin-top:0}}
+@media (max-width:760px){#watch{scroll-margin-top:calc(120px + env(safe-area-inset-top,0px))}}
 
 /* hero */
 .hero{padding-block:clamp(70px,10vw,140px) clamp(60px,8vw,110px);border-top:0;position:relative;overflow:hidden}
