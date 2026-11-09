@@ -86,11 +86,6 @@ svg{display:block;width:100%;height:auto}
 .stage p,.stage li,.stage dd{color:var(--muted)}
 .stage dd{margin:4px 0 18px}
 .stage .grid + p{margin-top:18px}
-.compare-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.meter{height:22px;background:#111116;border-radius:4px;position:relative;overflow:hidden;margin:12px 0}
-.meter span{display:block;background:var(--accent);height:100%;width:var(--draw)}
-.meter[data-breach=true] span{background:var(--alert)}
-.meter::after{content:"";position:absolute;inset:0 auto 0 62.5%;width:2px;background:white}
 .docs-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:36px;padding-bottom:64px}
 .docs-layout aside nav{flex-direction:column;position:sticky;top:100px}
 pre{overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
@@ -141,4 +136,37 @@ code,pre{font-family:var(--mono);font-size:.85rem}
     24% { opacity: 1; }
     100% { opacity: 0; transform: translateX(36%); }
   }
+}
+
+/* Pipeline simulation */
+.sim-panel{margin-top:24px}
+.sim-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:18px 24px}
+.sim-panel label{display:grid;gap:8px;min-width:0}
+.sim-panel label span{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 12px}
+.sim-panel output{color:var(--accent);font-family:var(--mono);font-size:.86rem}
+.sim-panel input[type=range]{width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
+.sim-panel form > p{margin:16px 0 20px;font-size:.9rem}
+.sim-inspector{display:flex;align-items:end;flex-wrap:wrap;gap:16px 24px;padding:16px 0;border-top:1px solid var(--line)}
+.sim-inspector label{flex:1 1 220px}
+.sim-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0;color:var(--muted);font-size:.82rem}
+.sim-legend span::before{content:"";display:inline-block;width:18px;margin-right:7px;border-top:2px solid var(--muted);vertical-align:middle}
+.sim-legend span:nth-child(2)::before{border-color:var(--accent)}
+.sim-legend span:nth-child(3)::before{border-color:var(--alert);border-top-style:dashed}
+#sim-chart{background:var(--bg);border:1px solid var(--line);border-radius:8px}
+#sim-chart path{fill:none;vector-effect:non-scaling-stroke}
+.sim-axis{fill:var(--muted);font:17px var(--mono)}
+.sim-guide{stroke:var(--line)}
+.sim-immediate{stroke:var(--muted);stroke-width:2}
+.sim-plan{stroke:var(--accent);stroke-width:2.5}
+.sim-limit{stroke:var(--alert);stroke-width:1.5;stroke-dasharray:6 5}
+.sim-cursor{stroke:var(--text);stroke-dasharray:2 5}
+#sim-inspection{margin:12px 0;font-size:.92rem}
+.sim-table-wrap{overflow-x:auto}
+.sim-table{width:100%;border-collapse:collapse;font-size:.9rem}
+.sim-table th,.sim-table td{padding:9px 8px;text-align:left;border-bottom:1px solid var(--line)}
+.sim-table tbody th{font-weight:500}
+.sim-note{margin:14px 0 0;font-size:.85rem}
+@media (prefers-reduced-motion: no-preference) {
+  .pipeline-page .landing-enter :is(h2,.eyebrow){animation:landing-reveal 560ms cubic-bezier(.2,.7,.2,1) both}
+  .pipeline-page .landing-enter h2{animation-delay:65ms}
 }

@@ -35,6 +35,6 @@ if (!reduceMotion.matches) {
       }
     }, { threshold: 0.12 });
 
-    document.querySelectorAll(".landing main > section").forEach(section => observer.observe(section));
+    document.querySelectorAll(":is(.landing, .pipeline-page) main > section").forEach(section => observer.observe(section));
   }
 }

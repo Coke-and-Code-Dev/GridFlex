@@ -10,8 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Instrument+Serif:ital@0;1&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
   <link rel="stylesheet" href="../site.css">
+  <script src="../motion.js" defer></script>
+  <script src="simulation.js" defer></script>
 </head>
-<body>
+<body class="pipeline-page">
   <a class="skip" href="#main">Skip to content</a>
   <header class="top">
     <div class="wrap">
@@ -26,7 +28,40 @@
   </header>
   <main id="main" class="wrap">
     <div class="page-intro"><p class="eyebrow">Pipeline</p><h1>Follow a depot <em>through every stage.</em></h1><p class="lede">See how a postcode, building demand and a fleet become a timetable you can test and review.</p></div>
-    <nav class="steps" aria-label="Pipeline stages"><a href="#locate">01 Locate</a><a href="#prepare">02 Prepare</a><a href="#plan">03 Plan</a><a href="#stress-test">04 Stress-test</a><a href="#review">05 Review</a></nav>
+    <nav class="steps" aria-label="Pipeline stages"><a href="#simulation">Try the simulation</a><a href="#locate">01 Locate</a><a href="#prepare">02 Prepare</a><a href="#plan">03 Plan</a><a href="#stress-test">04 Stress-test</a><a href="#review">05 Review</a></nav>
+    <section class="stage" id="simulation">
+      <p class="eyebrow">Interactive simulation</p>
+      <h2>Try an overnight <em>charging plan.</em></h2>
+      <p class="lede">Change the fleet size or site limit to make a new plan. Then add a busier evening to see how that same plan holds up.</p>
+      <p>All vans arrive at 18:00 and leave at 08:00. Each needs 44 kWh and charges at up to 11 kW. The example scheduler fills quieter 15-minute slots first, using the building demand shown by the scenario.</p>
+      <div class="panel sim-panel">
+        <noscript><p>Enable JavaScript to change the simulation inputs. The walkthrough below explains each stage.</p></noscript>
+        <form id="sim-controls" hidden>
+          <div class="sim-inputs">
+            <label for="sim-vans"><span>Fleet size <output id="sim-vans-value" for="sim-vans">10</output></span><input id="sim-vans" name="vans" type="range" min="1" max="16" value="10"></label>
+            <label for="sim-limit"><span>Connection limit <output id="sim-limit-value" for="sim-limit">75 kW</output></span><input id="sim-limit" name="limit" type="range" min="35" max="150" step="5" value="75"></label>
+            <label for="sim-extra"><span>Extra evening demand <output id="sim-extra-value" for="sim-extra">+0 kW</output></span><input id="sim-extra" name="extra" type="range" min="0" max="40" step="5" value="0"></label>
+          </div>
+          <p class="muted">Extra demand applies from 18:00 to 22:00 during replay. The charging timetable stays fixed.</p>
+          <div class="sim-inspector">
+            <label for="sim-slot"><span>Inspect a time <output id="sim-slot-value" for="sim-slot">18:00</output></span><input id="sim-slot" name="slot" type="range" min="0" max="55" value="0"></label>
+            <button type="reset">Reset example</button>
+          </div>
+        </form>
+        <div id="sim-results" hidden>
+          <div class="sim-legend"><span>On arrival</span><span>Scheduled</span><span>Site limit</span></div>
+          <svg id="sim-chart" viewBox="0 0 640 265" role="img" aria-label="Overnight site demand in kilowatts"></svg>
+          <p id="sim-inspection" role="status"></p>
+          <div class="sim-table-wrap">
+            <table class="sim-table">
+              <thead><tr><th scope="col">Replay result</th><th scope="col">On arrival</th><th scope="col">Scheduled</th></tr></thead>
+              <tbody id="sim-summary" aria-live="polite"></tbody>
+            </table>
+          </div>
+          <p class="muted sim-note">This browser demo uses a simplified scheduler and synthetic demand. Charging on arrival assumes all chargers can draw power even when the site exceeds its limit. The GridFlex app uses its full solver and tests against multiple held-out windows.</p>
+        </div>
+      </div>
+    </section>
     <section class="stage" id="locate"><p class="eyebrow">01 · Locate</p><h2>Know the <em>local grid.</em></h2><p class="lede">A Dutch postcode brings up the congestion snapshot, queue and expected relief when available. The depot supplies its own connection limit and any confirmed off-peak allowance. The map gives context for the decision.</p>
       <p><strong>What you enter:</strong> postcode, the site's connection limit in kW, and the hours when any extra capacity is available. <strong>What you see:</strong> local congestion and queue details separately from the limit used by the solver.</p>
     </section>
@@ -36,17 +71,11 @@
         <article class="panel"><h3>With an electricity bill</h3><p>Use a sector profile for the daily shape, then scale it to the site's monthly kWh. GridFlex keeps each synthetic customer on one side of the planning and test split.</p></article>
       </div>
     </section>
-    <section class="stage split" id="plan">
+    <section class="stage" id="plan">
       <div><p class="eyebrow">03 · Plan</p><h2>Give every van <em>a time to charge.</em></h2><p class="lede">The solver allocates power in 15-minute slots, respecting arrival, departure, charger power and battery constraints. It prioritises unavoidable overload, missing energy, peak demand and battery cycling, in that order.</p>
         <p>Each slot shares the available power between the building, the vans and the battery. The battery can charge when there's room and discharge when the site needs help. If the vans cannot all get their requested energy, the plan reports the shortfall.</p>
       </div>
-      <figure class="panel">
-        <h3>Compare one charging interval</h3>
-        <div class="compare-buttons" aria-label="Illustrative charging modes"><button type="button" data-vans="10" aria-pressed="true">On arrival</button><button type="button" data-vans="2" aria-pressed="false">Staggered</button></div>
-        <div class="meter" data-breach="true" aria-hidden="true"><span style="--draw:96.875%"></span></div>
-        <p id="comparison" aria-live="polite">155 kW drawn · 55 kW above the 100 kW limit.</p>
-        <figcaption>Illustrative only. 45 kW building demand and 11 kW per active van. The vertical mark is the site limit. This comparison shows one interval.</figcaption>
-      </figure>
+      <div class="actions"><a class="btn" href="#simulation">Compare charging modes in the simulation</a></div>
     </section>
     <section class="stage" id="stress-test"><p class="eyebrow">04 · Stress-test</p><h2>Try the same plan <em>on other days.</em></h2><p class="lede">Replay the fixed timetable across held-out demand windows and compare it with charging on arrival. One quarter hour over the limit counts as a breach for that window. GridFlex reports how often it happens, when, and by how much.</p>
       <div class="grid">
@@ -59,21 +88,6 @@
       <p>For a tight site, compare a later departure, more connection capacity, or a different battery setting. Each what-if runs the solver again and replays the new plan on the same test windows so you can compare the trade-offs.</p>
       <div class="actions"><a class="btn primary" href="../docs/#results">How to read the results</a></div></section>
   </main>
-  <script>
-    const buttons = document.querySelectorAll('button[data-vans]');
-    const meter = document.querySelector('.meter');
-    const output = document.querySelector('#comparison');
-    for (const button of buttons) {
-      button.addEventListener('click', () => {
-        for (const item of buttons) item.setAttribute('aria-pressed', String(item === button));
-        const demand = 45 + 11 * Number(button.dataset.vans);
-        const difference = demand - 100;
-        meter.dataset.breach = String(difference > 0);
-        meter.firstElementChild.style.setProperty('--draw', (demand / 160 * 100) + '%');
-        output.textContent = demand + ' kW drawn · ' + Math.abs(difference) + ' kW ' + (difference > 0 ? 'above' : 'below') + ' the 100 kW limit.';
-      });
-    }
-  </script>
   <footer class="footer"><div class="wrap"><span>GridFlex</span><a href="https://github.com/Coke-and-Code-Dev/GridFlex">Source on GitHub ↗</a></div></footer>
 </body>
 </html>
